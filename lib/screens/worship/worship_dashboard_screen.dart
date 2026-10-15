@@ -261,21 +261,27 @@ class _WorshipDashboardScreenState extends State<WorshipDashboardScreen> {
                                     Text(_prayerRows[i].$2,
                                         style: NoorType.tabular(
                                             NoorType.secondary)),
-                                    IconButton(
-                                        tooltip: _notify[i]
-                                            ? 'Reminder on'
-                                            : 'Reminder off',
-                                        onPressed: () => setState(
-                                            () => _notify[i] = !_notify[i]),
-                                        icon: Icon(
-                                            _notify[i]
-                                                ? Icons.notifications
-                                                : Icons
-                                                    .notifications_off_outlined,
-                                            size: 19,
-                                            color: _notify[i]
-                                                ? NoorColors.emeraldDark
-                                                : NoorColors.greyDisabled)),
+                                    Semantics(
+                                      button: true,
+                                      toggled: _notify[i],
+                                      label:
+                                          '${_prayerRows[i].$1} prayer reminder ${_notify[i] ? "enabled" : "disabled"}. Tap to toggle.',
+                                      child: IconButton(
+                                          tooltip: _notify[i]
+                                              ? 'Reminder on'
+                                              : 'Reminder off',
+                                          onPressed: () => setState(
+                                              () => _notify[i] = !_notify[i]),
+                                          icon: Icon(
+                                              _notify[i]
+                                                  ? Icons.notifications
+                                                  : Icons
+                                                      .notifications_off_outlined,
+                                              size: 19,
+                                              color: _notify[i]
+                                                  ? NoorColors.emeraldDark
+                                                  : NoorColors.greyDisabled)),
+                                    ),
                                   ])),
                           ]),
                         ),
@@ -314,90 +320,108 @@ class _WorshipDashboardScreenState extends State<WorshipDashboardScreen> {
                     const Text('Worship Tools',
                         style: NoorType.cardTitle),
                     const SizedBox(height: 12),
-                    GridView.count(
-                        crossAxisCount: 4,
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        mainAxisSpacing: 10,
-                        crossAxisSpacing: 10,
-                        childAspectRatio: 0.75,
-                        children: List.generate(
-                            8,
-                            (i) => Semantics(
-                                  button: true,
-                                  label: SampleData.worshipTools[i],
-                                  child: InkWell(
-                                    borderRadius: BorderRadius.circular(16),
-                                    onTap: () {
-                                      if (i == 0) {
-                                        Navigator.of(context).push(
-                                            MaterialPageRoute(
-                                                builder: (_) =>
-                                                    const QiblaFinderScreen()));
-                                      } else if (i == 1) {
-                                        Navigator.of(context).push(
-                                            MaterialPageRoute(
-                                                builder: (_) =>
-                                                    const ZikrTasbihScreen()));
-                                      } else if (i == 2) {
-                                        Navigator.of(context).push(
-                                            MaterialPageRoute(
-                                                builder: (_) =>
-                                                    const DuaLibraryScreen()));
-                                      } else if (i == 3) {
-                                        Navigator.of(context).push(
-                                            MaterialPageRoute(
-                                                builder: (_) =>
-                                                    const ZikrTasbihScreen(
-                                                        initialTab: 1)));
-                                      } else if (i == 4) {
-                                        _openIslamicCalendar(context);
-                                      } else if (i == 5) {
-                                        _openFastingTracker(context);
-                                      } else if (i == 6) {
-                                        Navigator.of(context).push(
-                                            MaterialPageRoute(
-                                                builder: (_) =>
-                                                    const SalahTrackerScreen()));
-                                      } else if (i == 7) {
-                                        _openZakatCalculator(context);
-                                      }
-                                    },
-                                    child: Container(
-                                        padding: const EdgeInsets.symmetric(
-                                            vertical: 12, horizontal: 4),
-                                        decoration: BoxDecoration(
-                                            color: Colors.white,
-                                            borderRadius:
-                                                BorderRadius.circular(16),
-                                            border: Border.all(
-                                                color:
-                                                    NoorColors.hairlineSoft)),
-                                        child: Column(
-                                            mainAxisAlignment:
-                                                MainAxisAlignment.center,
-                                            children: [
-                                              Container(
-                                                  width: 42,
-                                                  height: 42,
-                                                  decoration:
-                                                      const BoxDecoration(
-                                                          color:
-                                                              NoorColors
-                                                                  .emeraldSoft,
-                                                          shape:
-                                                              BoxShape.circle),
-                                                  child: Icon(_toolIcons[i],
-                                                      color: NoorColors
-                                                          .emeraldDark,
-                                                      size: 21)),
-                                              const SizedBox(height: 7),
-                                              Text(SampleData.worshipTools[i],
-                                                  textAlign: TextAlign.center,
-                                                  style: NoorType.meta.copyWith(height: 1.2)),
-                                            ])),
-                                  ),
-                                ))),
+                    Builder(builder: (context) {
+                      final textScale = MediaQuery.textScalerOf(context).scale(1.0);
+                      final isDark = Theme.of(context).brightness == Brightness.dark;
+                      final ratio = textScale > 1.2 ? 0.65 : 0.75;
+                      return GridView.count(
+                          crossAxisCount: 4,
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          mainAxisSpacing: 10,
+                          crossAxisSpacing: 10,
+                          childAspectRatio: ratio,
+                          children: List.generate(
+                              8,
+                              (i) => Semantics(
+                                    button: true,
+                                    label: SampleData.worshipTools[i],
+                                    child: InkWell(
+                                      borderRadius: BorderRadius.circular(16),
+                                      onTap: () {
+                                        if (i == 0) {
+                                          Navigator.of(context).push(
+                                              MaterialPageRoute(
+                                                  builder: (_) =>
+                                                      const QiblaFinderScreen()));
+                                        } else if (i == 1) {
+                                          Navigator.of(context).push(
+                                              MaterialPageRoute(
+                                                  builder: (_) =>
+                                                      const ZikrTasbihScreen()));
+                                        } else if (i == 2) {
+                                          Navigator.of(context).push(
+                                              MaterialPageRoute(
+                                                  builder: (_) =>
+                                                      const DuaLibraryScreen()));
+                                        } else if (i == 3) {
+                                          Navigator.of(context).push(
+                                              MaterialPageRoute(
+                                                  builder: (_) =>
+                                                      const ZikrTasbihScreen(
+                                                          initialTab: 1)));
+                                        } else if (i == 4) {
+                                          _openIslamicCalendar(context);
+                                        } else if (i == 5) {
+                                          _openFastingTracker(context);
+                                        } else if (i == 6) {
+                                          Navigator.of(context).push(
+                                              MaterialPageRoute(
+                                                  builder: (_) =>
+                                                      const SalahTrackerScreen()));
+                                        } else if (i == 7) {
+                                          _openZakatCalculator(context);
+                                        }
+                                      },
+                                      child: Container(
+                                          padding: const EdgeInsets.symmetric(
+                                              vertical: 10, horizontal: 4),
+                                          decoration: BoxDecoration(
+                                              color: isDark ? NoorColors.darkCard : Colors.white,
+                                              borderRadius:
+                                                  BorderRadius.circular(16),
+                                              border: Border.all(
+                                                  color: isDark
+                                                      ? NoorColors.darkBorder
+                                                      : NoorColors.hairlineSoft)),
+                                          child: Column(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
+                                              children: [
+                                                Container(
+                                                    width: 42,
+                                                    height: 42,
+                                                    decoration:
+                                                        BoxDecoration(
+                                                            color: isDark
+                                                                ? NoorColors.darkSurface
+                                                                : NoorColors.emeraldSoft,
+                                                            shape:
+                                                                BoxShape.circle),
+                                                    child: Icon(_toolIcons[i],
+                                                        color: isDark
+                                                            ? NoorColors.darkGold
+                                                            : NoorColors.emeraldDark,
+                                                        size: 21)),
+                                                const SizedBox(height: 6),
+                                                Flexible(
+                                                  child: Padding(
+                                                    padding: const EdgeInsets.symmetric(horizontal: 2),
+                                                    child: FittedBox(
+                                                      fit: BoxFit.scaleDown,
+                                                      child: Text(SampleData.worshipTools[i],
+                                                          textAlign: TextAlign.center,
+                                                          maxLines: 2,
+                                                          style: NoorType.meta.copyWith(
+                                                              color: isDark ? NoorColors.darkTextPrimary : NoorColors.ink,
+                                                              height: 1.2)),
+                                                    ),
+                                                  ),
+                                                ),
+                                              ])),
+                                    ),
+                                  )));
+                    }),
                     const SizedBox(height: 16),
                     GestureDetector(
                         onTap: () => Navigator.of(context).push(MaterialPageRoute(

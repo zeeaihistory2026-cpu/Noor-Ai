@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import '../../data/firebase_rest_service.dart';
 import '../../theme/noor_theme.dart';
@@ -313,7 +314,22 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
       _countsMap[_activeDhikr.id] = _count;
     });
 
+    if (mounted) {
+      SemanticsService.sendAnnouncement(
+        View.of(context),
+        '$_count',
+        Directionality.of(context),
+      );
+    }
+
     if (_count == _target) {
+      if (mounted) {
+        SemanticsService.sendAnnouncement(
+          View.of(context),
+          'Target of $_target completed for ${_activeDhikr.transliteration}. MashaAllah.',
+          Directionality.of(context),
+        );
+      }
       _showCompletionNotice();
     }
   }
@@ -326,31 +342,39 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
         if (_totalToday > 0) _totalToday--;
         _countsMap[_activeDhikr.id] = _count;
       });
+      if (mounted) {
+        SemanticsService.sendAnnouncement(
+          View.of(context),
+          'Undone to $_count',
+          Directionality.of(context),
+        );
+      }
     }
   }
 
   void _confirmReset() {
     if (_count == 0) return;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: Colors.white,
+        backgroundColor: isDark ? NoorColors.darkSurface : Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
         title: Row(
           children: [
-            const Icon(Icons.refresh, color: NoorColors.emeraldDark),
+            Icon(Icons.refresh, color: isDark ? NoorColors.darkGold : NoorColors.emeraldDark),
             const SizedBox(width: 8),
-            Text('Reset Counter?', style: NoorType.section.copyWith(color: NoorColors.emeraldDark)),
+            Text('Reset Counter?', style: NoorType.section.copyWith(color: isDark ? NoorColors.darkTextPrimary : NoorColors.emeraldDark)),
           ],
         ),
         content: Text(
           'Are you sure you want to reset your count of $_count for "${_activeDhikr.transliteration}" back to 0?',
-          style: NoorType.body.copyWith(color: NoorColors.mutedDark),
+          style: NoorType.body.copyWith(color: isDark ? NoorColors.darkTextSecondary : NoorColors.mutedDark),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Cancel', style: TextStyle(color: NoorColors.mutedDark)),
+            child: Text('Cancel', style: TextStyle(color: isDark ? NoorColors.darkTextSecondary : NoorColors.mutedDark)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
@@ -376,6 +400,13 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
       _count = 0;
       _countsMap[_activeDhikr.id] = 0;
     });
+    if (mounted) {
+      SemanticsService.sendAnnouncement(
+        View.of(context),
+        'Counter reset to 0',
+        Directionality.of(context),
+      );
+    }
   }
 
   void _selectDhikr(DhikrModel dhikr) {
@@ -940,13 +971,17 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             // Undo Button
-            Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _roundBtn(Icons.remove, _undo, tooltip: 'Undo (-1)'),
-                const SizedBox(height: 6),
-                Text('Undo', style: NoorType.meta.copyWith(color: NoorColors.mutedDark)),
-              ],
+            Semantics(
+              button: true,
+              label: 'Undo previous count. Current count is $_count.',
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _roundBtn(Icons.remove, _undo, tooltip: 'Undo (-1)'),
+                  const SizedBox(height: 6),
+                  Text('Undo', style: NoorType.meta.copyWith(color: NoorColors.mutedDark)),
+                ],
+              ),
             ),
 
             const SizedBox(width: 14),
@@ -957,13 +992,17 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
             const SizedBox(width: 14),
 
             // Add Button
-            Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _roundBtn(Icons.add, _tap, tooltip: 'Add (+1)'),
-                const SizedBox(height: 6),
-                Text('Add', style: NoorType.meta.copyWith(color: NoorColors.mutedDark)),
-              ],
+            Semantics(
+              button: true,
+              label: 'Add to count. Current count is $_count of $_target.',
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _roundBtn(Icons.add, _tap, tooltip: 'Add (+1)'),
+                  const SizedBox(height: 6),
+                  Text('Add', style: NoorType.meta.copyWith(color: NoorColors.mutedDark)),
+                ],
+              ),
             ),
           ],
         ),
@@ -1082,41 +1121,47 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
                       ),
                     ],
                   ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        '$_count',
-                        style: NoorType.tabular(
-                          NoorType.display.copyWith(
-                            fontSize: 52,
-                            color: Colors.white,
-                            fontWeight: FontWeight.w800,
-                            height: 1.0,
+                  child: Padding(
+                    padding: const EdgeInsets.all(10.0),
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            '$_count',
+                            style: NoorType.tabular(
+                              NoorType.display.copyWith(
+                                fontSize: 52,
+                                color: Colors.white,
+                                fontWeight: FontWeight.w800,
+                                height: 1.0,
+                              ),
+                            ),
                           ),
-                        ),
-                      ),
-                      const SizedBox(height: 3),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: Colors.black26,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Text(
-                          '/ $_target',
-                          style: NoorType.meta.copyWith(
-                            color: NoorColors.goldPale,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.5,
+                          const SizedBox(height: 3),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.black26,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Text(
+                              '/ $_target',
+                              style: NoorType.meta.copyWith(
+                                color: NoorColors.goldPale,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
                           ),
-                        ),
+                          if (_count >= _target) ...[
+                            const SizedBox(height: 4),
+                            const Icon(Icons.check_circle, color: NoorColors.gold, size: 16),
+                          ],
+                        ],
                       ),
-                      if (_count >= _target) ...[
-                        const SizedBox(height: 4),
-                        const Icon(Icons.check_circle, color: NoorColors.gold, size: 16),
-                      ],
-                    ],
+                    ),
                   ),
                 ),
               ],

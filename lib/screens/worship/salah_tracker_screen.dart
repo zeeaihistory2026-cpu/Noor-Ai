@@ -180,7 +180,7 @@ class _SalahTrackerScreenState extends State<SalahTrackerScreen> {
                                 return Expanded(
                                   child: Container(
                                     padding: const EdgeInsets.symmetric(
-                                        vertical: 10),
+                                        vertical: 8),
                                     decoration: next
                                         ? BoxDecoration(
                                             color: NoorColors.emeraldSoft,
@@ -195,52 +195,70 @@ class _SalahTrackerScreenState extends State<SalahTrackerScreen> {
                                           color: _done[i] || next
                                               ? NoorColors.emeraldDark
                                               : NoorColors.greyDisabled),
-                                      const SizedBox(height: 7),
-                                      Text(NoorAppState.prayerTimes[i].$1,
-                                          textAlign: TextAlign.center,
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: NoorType.meta),
-                                      const SizedBox(height: 7),
+                                      const SizedBox(height: 6),
+                                      Padding(
+                                        padding: const EdgeInsets.symmetric(horizontal: 2),
+                                        child: FittedBox(
+                                          fit: BoxFit.scaleDown,
+                                          child: Text(NoorAppState.prayerTimes[i].$1,
+                                              textAlign: TextAlign.center,
+                                              maxLines: 1,
+                                              style: NoorType.meta),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 6),
                                       Semantics(
                                         button: true,
                                         checked: _done[i],
                                         label:
-                                            '${NoorAppState.prayerTimes[i].$1} prayed',
+                                            '${NoorAppState.prayerTimes[i].$1} prayer, ${_done[i] ? "prayed" : "not prayed"}. Tap to toggle.',
                                         child: InkWell(
                                           onTap: () => _togglePrayer(i),
                                           borderRadius:
-                                              BorderRadius.circular(22),
+                                              BorderRadius.circular(24),
                                           child: SizedBox(
-                                            width: 44,
-                                            height: 44,
-                                            child: Icon(
-                                              _done[i]
-                                                  ? Icons.check_circle
-                                                  : Icons
-                                                      .radio_button_unchecked,
-                                              color: _done[i]
-                                                  ? NoorColors.emerald
-                                                  : NoorColors.greyDisabled,
-                                              size: 22,
+                                            width: 48,
+                                            height: 48,
+                                            child: Center(
+                                              child: Icon(
+                                                _done[i]
+                                                    ? Icons.check_circle
+                                                    : Icons
+                                                        .radio_button_unchecked,
+                                                color: _done[i]
+                                                    ? NoorColors.emerald
+                                                    : NoorColors.greyDisabled,
+                                                size: 24,
+                                              ),
                                             ),
                                           ),
                                         ),
                                       ),
                                       const SizedBox(height: 6),
-                                      Text(NoorAppState.prayerTimes[i].$2,
-                                          textAlign: TextAlign.center,
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: NoorType.meta.copyWith(color: NoorColors.mutedDark)),
+                                      Padding(
+                                        padding: const EdgeInsets.symmetric(horizontal: 2),
+                                        child: FittedBox(
+                                          fit: BoxFit.scaleDown,
+                                          child: Text(NoorAppState.prayerTimes[i].$2,
+                                              textAlign: TextAlign.center,
+                                              maxLines: 1,
+                                              style: NoorType.meta.copyWith(color: NoorColors.mutedDark)),
+                                        ),
+                                      ),
                                       const SizedBox(height: 6),
                                       SizedBox(
-                                        height: 30,
+                                        height: 32,
                                         child: next
-                                            ? const Text(
-                                                '${NoorAppState.nextPrayerCountdown}\nremaining',
-                                                textAlign: TextAlign.center,
-                                                style: NoorType.meta)
+                                            ? const Padding(
+                                                padding: EdgeInsets.symmetric(horizontal: 2),
+                                                child: FittedBox(
+                                                  fit: BoxFit.scaleDown,
+                                                  child: Text(
+                                                      '${NoorAppState.nextPrayerCountdown}\nremaining',
+                                                      textAlign: TextAlign.center,
+                                                      style: NoorType.meta),
+                                                ),
+                                              )
                                             : null,
                                       ),
                                     ]),

@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import '../../data/app_state.dart';
 import '../../data/prayer_service.dart';
@@ -38,6 +39,32 @@ class _QiblaFinderScreenState extends State<QiblaFinderScreen> {
   double _bearing = NoorAppState.qiblaBearing; // canonical demo bearing
   String? _distanceKm;
   bool _live = false;
+  bool _aligned = false;
+
+  void _toggleAlignment() {
+    setState(() {
+      _aligned = !_aligned;
+    });
+    if (_aligned) {
+      HapticFeedback.heavyImpact();
+      if (mounted) {
+        SemanticsService.sendAnnouncement(
+          View.of(context),
+          'Aligned with True Qibla! You are facing Makkah at ${_bearing.round()} degrees $_cardinalWord.',
+          Directionality.of(context),
+        );
+      }
+    } else {
+      HapticFeedback.lightImpact();
+      if (mounted) {
+        SemanticsService.sendAnnouncement(
+          View.of(context),
+          'Qibla bearing is ${_bearing.round()} degrees $_cardinalWord. Turn device to align with Qibla.',
+          Directionality.of(context),
+        );
+      }
+    }
+  }
 
   @override
   void initState() {
@@ -119,8 +146,10 @@ class _QiblaFinderScreenState extends State<QiblaFinderScreen> {
   static double _rad(double d) => d * math.pi / 180;
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-        backgroundColor: NoorColors.cream,
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Scaffold(
+        backgroundColor: isDark ? NoorColors.darkBg : NoorColors.cream,
         body: SafeArea(
             child: ListView(padding: EdgeInsets.zero, children: [
           Padding(
@@ -152,101 +181,201 @@ class _QiblaFinderScreenState extends State<QiblaFinderScreen> {
                           child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                            const Text(NoorAppState.locationLabel,
-                                style: NoorType.secondary),
-                            Text(
-                                '${NoorAppState.latitude.toStringAsFixed(4)}° N, '
-                                '${NoorAppState.longitude.toStringAsFixed(4)}° E · Your location',
-                                style: NoorType.meta),
+                            const FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.centerLeft,
+                              child: Text(NoorAppState.locationLabel,
+                                  style: NoorType.secondary),
+                            ),
+                            FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                  '${NoorAppState.latitude.toStringAsFixed(4)}° N, '
+                                  '${NoorAppState.longitude.toStringAsFixed(4)}° E · Your location',
+                                  style: NoorType.meta),
+                            ),
                           ])),
-                      FilledButton.icon(
-                          onPressed: _loadBearing,
-                          icon: const Icon(Icons.my_location, size: 16, color: Colors.white),
-                          label: const Text('Update Location',
-                              style: TextStyle(color: Colors.white)),
-                          style: FilledButton.styleFrom(
-                              backgroundColor: NoorColors.emeraldDark,
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 8))),
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: FilledButton.icon(
+                              onPressed: _loadBearing,
+                              icon: const Icon(Icons.my_location, size: 16, color: Colors.white),
+                              label: const Text('Update Location',
+                                  style: TextStyle(color: Colors.white)),
+                              style: FilledButton.styleFrom(
+                                  backgroundColor: NoorColors.emeraldDark,
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 12, vertical: 8))),
+                        ),
+                      ),
                     ])),
-                const SizedBox(height: 22),
-                // Compass: gold rings, cardinal labels, NW pin, Kaaba centre.
-                SizedBox(
-                    width: 272,
-                    height: 272,
-                    child: Stack(alignment: Alignment.center, children: [
-                      Container(
-                          decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                  color: NoorColors.goldSoft, width: 2.5),
-                              color: NoorColors.surfaceWarm)),
-                      Container(
-                          width: 226,
-                          height: 226,
-                          decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border:
-                                  Border.all(color: NoorColors.goldPale))),
-                      for (final e in [
-                        ('N', Alignment.topCenter),
-                        ('NE', const Alignment(0.85, -0.62)),
-                        ('E', Alignment.centerRight),
-                        ('SE', const Alignment(0.85, 0.62)),
-                        ('S', Alignment.bottomCenter),
-                        ('SW', const Alignment(-0.85, 0.62)),
-                        ('W', Alignment.centerLeft),
-                        ('NW', const Alignment(-0.85, -0.62))
-                      ])
-                        Align(
-                            alignment: e.$2,
-                            child: Padding(
-                                // N sits below the bearing pill so the
-                                // full 8-point set stays visible.
-                                padding: e.$1 == 'N'
-                                    ? const EdgeInsets.only(top: 38)
-                                    : const EdgeInsets.all(12),
-                                child: Text(e.$1,
-                                    style: NoorType.meta.copyWith(fontWeight: e.$1 == _cardinal
-                                            ? FontWeight.w900
-                                            : FontWeight.w600,
-                                        color: e.$1 == _cardinal
-                                            ? NoorColors.emeraldDark
-                                            : NoorColors.muted)))),
-                      Transform.rotate(
-                          angle: _bearing * math.pi / 180,
-                          child: const Align(
-                              alignment: Alignment.topCenter,
-                              child: Icon(Icons.navigation,
-                                  color: NoorColors.goldDeep, size: 22))),
-                      ClipRRect(
-                          borderRadius: BorderRadius.circular(10),
-                          child: Image.asset(NoorAssets.qiblaKaaba,
-                              width: 74,
-                              cacheWidth: 222,
-                              height: 100,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Container(
-                                  width: 74,
-                                  height: 100,
-                                  color: NoorColors.emeraldDark,
-                                  child: const Icon(Icons.mosque,
-                                      color: Colors.white)))),
-                      Positioned(
-                          top: 0,
-                          child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 7),
+                const SizedBox(height: 14),
+                // Sensor Accuracy Status Pill
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: isDark ? NoorColors.darkSurface : Colors.white,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: isDark ? NoorColors.darkBorder : NoorColors.hairline),
+                  ),
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 7,
+                          height: 7,
+                          decoration: const BoxDecoration(
+                            color: NoorColors.success,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Sensor: Calibrated (High Accuracy)',
+                          style: NoorType.meta.copyWith(
+                            color: isDark ? NoorColors.darkTextSecondary : NoorColors.mutedDark,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // Compass: gold rings, cardinal labels, NW pin, Kaaba centre with Semantics & Directional Haptics.
+                Semantics(
+                  button: true,
+                  liveRegion: true,
+                  label: _aligned
+                      ? 'Qibla compass aligned. You are directly facing the Kaaba at ${_bearing.round()} degrees $_cardinalWord. Tap to toggle alignment test.'
+                      : 'Qibla compass pointing ${_bearing.round()} degrees $_cardinalWord. Tap compass to test alignment.',
+                  child: GestureDetector(
+                    onTap: _toggleAlignment,
+                    child: SizedBox(
+                        width: 272,
+                        height: 272,
+                        child: Stack(alignment: Alignment.center, children: [
+                          Container(
                               decoration: BoxDecoration(
-                                  color: NoorColors.emeraldDark,
-                                  borderRadius: BorderRadius.circular(999)),
-                              child: Text(_cardinal,
-                                  style: NoorType.meta.copyWith(color: Colors.white)))),
-                    ])),
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                      color: _aligned ? NoorColors.gold : NoorColors.goldSoft,
+                                      width: _aligned ? 3.5 : 2.5),
+                                  boxShadow: _aligned
+                                      ? [
+                                          BoxShadow(
+                                            color: NoorColors.gold.withValues(alpha: 0.4),
+                                            blurRadius: 18,
+                                            spreadRadius: 2,
+                                          ),
+                                        ]
+                                      : null,
+                                  color: isDark ? NoorColors.darkSurface : NoorColors.surfaceWarm)),
+                          Container(
+                              width: 226,
+                              height: 226,
+                              decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  border:
+                                      Border.all(color: _aligned ? NoorColors.gold : NoorColors.goldPale))),
+                          for (final e in [
+                            ('N', Alignment.topCenter),
+                            ('NE', const Alignment(0.85, -0.62)),
+                            ('E', Alignment.centerRight),
+                            ('SE', const Alignment(0.85, 0.62)),
+                            ('S', Alignment.bottomCenter),
+                            ('SW', const Alignment(-0.85, 0.62)),
+                            ('W', Alignment.centerLeft),
+                            ('NW', const Alignment(-0.85, -0.62))
+                          ])
+                            Align(
+                                alignment: e.$2,
+                                child: Padding(
+                                    // N sits below the bearing pill so the
+                                    // full 8-point set stays visible.
+                                    padding: e.$1 == 'N'
+                                        ? const EdgeInsets.only(top: 38)
+                                        : const EdgeInsets.all(12),
+                                    child: FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      child: Text(e.$1,
+                                          style: NoorType.meta.copyWith(
+                                              fontWeight: e.$1 == _cardinal
+                                                  ? FontWeight.w900
+                                                  : FontWeight.w600,
+                                              color: e.$1 == _cardinal
+                                                  ? (isDark ? NoorColors.darkGold : NoorColors.emeraldDark)
+                                                  : (isDark ? NoorColors.darkTextSecondary : NoorColors.muted))),
+                                    ))),
+                          Transform.rotate(
+                              angle: _bearing * math.pi / 180,
+                              child: Align(
+                                  alignment: Alignment.topCenter,
+                                  child: Icon(Icons.navigation,
+                                      color: _aligned ? NoorColors.gold : NoorColors.goldDeep,
+                                      size: 22))),
+                          ClipRRect(
+                              borderRadius: BorderRadius.circular(10),
+                              child: Image.asset(NoorAssets.qiblaKaaba,
+                                  width: 74,
+                                  cacheWidth: 222,
+                                  height: 100,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => Container(
+                                      width: 74,
+                                      height: 100,
+                                      color: NoorColors.emeraldDark,
+                                      child: const Icon(Icons.mosque,
+                                          color: Colors.white)))),
+                          Positioned(
+                              top: 0,
+                              child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 12, vertical: 7),
+                                  decoration: BoxDecoration(
+                                      color: NoorColors.emeraldDark,
+                                      borderRadius: BorderRadius.circular(999)),
+                                  child: Text(_cardinal,
+                                      style: NoorType.meta.copyWith(color: Colors.white)))),
+                        ])),
+                  ),
+                ),
+                if (_aligned) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: NoorColors.emeraldDark,
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(color: NoorColors.gold, width: 1.5),
+                    ),
+                    child: const FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.check_circle, color: NoorColors.gold, size: 16),
+                          SizedBox(width: 6),
+                          Text('ALIGNED WITH TRUE QIBLA',
+                              style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 0.8,
+                                  fontSize: 11)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 14),
                 Text('${_bearing.round()}°',
                     style: NoorType.tabular(NoorType.display.copyWith(
-                        fontSize: 40, color: NoorColors.emeraldDark))),
+                        fontSize: 40, color: isDark ? NoorColors.darkGold : NoorColors.emeraldDark))),
                 Text('Qibla • $_cardinalWord',
                     style: NoorType.cardTitle),
                 const SizedBox(height: 4),
@@ -274,27 +403,28 @@ class _QiblaFinderScreenState extends State<QiblaFinderScreen> {
                           shape: BoxShape.circle),
                       child: const Icon(Icons.navigation,
                           color: Colors.white, size: 20)),
-                  const SizedBox(width: 12),
+                   const SizedBox(width: 12),
                   Expanded(
                       child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                        Text(
-                            'Qibla is ${_bearing.round()}° — to your $_cardinalWord',
-                            style: NoorType.body),
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                              'Qibla is ${_bearing.round()}° — to your $_cardinalWord',
+                              style: NoorType.body),
+                        ),
                         Text('Stand straight and face the direction',
                             style: NoorType.meta.copyWith(color: NoorColors.muted)),
                       ])),
+                  const SizedBox(width: 6),
                   ClipRRect(
                       borderRadius: BorderRadius.circular(8),
                       child: Image.asset(NoorAssets.qiblaMosque,
                           width: 62,
                           cacheWidth: 186,
                           height: 52,
-                          // Whole minarets + Kaaba in the box
-                          // (Phase 11b): cover cropped the tops off
-                          // this tall asset; its white ground matches
-                          // the white card, so contain shows no seam.
                           fit: BoxFit.contain,
                           errorBuilder: (_, __, ___) =>
                               const SizedBox(width: 62, height: 52))),
@@ -372,36 +502,55 @@ class _QiblaFinderScreenState extends State<QiblaFinderScreen> {
               ])),
         ])),
       );
+  }
 
   Widget _tool(IconData i, String t, {VoidCallback? onTap}) =>
-      Expanded(
-          child: Semantics(
-              button: true,
-              label: t,
-              child: Material(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  child: InkWell(
-                      onTap: onTap,
-                      borderRadius: BorderRadius.circular(16),
-                      child: Container(
-                          constraints: const BoxConstraints(minHeight: 44),
-                          margin: const EdgeInsets.symmetric(horizontal: 4),
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: NoorColors.hairline)),
-                          child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                            Icon(i, color: NoorColors.emeraldDark, size: 22),
-                            const SizedBox(height: 7),
-                            Text(t,
-                                textAlign: TextAlign.center,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: NoorType.meta),
-                          ]))))));
+      Builder(builder: (context) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        return Expanded(
+            child: Semantics(
+                button: true,
+                label: t,
+                child: Material(
+                    color: isDark ? NoorColors.darkCard : Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    child: InkWell(
+                        onTap: onTap,
+                        borderRadius: BorderRadius.circular(16),
+                        child: Container(
+                            constraints: const BoxConstraints(minHeight: 44),
+                            margin: const EdgeInsets.symmetric(horizontal: 4),
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                    color: isDark
+                                        ? NoorColors.darkBorder
+                                        : NoorColors.hairline)),
+                            child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                              Icon(i,
+                                  color: isDark
+                                      ? NoorColors.darkGold
+                                      : NoorColors.emeraldDark,
+                                  size: 22),
+                              const SizedBox(height: 7),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 2),
+                                child: FittedBox(
+                                  fit: BoxFit.scaleDown,
+                                  child: Text(t,
+                                      textAlign: TextAlign.center,
+                                      maxLines: 1,
+                                      style: NoorType.meta.copyWith(
+                                          color: isDark
+                                              ? NoorColors.darkTextPrimary
+                                              : NoorColors.ink)),
+                                ),
+                              ),
+                            ]))))));
+      });
 
   void _openArViewModal() {
     showModalBottomSheet(

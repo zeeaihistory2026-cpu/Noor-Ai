@@ -208,23 +208,32 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                                 ],
                               ),
                               const SizedBox(height: 6),
-                              Text(_nextPrayer,
-                                  style: NoorType.display.copyWith(color: Colors.white)),
+                              FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: Alignment.centerLeft,
+                                child: Text(_nextPrayer,
+                                    style: NoorType.display.copyWith(color: Colors.white)),
+                              ),
                               const SizedBox(height: 2),
-                              Text(_nextPrayerTime,
-                                  style: NoorType.screenTitle.copyWith(color: NoorColors.gold)),
+                              FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: Alignment.centerLeft,
+                                child: Text(_nextPrayerTime,
+                                    style: NoorType.screenTitle.copyWith(color: NoorColors.gold)),
+                              ),
                               const SizedBox(height: 8),
-                              Row(mainAxisSize: MainAxisSize.min, children: [
-                                const Icon(Icons.schedule,
-                                    color: Colors.white70, size: 15),
-                                const SizedBox(width: 5),
-                                Flexible(
-                                  child: Text(_nextPrayerIn,
+                              FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: Alignment.centerLeft,
+                                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                                  const Icon(Icons.schedule,
+                                      color: Colors.white70, size: 15),
+                                  const SizedBox(width: 5),
+                                  Text(_nextPrayerIn,
                                       maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
                                       style: const TextStyle(color: Colors.white70)),
-                                ),
-                              ]),
+                                ]),
+                              ),
                             ]),
                       ),
                     ]),
@@ -420,52 +429,53 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
             borderRadius: BorderRadius.circular(NoorRadius.card),
             border: isDark ? Border.all(color: NoorColors.darkBorder) : null,
             boxShadow: isDark ? null : NoorShadows.card),
-        padding: const EdgeInsets.all(13),
-        child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-          Row(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.center,
+          child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-            Image.asset(assetPath, width: 26, height: 26, fit: BoxFit.contain),
-            const SizedBox(width: 6),
-            Flexible(
-              child: Text(label,
+            Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+              Image.asset(assetPath, width: 24, height: 24, fit: BoxFit.contain),
+              const SizedBox(width: 6),
+              Text(label,
                   maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                   textAlign: TextAlign.center,
                   style: NoorType.secondary.copyWith(
                       color: isDark ? NoorColors.darkTextPrimary : NoorColors.ink)),
+            ]),
+            const SizedBox(height: 6),
+            Text('$days',
+                textAlign: TextAlign.center,
+                style: NoorType.screenTitle.copyWith(
+                    color: isDark ? NoorColors.darkGold : NoorColors.ink)),
+            Text('Day Streak',
+                textAlign: TextAlign.center,
+                style: NoorType.meta.copyWith(
+                    color: isDark ? NoorColors.darkTextSecondary : NoorColors.muted)),
+            const SizedBox(height: 6),
+            // One flame badge + the real count (Phase 12): five
+            // flames previously showed 4 lit for 12, 8 and 17 days
+            // alike — decoration pretending to be data.
+            Semantics(
+              label: '$label streak, $days days',
+              child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                const Icon(Icons.local_fire_department,
+                    size: 15, color: NoorColors.amber),
+                const SizedBox(width: 4),
+                Text('$days days',
+                    style: NoorType.meta.copyWith(
+                        color: isDark ? NoorColors.darkTextSecondary : NoorColors.mutedDark)),
+              ]),
             ),
           ]),
-          const SizedBox(height: 8),
-          Text('$days',
-              textAlign: TextAlign.center,
-              style: NoorType.screenTitle.copyWith(
-                  color: isDark ? NoorColors.darkGold : NoorColors.ink)),
-          Text('Day Streak',
-              textAlign: TextAlign.center,
-              style: NoorType.meta.copyWith(
-                  color: isDark ? NoorColors.darkTextSecondary : NoorColors.muted)),
-          const SizedBox(height: 8),
-          // One flame badge + the real count (Phase 12): five
-          // flames previously showed 4 lit for 12, 8 and 17 days
-          // alike — decoration pretending to be data.
-          Semantics(
-            label: '$label streak, $days days',
-            child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-              const Icon(Icons.local_fire_department,
-                  size: 15, color: NoorColors.amber),
-              const SizedBox(width: 4),
-              Text('$days days',
-                  style: NoorType.meta.copyWith(
-                      color: isDark ? NoorColors.darkTextSecondary : NoorColors.mutedDark)),
-            ]),
-          ),
-        ]),
+        ),
       ),
     );
   }
