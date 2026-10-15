@@ -50,6 +50,19 @@ class PrayerService {
   ];
 
   static PrayerDay? _memoryCache;
+  static final Map<String, PrayerDay> _memoryCacheMap = <String, PrayerDay>{};
+  static final Map<String, Future<PrayerDay>> _inFlightTimings = <String, Future<PrayerDay>>{};
+  static final Map<String, Future<String>> _inFlightHijri = <String, Future<String>>{};
+  static final Map<String, Future<double>> _inFlightQibla = <String, Future<double>>{};
+
+  /// Clears in-memory caches and in-flight futures. Useful for testing.
+  static void clearCache() {
+    _memoryCache = null;
+    _memoryCacheMap.clear();
+    _inFlightTimings.clear();
+    _inFlightHijri.clear();
+    _inFlightQibla.clear();
+  }
 
   // ---- Public API -----------------------------------------------------
 
@@ -58,18 +71,37 @@ class PrayerService {
     String city = defaultCity,
     String country = defaultCountry,
     int? method,
+    bool forceRefresh = false,
   }) async {
+    final m = method ?? await NoorStore.getCalculationMethod();
+    final d = DateTime.now();
+    final key = '${_dateKey(d)}_${city.toLowerCase()}_${country.toLowerCase()}_$m';
+
+    if (!forceRefresh) {
+      final mem = _memoryCacheMap[key];
+      if (mem != null) return mem;
+
+      final diskCached = await _readPersistedCityCache(key);
+      if (diskCached != null) {
+        _memoryCacheMap[key] = diskCached;
+        _memoryCache = diskCached;
+        return diskCached;
+      }
+    }
+
     try {
       final day = await fetchTimingsByCity(
         city: city,
         country: country,
-        method: method ?? await NoorStore.getCalculationMethod(),
-        date: DateTime.now(),
+        method: m,
+        date: d,
+        forceRefresh: forceRefresh,
       );
+      _memoryCacheMap[key] = day;
       _memoryCache = day;
       return day;
     } catch (_) {
-      return _memoryCache ?? await _persistedCache() ?? PrayerDay.sample();
+      return _memoryCacheMap[key] ?? _memoryCache ?? await _persistedCache() ?? PrayerDay.sample();
     }
   }
 
@@ -80,25 +112,58 @@ class PrayerService {
     required String country,
     int method = defaultMethod,
     DateTime? date,
+    bool forceRefresh = false,
   }) async {
     final d = date ?? DateTime.now();
-    final uri = Uri.parse(
-      '$baseUrl/timingsByCity/${_dateKey(d)}'
-      '?city=${Uri.encodeQueryComponent(city)}'
-      '&country=${Uri.encodeQueryComponent(country)}'
-      '&method=$method',
-    );
-    final res = await _client.get(uri).timeout(const Duration(seconds: 12));
-    if (res.statusCode != 200) {
-      throw PrayerServiceException('AlAdhan timingsByCity '
-          'HTTP ${res.statusCode}');
+    final key = '${_dateKey(d)}_${city.toLowerCase()}_${country.toLowerCase()}_$method';
+
+    if (!forceRefresh) {
+      final mem = _memoryCacheMap[key];
+      if (mem != null) return mem;
+      final cached = await _readPersistedCityCache(key);
+      if (cached != null) {
+        _memoryCacheMap[key] = cached;
+        _memoryCache = cached;
+        return cached;
+      }
     }
-    final day = PrayerDay.fromAlAdhanJson(
-      jsonDecode(res.body) as Map<String, dynamic>,
-      source: PrayerSource.live,
-    );
-    await NoorStore.cacheJson('prayer.last', res.body);
-    return day;
+
+    final inFlight = _inFlightTimings[key];
+    if (inFlight != null) return inFlight;
+
+    final future = () async {
+      try {
+        final uri = Uri.parse(
+          '$baseUrl/timingsByCity/${_dateKey(d)}'
+          '?city=${Uri.encodeQueryComponent(city)}'
+          '&country=${Uri.encodeQueryComponent(country)}'
+          '&method=$method',
+        );
+        final res = await _client.get(uri).timeout(const Duration(seconds: 12));
+        if (res.statusCode != 200) {
+          throw PrayerServiceException('AlAdhan timingsByCity '
+              'HTTP ${res.statusCode}');
+        }
+        final day = PrayerDay.fromAlAdhanJson(
+          jsonDecode(res.body) as Map<String, dynamic>,
+          source: PrayerSource.live,
+        );
+        await NoorStore.cacheJsonWithTtl(
+          'prayer.city.$key',
+          res.body,
+          ttl: const Duration(hours: 24),
+        );
+        await NoorStore.cacheJson('prayer.last', res.body);
+        _memoryCacheMap[key] = day;
+        _memoryCache = day;
+        return day;
+      } finally {
+        _inFlightTimings.remove(key);
+      }
+    }();
+
+    _inFlightTimings[key] = future;
+    return future;
   }
 
   /// Raw AlAdhan timings-by-coordinates call (latitude/longitude).
@@ -107,44 +172,102 @@ class PrayerService {
     required double longitude,
     int method = defaultMethod,
     DateTime? date,
+    bool forceRefresh = false,
   }) async {
     final d = date ?? DateTime.now();
-    final uri = Uri.parse(
-      '$baseUrl/timings/${_dateKey(d)}'
-      '?latitude=$latitude&longitude=$longitude&method=$method',
-    );
-    final res = await _client.get(uri).timeout(const Duration(seconds: 12));
-    if (res.statusCode != 200) {
-      throw PrayerServiceException('AlAdhan timings '
-          'HTTP ${res.statusCode}');
+    final key = '${_dateKey(d)}_${latitude.toStringAsFixed(2)}_${longitude.toStringAsFixed(2)}_$method';
+
+    if (!forceRefresh) {
+      final mem = _memoryCacheMap[key];
+      if (mem != null) return mem;
+      final cached = await _readPersistedCoordCache(key);
+      if (cached != null) {
+        _memoryCacheMap[key] = cached;
+        _memoryCache = cached;
+        return cached;
+      }
     }
-    final day = PrayerDay.fromAlAdhanJson(
-      jsonDecode(res.body) as Map<String, dynamic>,
-      source: PrayerSource.live,
-    );
-    await NoorStore.cacheJson('prayer.last', res.body);
-    return day;
+
+    final inFlight = _inFlightTimings[key];
+    if (inFlight != null) return inFlight;
+
+    final future = () async {
+      try {
+        final uri = Uri.parse(
+          '$baseUrl/timings/${_dateKey(d)}'
+          '?latitude=$latitude&longitude=$longitude&method=$method',
+        );
+        final res = await _client.get(uri).timeout(const Duration(seconds: 12));
+        if (res.statusCode != 200) {
+          throw PrayerServiceException('AlAdhan timings '
+              'HTTP ${res.statusCode}');
+        }
+        final day = PrayerDay.fromAlAdhanJson(
+          jsonDecode(res.body) as Map<String, dynamic>,
+          source: PrayerSource.live,
+        );
+        await NoorStore.cacheJsonWithTtl(
+          'prayer.coord.$key',
+          res.body,
+          ttl: const Duration(hours: 24),
+        );
+        await NoorStore.cacheJson('prayer.last', res.body);
+        _memoryCacheMap[key] = day;
+        _memoryCache = day;
+        return day;
+      } finally {
+        _inFlightTimings.remove(key);
+      }
+    }();
+
+    _inFlightTimings[key] = future;
+    return future;
   }
 
   /// Hijri date for [date] via AlAdhan gToH. Falls back to the
   /// Hijri date embedded in timings, then to the sample string.
-  Future<String> fetchHijriDisplay({DateTime? date}) async {
+  Future<String> fetchHijriDisplay({DateTime? date, bool forceRefresh = false}) async {
     final d = date ?? DateTime.now();
-    try {
-      final uri = Uri.parse('$baseUrl/gToH/${_dateKey(d)}');
-      final res = await _client.get(uri).timeout(const Duration(seconds: 10));
-      if (res.statusCode == 200) {
-        final body = jsonDecode(res.body) as Map<String, dynamic>;
-        final hijri = (body['data'] as Map<String, dynamic>)['hijri']
-            as Map<String, dynamic>;
-        final month = (hijri['month'] as Map<String, dynamic>)['en'] as String;
-        return '${hijri['day']} $month ${hijri['year']} AH';
+    final key = 'prayer.hijri.${_dateKey(d)}';
+
+    if (!forceRefresh) {
+      final cached = await NoorStore.cachedJsonWithTtl(key);
+      if (cached != null && cached.isNotEmpty) {
+        return cached;
       }
-    } catch (_) {
-      /* fall through */
     }
-    final day = _memoryCache ?? await _persistedCache();
-    return day?.hijriDisplay ?? SampleData.hijriDate;
+
+    final inFlight = _inFlightHijri[key];
+    if (inFlight != null) return inFlight;
+
+    final future = () async {
+      try {
+        final uri = Uri.parse('$baseUrl/gToH/${_dateKey(d)}');
+        final res = await _client.get(uri).timeout(const Duration(seconds: 10));
+        if (res.statusCode == 200) {
+          final body = jsonDecode(res.body) as Map<String, dynamic>;
+          final hijri = (body['data'] as Map<String, dynamic>)['hijri']
+              as Map<String, dynamic>;
+          final month = (hijri['month'] as Map<String, dynamic>)['en'] as String;
+          final formatted = '${hijri['day']} $month ${hijri['year']} AH';
+          await NoorStore.cacheJsonWithTtl(
+            key,
+            formatted,
+            ttl: const Duration(hours: 24),
+          );
+          return formatted;
+        }
+      } catch (_) {
+        /* fall through */
+      } finally {
+        _inFlightHijri.remove(key);
+      }
+      final day = _memoryCache ?? await _persistedCache();
+      return day?.hijriDisplay ?? SampleData.hijriDate;
+    }();
+
+    _inFlightHijri[key] = future;
+    return future;
   }
 
   /// Qibla bearing in degrees clockwise from north.
@@ -153,20 +276,54 @@ class PrayerService {
   Future<double> fetchQiblaBearing({
     required double latitude,
     required double longitude,
+    bool forceRefresh = false,
   }) async {
-    try {
-      final uri = Uri.parse('$baseUrl/qibla/$latitude/$longitude');
-      final res = await _client.get(uri).timeout(const Duration(seconds: 10));
-      if (res.statusCode == 200) {
-        final body = jsonDecode(res.body) as Map<String, dynamic>;
-        final data = body['data'] as Map<String, dynamic>;
-        final direction = (data['direction'] as num).toDouble();
-        if (direction > 0) return direction;
+    final key = 'prayer.qibla.${latitude.toStringAsFixed(3)}_${longitude.toStringAsFixed(3)}';
+
+    if (!forceRefresh) {
+      final cached = await NoorStore.cachedJsonWithTtl(key);
+      if (cached != null) {
+        final parsed = double.tryParse(cached);
+        if (parsed != null && parsed > 0) return parsed;
       }
-    } catch (_) {
-      /* fall through to local computation */
     }
-    return computeQiblaBearing(latitude, longitude);
+
+    final inFlight = _inFlightQibla[key];
+    if (inFlight != null) return inFlight;
+
+    final future = () async {
+      try {
+        final uri = Uri.parse('$baseUrl/qibla/$latitude/$longitude');
+        final res = await _client.get(uri).timeout(const Duration(seconds: 10));
+        if (res.statusCode == 200) {
+          final body = jsonDecode(res.body) as Map<String, dynamic>;
+          final data = body['data'] as Map<String, dynamic>;
+          final direction = (data['direction'] as num).toDouble();
+          if (direction > 0) {
+            await NoorStore.cacheJsonWithTtl(
+              key,
+              direction.toString(),
+              ttl: const Duration(days: 365),
+            );
+            return direction;
+          }
+        }
+      } catch (_) {
+        /* fall through to local computation */
+      } finally {
+        _inFlightQibla.remove(key);
+      }
+      final computed = computeQiblaBearing(latitude, longitude);
+      await NoorStore.cacheJsonWithTtl(
+        key,
+        computed.toString(),
+        ttl: const Duration(days: 365),
+      );
+      return computed;
+    }();
+
+    _inFlightQibla[key] = future;
+    return future;
   }
 
   /// Great-circle initial bearing to Makkah, degrees from north.
@@ -181,6 +338,32 @@ class PrayerService {
   }
 
   // ---- Helpers --------------------------------------------------------
+
+  static Future<PrayerDay?> _readPersistedCityCache(String key) async {
+    final raw = await NoorStore.cachedJsonWithTtl('prayer.city.$key');
+    if (raw == null) return null;
+    try {
+      return PrayerDay.fromAlAdhanJson(
+        jsonDecode(raw) as Map<String, dynamic>,
+        source: PrayerSource.cache,
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static Future<PrayerDay?> _readPersistedCoordCache(String key) async {
+    final raw = await NoorStore.cachedJsonWithTtl('prayer.coord.$key');
+    if (raw == null) return null;
+    try {
+      return PrayerDay.fromAlAdhanJson(
+        jsonDecode(raw) as Map<String, dynamic>,
+        source: PrayerSource.cache,
+      );
+    } catch (_) {
+      return null;
+    }
+  }
 
   static Future<PrayerDay?> _persistedCache() async {
     final raw = await NoorStore.cachedJson('prayer.last');

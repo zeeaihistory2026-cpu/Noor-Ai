@@ -390,6 +390,61 @@ class NoorStore {
 
   static Future<String?> cachedJson(String key) => _readString('cache.$key');
 
+  /// Phase 6C: Stores JSON payload with explicit Time-To-Live expiration.
+  static Future<void> cacheJsonWithTtl(
+    String key,
+    String data, {
+    Duration ttl = const Duration(hours: 24),
+  }) async {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final expiresAt = now + ttl.inMilliseconds;
+    final envelope = jsonEncode({
+      'data': data,
+      'savedAt': now,
+      'expiresAt': expiresAt,
+    });
+    await _writeString('cache.ttl.$key', envelope);
+    await _writeString('cache.$key', data);
+  }
+
+  /// Phase 6C: Returns cached payload if still valid within TTL, or null if expired or missing.
+  static Future<String?> cachedJsonWithTtl(String key) async {
+    final raw = await _readString('cache.ttl.$key');
+    if (raw == null || raw.isEmpty) {
+      return null;
+    }
+    try {
+      final decoded = jsonDecode(raw) as Map<String, dynamic>;
+      final expiresAt = (decoded['expiresAt'] as num?)?.toInt() ?? 0;
+      final now = DateTime.now().millisecondsSinceEpoch;
+      if (now > expiresAt) {
+        return null;
+      }
+      return decoded['data'] as String?;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Phase 6C: Checks if cache is valid without reading entire payload.
+  static Future<bool> isCacheValid(String key) async {
+    final raw = await _readString('cache.ttl.$key');
+    if (raw == null || raw.isEmpty) return false;
+    try {
+      final decoded = jsonDecode(raw) as Map<String, dynamic>;
+      final expiresAt = (decoded['expiresAt'] as num?)?.toInt() ?? 0;
+      return DateTime.now().millisecondsSinceEpoch <= expiresAt;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Phase 6C: Invalidate/bust cache entry.
+  static Future<void> invalidateCache(String key) async {
+    await _writeString('cache.$key', '');
+    await _writeString('cache.ttl.$key', '');
+  }
+
   // ---- Sync Outbox (Phase 6B: Offline write queue) --------------------
   static const _kSyncOutbox = 'sync.outbox';
 

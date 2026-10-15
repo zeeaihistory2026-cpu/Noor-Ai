@@ -50,13 +50,45 @@ class QuranService {
   static const String editionUrdu = 'ur.jalandhry';
   static const String editionAudioDefault = 'ar.alafasy';
 
+  static List<SurahMeta>? _memorySurahList;
+  static final Map<int, Map<String, SurahDetail>> _editionsCache = <int, Map<String, SurahDetail>>{};
+  static final Map<String, SurahDetail> _surahCache = <String, SurahDetail>{};
+  static final Map<String, List<QuranSearchMatch>> _searchCache = <String, List<QuranSearchMatch>>{};
+
+  static Future<List<SurahMeta>>? _inFlightSurahList;
+  static final Map<String, Future<SurahDetail>> _inFlightSurah = <String, Future<SurahDetail>>{};
+  static final Map<int, Future<Map<String, SurahDetail>>> _inFlightEditions = <int, Future<Map<String, SurahDetail>>>{};
+  static final Map<String, Future<List<QuranSearchMatch>>> _inFlightSearch = <String, Future<List<QuranSearchMatch>>>{};
+
+  /// Clears in-memory caches and in-flight requests. Useful for tests.
+  static void clearCache() {
+    _memorySurahList = null;
+    _editionsCache.clear();
+    _surahCache.clear();
+    _searchCache.clear();
+    _inFlightSurahList = null;
+    _inFlightSurah.clear();
+    _inFlightEditions.clear();
+    _inFlightSearch.clear();
+  }
+
   // ---- Surah list (Page 02) ------------------------------------------
 
-  /// All 114 surahs from AlQuran Cloud, persisted-cached, with the
-  /// design's sample list as the never-break offline fallback.
-  Future<List<SurahMeta>> fetchSurahListOrFallback() async {
+  /// All 114 surahs from AlQuran Cloud, persisted-cached with TTL,
+  /// with cache-first resolution and sample list fallback.
+  Future<List<SurahMeta>> fetchSurahListOrFallback({bool forceRefresh = false}) async {
+    if (!forceRefresh) {
+      if (_memorySurahList != null && _memorySurahList!.isNotEmpty) {
+        return _memorySurahList!;
+      }
+      final cached = await _cachedSurahList();
+      if (cached != null && cached.isNotEmpty) {
+        _memorySurahList = cached;
+        return cached;
+      }
+    }
     try {
-      final list = await fetchSurahList();
+      final list = await fetchSurahList(forceRefresh: forceRefresh);
       if (list.isNotEmpty) return list;
     } catch (_) {
       /* fall through */
@@ -65,19 +97,50 @@ class QuranService {
     return cached ?? sampleSurahList();
   }
 
-  /// Raw GET /v1/surah. Throws on failure; UI uses the OrFallback.
-  Future<List<SurahMeta>> fetchSurahList() async {
-    final uri = Uri.parse('$alQuranBase/surah');
-    final res = await _client.get(uri).timeout(const Duration(seconds: 12));
-    if (res.statusCode != 200) {
-      throw QuranServiceException('AlQuran /surah HTTP ${res.statusCode}');
+  /// Raw GET /v1/surah with single-flight coalescing and TTL caching.
+  Future<List<SurahMeta>> fetchSurahList({bool forceRefresh = false}) async {
+    if (!forceRefresh) {
+      if (_memorySurahList != null && _memorySurahList!.isNotEmpty) {
+        return _memorySurahList!;
+      }
+      final cached = await _cachedSurahList();
+      if (cached != null && cached.isNotEmpty) {
+        _memorySurahList = cached;
+        return cached;
+      }
     }
-    await NoorStore.cacheJson('quran.surahList', res.body);
-    return _parseSurahList(res.body);
+
+    final inFlight = _inFlightSurahList;
+    if (inFlight != null) return inFlight;
+
+    final future = () async {
+      try {
+        final uri = Uri.parse('$alQuranBase/surah');
+        final res = await _client.get(uri).timeout(const Duration(seconds: 12));
+        if (res.statusCode != 200) {
+          throw QuranServiceException('AlQuran /surah HTTP ${res.statusCode}');
+        }
+        await NoorStore.cacheJsonWithTtl(
+          'quran.surahList',
+          res.body,
+          ttl: const Duration(days: 90),
+        );
+        await NoorStore.cacheJson('quran.surahList', res.body);
+        final list = _parseSurahList(res.body);
+        _memorySurahList = list;
+        return list;
+      } finally {
+        _inFlightSurahList = null;
+      }
+    }();
+
+    _inFlightSurahList = future;
+    return future;
   }
 
   Future<List<SurahMeta>?> _cachedSurahList() async {
-    final raw = await NoorStore.cachedJson('quran.surahList');
+    final raw = await NoorStore.cachedJsonWithTtl('quran.surahList') ??
+        await NoorStore.cachedJson('quran.surahList');
     if (raw == null) return null;
     try {
       final list = _parseSurahList(raw);
@@ -117,41 +180,118 @@ class QuranService {
       ];
 
   // ---- Surah content (Pages 03/04/05) ---------------------------------
-  // Full text comes from the API at runtime. Nothing is cached in
-  // code; the parsed result is kept only in the returned objects
-  // (and, for the list above, in the on-device JSON cache).
 
-  /// One surah in one edition, e.g. fetchSurah(18, editionEnglish).
+  /// One surah in one edition with TTL caching and in-flight coalescing.
   Future<SurahDetail> fetchSurah(
     int number, {
     String edition = editionArabic,
+    bool forceRefresh = false,
   }) async {
-    final uri = Uri.parse('$alQuranBase/surah/$number/$edition');
-    final res = await _client.get(uri).timeout(const Duration(seconds: 15));
-    if (res.statusCode != 200) {
-      throw QuranServiceException(
-          'AlQuran /surah/$number HTTP ${res.statusCode}');
+    final cacheKey = 'quran.surah.$number.$edition';
+    if (!forceRefresh) {
+      final mem = _surahCache[cacheKey];
+      if (mem != null) return mem;
+
+      final diskCached = await NoorStore.cachedJsonWithTtl(cacheKey);
+      if (diskCached != null && diskCached.isNotEmpty) {
+        try {
+          final body = jsonDecode(diskCached) as Map<String, dynamic>;
+          final parsed = SurahDetail.fromEditionJson(
+            body['data'] as Map<String, dynamic>,
+            edition: edition,
+          );
+          _surahCache[cacheKey] = parsed;
+          return parsed;
+        } catch (_) {}
+      }
     }
-    final body = jsonDecode(res.body) as Map<String, dynamic>;
-    return SurahDetail.fromEditionJson(
-      body['data'] as Map<String, dynamic>,
-      edition: edition,
-    );
+
+    final inFlight = _inFlightSurah[cacheKey];
+    if (inFlight != null) return inFlight;
+
+    final future = () async {
+      try {
+        final uri = Uri.parse('$alQuranBase/surah/$number/$edition');
+        final res = await _client.get(uri).timeout(const Duration(seconds: 15));
+        if (res.statusCode != 200) {
+          throw QuranServiceException(
+              'AlQuran /surah/$number HTTP ${res.statusCode}');
+        }
+        await NoorStore.cacheJsonWithTtl(
+          cacheKey,
+          res.body,
+          ttl: const Duration(days: 90),
+        );
+        final body = jsonDecode(res.body) as Map<String, dynamic>;
+        final detail = SurahDetail.fromEditionJson(
+          body['data'] as Map<String, dynamic>,
+          edition: edition,
+        );
+        _surahCache[cacheKey] = detail;
+        return detail;
+      } finally {
+        _inFlightSurah.remove(cacheKey);
+      }
+    }();
+
+    _inFlightSurah[cacheKey] = future;
+    return future;
   }
 
-  /// Arabic + English + Urdu in one documented editions call.
-  /// Returns a map edition -> detail; missing editions are skipped
-  /// rather than failing the whole reader.
-  Future<Map<String, SurahDetail>> fetchSurahEditions(int number) async {
-    const editions = <String>[editionArabic, editionEnglish, editionUrdu];
-    final uri =
-        Uri.parse('$alQuranBase/surah/$number/editions/${editions.join(',')}');
-    final res = await _client.get(uri).timeout(const Duration(seconds: 20));
-    if (res.statusCode != 200) {
-      throw QuranServiceException('AlQuran editions HTTP ${res.statusCode}');
+  /// Arabic + English + Urdu in one documented editions call with TTL caching.
+  Future<Map<String, SurahDetail>> fetchSurahEditions(
+    int number, {
+    bool forceRefresh = false,
+  }) async {
+    final cacheKey = 'quran.surah.$number.editions';
+    if (!forceRefresh) {
+      final mem = _editionsCache[number];
+      if (mem != null) return mem;
+
+      final diskCached = await NoorStore.cachedJsonWithTtl(cacheKey);
+      if (diskCached != null && diskCached.isNotEmpty) {
+        try {
+          final body = jsonDecode(diskCached) as Map<String, dynamic>;
+          final parsed = _parseEditionsData(body['data']);
+          if (parsed.isNotEmpty) {
+            _editionsCache[number] = parsed;
+            return parsed;
+          }
+        } catch (_) {}
+      }
     }
-    final body = jsonDecode(res.body) as Map<String, dynamic>;
-    final data = body['data'];
+
+    final inFlight = _inFlightEditions[number];
+    if (inFlight != null) return inFlight;
+
+    final future = () async {
+      try {
+        const editions = <String>[editionArabic, editionEnglish, editionUrdu];
+        final uri =
+            Uri.parse('$alQuranBase/surah/$number/editions/${editions.join(',')}');
+        final res = await _client.get(uri).timeout(const Duration(seconds: 20));
+        if (res.statusCode != 200) {
+          throw QuranServiceException('AlQuran editions HTTP ${res.statusCode}');
+        }
+        await NoorStore.cacheJsonWithTtl(
+          cacheKey,
+          res.body,
+          ttl: const Duration(days: 90),
+        );
+        final body = jsonDecode(res.body) as Map<String, dynamic>;
+        final out = _parseEditionsData(body['data']);
+        _editionsCache[number] = out;
+        return out;
+      } finally {
+        _inFlightEditions.remove(number);
+      }
+    }();
+
+    _inFlightEditions[number] = future;
+    return future;
+  }
+
+  static Map<String, SurahDetail> _parseEditionsData(dynamic data) {
     final out = <String, SurahDetail>{};
     if (data is List) {
       for (final e in data) {
@@ -168,30 +308,60 @@ class QuranService {
   }
 
   // ---- Search (Phase 14 — AI topic search) ----------------------------
-  // Documented AlQuran Cloud keyword search:
-  //   GET /v1/search/{keyword}/all/{edition}
-  // returns data.matches[] with {number (global), text, numberInSurah,
-  // surah{number, englishName}, edition{identifier}}. Verified live
-  // 2026-10-08 (HTTP 200, `patience` -> 18 matches). Text only ever
-  // exists at runtime; nothing is embedded in code.
 
   static Uri searchUri(String keyword, {String edition = editionEnglish}) =>
       Uri.parse('$alQuranBase/search/${Uri.encodeComponent(keyword)}/all/'
           '$edition');
 
-  /// Live keyword search (English edition by default). Throws on
-  /// failure so callers can fall back to the offline topic index.
+  /// Live keyword search with TTL caching and in-flight deduplication.
   Future<List<QuranSearchMatch>> search(
     String keyword, {
     String edition = editionEnglish,
+    bool forceRefresh = false,
   }) async {
-    final res = await _client
-        .get(searchUri(keyword, edition: edition))
-        .timeout(const Duration(seconds: 15));
-    if (res.statusCode != 200) {
-      throw QuranServiceException('AlQuran /search HTTP ${res.statusCode}');
+    final norm = keyword.toLowerCase().trim();
+    final cacheKey = 'quran.search.$edition.$norm';
+
+    if (!forceRefresh) {
+      final mem = _searchCache[cacheKey];
+      if (mem != null) return mem;
+
+      final diskCached = await NoorStore.cachedJsonWithTtl(cacheKey);
+      if (diskCached != null && diskCached.isNotEmpty) {
+        try {
+          final parsed = parseSearchResponse(diskCached);
+          _searchCache[cacheKey] = parsed;
+          return parsed;
+        } catch (_) {}
+      }
     }
-    return parseSearchResponse(res.body);
+
+    final inFlight = _inFlightSearch[cacheKey];
+    if (inFlight != null) return inFlight;
+
+    final future = () async {
+      try {
+        final res = await _client
+            .get(searchUri(keyword, edition: edition))
+            .timeout(const Duration(seconds: 15));
+        if (res.statusCode != 200) {
+          throw QuranServiceException('AlQuran /search HTTP ${res.statusCode}');
+        }
+        await NoorStore.cacheJsonWithTtl(
+          cacheKey,
+          res.body,
+          ttl: const Duration(days: 7),
+        );
+        final matches = parseSearchResponse(res.body);
+        _searchCache[cacheKey] = matches;
+        return matches;
+      } finally {
+        _inFlightSearch.remove(cacheKey);
+      }
+    }();
+
+    _inFlightSearch[cacheKey] = future;
+    return future;
   }
 
   static List<QuranSearchMatch> parseSearchResponse(String body) {

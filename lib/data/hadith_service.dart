@@ -90,6 +90,7 @@ class HadithService {
   bool _hasLive = false;
 
   final Map<String, HadithBook> _memory = <String, HadithBook>{};
+  final Map<String, Future<HadithBook>> _inFlightEditions = <String, Future<HadithBook>>{};
 
   static String editionId(String bookId, HadithLanguage language) =>
       '${language.prefix}-$bookId';
@@ -114,37 +115,51 @@ class HadithService {
 
   /// One edition of one book (e.g. fetchEdition('bukhari')).
   /// Order: memory -> compressed disk cache -> network (20s
-  /// timeout). Throws [HadithServiceException] when the network
-  /// fails AND no cache exists — callers fall back to the curated
-  /// offline topic index (see knowledge_search.dart).
+  /// timeout) with single-flight request coalescing.
   Future<HadithBook> fetchEdition(
     String bookId, {
     HadithLanguage language = HadithLanguage.eng,
+    bool forceRefresh = false,
   }) async {
     final edition = editionId(bookId, language);
-    final mem = _memory[edition];
-    if (mem != null) return mem;
-    final disk = await _readDiskCache(edition);
-    if (disk != null) {
-      _memory[edition] = disk;
-      return disk;
+    if (!forceRefresh) {
+      final mem = _memory[edition];
+      if (mem != null) return mem;
+      final disk = await _readDiskCache(edition);
+      if (disk != null) {
+        _memory[edition] = disk;
+        return disk;
+      }
     }
-    final uri = Uri.parse('$cdnBase/editions/$edition.min.json');
-    final res = await _client
-        .get(uri)
-        .timeout(const Duration(seconds: 20), onTimeout: () {
-      throw HadithServiceException('Timed out fetching $edition');
-    });
-    if (res.statusCode != 200) {
-      _hasLive = false;
-      throw HadithServiceException('Hadith CDN HTTP ${res.statusCode}');
-    }
-    _hasLive = true;
-    final book = parseEditionJson(res.body,
-        bookId: bookId, language: language);
-    _memory[edition] = book;
-    unawaited(_writeDiskCache(edition, res.body));
-    return book;
+
+    final inFlight = _inFlightEditions[edition];
+    if (inFlight != null) return inFlight;
+
+    final future = () async {
+      try {
+        final uri = Uri.parse('$cdnBase/editions/$edition.min.json');
+        final res = await _client
+            .get(uri)
+            .timeout(const Duration(seconds: 20), onTimeout: () {
+          throw HadithServiceException('Timed out fetching $edition');
+        });
+        if (res.statusCode != 200) {
+          _hasLive = false;
+          throw HadithServiceException('Hadith CDN HTTP ${res.statusCode}');
+        }
+        _hasLive = true;
+        final book = parseEditionJson(res.body,
+            bookId: bookId, language: language);
+        _memory[edition] = book;
+        unawaited(_writeDiskCache(edition, res.body));
+        return book;
+      } finally {
+        _inFlightEditions.remove(edition);
+      }
+    }();
+
+    _inFlightEditions[edition] = future;
+    return future;
   }
 
   /// Memory- or disk-cached edition only; null when never fetched.
@@ -167,6 +182,7 @@ class HadithService {
 
   Future<void> clearCache() async {
     _memory.clear();
+    _inFlightEditions.clear();
     for (final b in books) {
       for (final l in HadithLanguage.values) {
         await NoorStore.cacheJson(_cacheKey(editionId(b.id, l)), '');
