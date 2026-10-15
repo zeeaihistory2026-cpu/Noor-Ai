@@ -127,79 +127,103 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
           ]),
           const SizedBox(height: 18),
           // Next Prayer hero — mosque art cropped from Page 01 (tappable to Salah Tracker).
-          Material(
-            color: Colors.transparent,
-            borderRadius: BorderRadius.circular(NoorRadius.heroCard),
-            child: InkWell(
-              onTap: () => push(const SalahTrackerScreen()),
-              borderRadius: BorderRadius.circular(NoorRadius.heroCard),
-              child: Container(
-                constraints: const BoxConstraints(
-                    minHeight: NoorSizes.nextPrayerCardMinHeight),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                      colors: [NoorColors.emeraldDark, NoorColors.emeraldMid]),
-                  borderRadius: BorderRadius.circular(NoorRadius.heroCard),
-                  boxShadow: NoorShadows.hero,
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(NoorRadius.heroCard),
-                  child: Stack(children: [
-                    Positioned(
-                      right: 0,
-                      top: 0,
-                      bottom: 0,
-                      child: ShaderMask(
-                          shaderCallback: (rect) => const LinearGradient(
-                              begin: Alignment.centerLeft,
-                              end: Alignment.centerRight,
-                              colors: [Colors.transparent, Colors.white],
-                              stops: [0, 0.6]).createShader(rect),
-                          blendMode: BlendMode.dstIn,
-                          child: Image.asset(NoorAssets.nextPrayerMosque,
-                              width: 218,
-                              cacheWidth: 654,
-                              fit: BoxFit.cover,
-                              alignment: Alignment.centerRight,
-                              errorBuilder: (_, __, ___) =>
-                                  const SizedBox.shrink())),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(20, 20, 150, 20),
-                      child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Text('NEXT PRAYER',
-                                    style: NoorType.meta.copyWith(color: Colors.white70,
-                                        letterSpacing: 1.2)),
-                                const SizedBox(width: 6),
-                                const Icon(Icons.arrow_forward_ios,
-                                    size: 11, color: Colors.white60),
-                              ],
-                            ),
-                            const SizedBox(height: 6),
-                            Text(_nextPrayer,
-                                style: NoorType.display.copyWith(color: Colors.white)),
-                            const SizedBox(height: 2),
-                            Text(_nextPrayerTime,
-                                style: NoorType.screenTitle.copyWith(color: NoorColors.gold)),
-                            const SizedBox(height: 8),
-                            Row(mainAxisSize: MainAxisSize.min, children: [
-                              const Icon(Icons.schedule,
-                                  color: Colors.white70, size: 15),
-                              const SizedBox(width: 5),
-                              Flexible(
-                                child: Text(_nextPrayerIn,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(color: Colors.white70)),
+          Semantics(
+            button: true,
+            label: 'Next prayer: $_nextPrayer at $_nextPrayerTime, tap to open Salah Tracker',
+            child: Container(
+              constraints: const BoxConstraints(
+                  minHeight: NoorSizes.nextPrayerCardMinHeight),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(NoorRadius.heroCard),
+                boxShadow: NoorShadows.hero,
+              ),
+              child: Material(
+                color: Colors.transparent,
+                borderRadius: BorderRadius.circular(NoorRadius.heroCard),
+                clipBehavior: Clip.antiAlias,
+                child: Ink(
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                        colors: [NoorColors.emeraldDark, NoorColors.emeraldMid]),
+                  ),
+                  child: InkWell(
+                    onTap: () => push(const SalahTrackerScreen()),
+                    splashColor: NoorColors.gold.withValues(alpha: 0.25),
+                    highlightColor: Colors.white.withValues(alpha: 0.1),
+                    child: Stack(children: [
+                      Positioned(
+                        right: 0,
+                        top: 0,
+                        bottom: 0,
+                        child: ShaderMask(
+                            shaderCallback: (rect) => const LinearGradient(
+                                begin: Alignment.centerLeft,
+                                end: Alignment.centerRight,
+                                colors: [Colors.transparent, Colors.white],
+                                stops: [0, 0.6]).createShader(rect),
+                            blendMode: BlendMode.dstIn,
+                            child: Image.asset(NoorAssets.nextPrayerMosque,
+                                width: 218,
+                                cacheWidth: 654,
+                                fit: BoxFit.cover,
+                                alignment: Alignment.centerRight,
+                                errorBuilder: (_, __, ___) =>
+                                    const SizedBox.shrink())),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 20, 150, 20),
+                        child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Text('NEXT PRAYER',
+                                      style: NoorType.meta.copyWith(color: Colors.white70,
+                                          letterSpacing: 1.2)),
+                                  const SizedBox(width: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withValues(alpha: 0.16),
+                                      borderRadius: BorderRadius.circular(99),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text('Tracker',
+                                            style: NoorType.meta.copyWith(
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.w600)),
+                                        const SizedBox(width: 3),
+                                        const Icon(Icons.arrow_forward_ios,
+                                            size: 8, color: Colors.white),
+                                      ],
+                                    ),
+                                  ),
+                                ],
                               ),
+                              const SizedBox(height: 6),
+                              Text(_nextPrayer,
+                                  style: NoorType.display.copyWith(color: Colors.white)),
+                              const SizedBox(height: 2),
+                              Text(_nextPrayerTime,
+                                  style: NoorType.screenTitle.copyWith(color: NoorColors.gold)),
+                              const SizedBox(height: 8),
+                              Row(mainAxisSize: MainAxisSize.min, children: [
+                                const Icon(Icons.schedule,
+                                    color: Colors.white70, size: 15),
+                                const SizedBox(width: 5),
+                                Flexible(
+                                  child: Text(_nextPrayerIn,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(color: Colors.white70)),
+                                ),
+                              ]),
                             ]),
-                          ]),
-                    ),
-                  ]),
+                      ),
+                    ]),
+                  ),
                 ),
               ),
             ),

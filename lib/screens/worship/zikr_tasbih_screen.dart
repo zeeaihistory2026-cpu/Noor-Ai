@@ -38,11 +38,13 @@ class DhikrModel {
 class ZikrTasbihScreen extends StatefulWidget {
   final int initialTab;
   final String? initialDhikrId;
+  final DhikrModel? initialCustomDhikr;
 
   const ZikrTasbihScreen({
     super.key,
     this.initialTab = 0,
     this.initialDhikrId,
+    this.initialCustomDhikr,
   });
 
   @override
@@ -236,18 +238,26 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
     super.initState();
     _tab = widget.initialTab.clamp(0, 2);
 
-    if (widget.initialDhikrId != null) {
+    if (widget.initialCustomDhikr != null) {
+      _activeDhikr = widget.initialCustomDhikr!;
+      if (!_customDhikrs.any((d) => d.id == _activeDhikr.id)) {
+        _customDhikrs.insert(0, _activeDhikr);
+      }
+      _target = _activeDhikr.defaultTarget;
+      _count = 0;
+    } else if (widget.initialDhikrId != null) {
       final match = _tasbihDhikrs.firstWhere(
         (d) => d.id == widget.initialDhikrId,
         orElse: () => _tasbihDhikrs[0],
       );
       _activeDhikr = match;
+      _target = _activeDhikr.defaultTarget;
+      _count = _countsMap[_activeDhikr.id] ?? 27;
     } else {
       _activeDhikr = _tasbihDhikrs[0];
+      _target = _activeDhikr.defaultTarget;
+      _count = _countsMap[_activeDhikr.id] ?? 27;
     }
-
-    _target = _activeDhikr.defaultTarget;
-    _count = _countsMap[_activeDhikr.id] ?? 27;
 
     _bounceController = AnimationController(
       vsync: this,

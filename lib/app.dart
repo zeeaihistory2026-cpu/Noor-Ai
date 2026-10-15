@@ -59,14 +59,50 @@ class _NoorAppState extends State<NoorApp> {
 /// Tab roots are the design pages 01, 11, 12, 14, 15-hub; every other
 /// screen is pushed with Navigator from cards/lists inside the tabs.
 class NoorTabShell extends StatefulWidget {
-  const NoorTabShell({super.key});
+  final int initialTab;
+  const NoorTabShell({super.key, this.initialTab = 0});
+
+  /// Switch the global tab from anywhere in the app hierarchy.
+  /// If [popToRoot] is true, unwinds the Navigator stack back to the root tab shell.
+  static void switchTab(BuildContext context, int tabIndex, {bool popToRoot = false}) {
+    if (popToRoot) {
+      Navigator.of(context).popUntil((route) => route.isFirst);
+    }
+    final state = context.findAncestorStateOfType<_NoorTabShellState>() ??
+        _NoorTabShellState.activeInstance;
+    if (state != null) {
+      state.setTab(tabIndex);
+    }
+  }
 
   @override
   State<NoorTabShell> createState() => _NoorTabShellState();
 }
 
 class _NoorTabShellState extends State<NoorTabShell> {
-  int _index = 0;
+  static _NoorTabShellState? activeInstance;
+  late int _index;
+
+  @override
+  void initState() {
+    super.initState();
+    activeInstance = this;
+    _index = widget.initialTab.clamp(0, 4);
+  }
+
+  @override
+  void dispose() {
+    if (activeInstance == this) {
+      activeInstance = null;
+    }
+    super.dispose();
+  }
+
+  void setTab(int i) {
+    if (mounted) {
+      setState(() => _index = i.clamp(0, 4));
+    }
+  }
 
   static const _tabs = [
     HomeDashboardScreen(),
@@ -84,7 +120,7 @@ class _NoorTabShellState extends State<NoorTabShell> {
       bottomNavigationBar: NavigationBar(
         backgroundColor: Colors.white,
         selectedIndex: _index,
-        onDestinationSelected: (i) => setState(() => _index = i),
+        onDestinationSelected: setTab,
         destinations: const [
           NavigationDestination(
               icon: Icon(Icons.home_outlined),

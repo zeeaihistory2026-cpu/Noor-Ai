@@ -1,4 +1,7 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../data/sample_data.dart';
 import '../../theme/noor_theme.dart';
 import '../worship/zikr_tasbih_screen.dart';
@@ -34,6 +37,7 @@ class _DuaLibraryScreenState extends State<DuaLibraryScreen> {
   int _chip = 0;
   String _q = '';
   final TextEditingController _searchCtrl = TextEditingController();
+  Timer? _debounceTimer;
 
   static const _chips = ['All', 'Morning', 'Evening', 'Situations'];
 
@@ -115,6 +119,7 @@ class _DuaLibraryScreenState extends State<DuaLibraryScreen> {
 
   @override
   void dispose() {
+    _debounceTimer?.cancel();
     _searchCtrl.dispose();
     super.dispose();
   }
@@ -130,6 +135,7 @@ class _DuaLibraryScreenState extends State<DuaLibraryScreen> {
     }
 
     final duas = _categoryDuas[categoryName] ?? [];
+    double arabicFontSize = 22.0;
 
     showModalBottomSheet(
       context: context,
@@ -138,107 +144,243 @@ class _DuaLibraryScreenState extends State<DuaLibraryScreen> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
-      builder: (ctx) => DraggableScrollableSheet(
-        initialChildSize: 0.65,
-        minChildSize: 0.4,
-        maxChildSize: 0.9,
-        expand: false,
-        builder: (ctx, scrollController) => Padding(
-          padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
-          child: ListView(
-            controller: scrollController,
-            children: [
-              Center(
-                child: Container(
-                  width: 44,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: NoorColors.hairline,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(categoryName, style: NoorType.section.copyWith(color: NoorColors.emeraldDark)),
-                        Text('${duas.length} Authentic Supplications', style: NoorType.meta.copyWith(color: NoorColors.mutedDark)),
-                      ],
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModalState) => DraggableScrollableSheet(
+          initialChildSize: 0.75,
+          minChildSize: 0.45,
+          maxChildSize: 0.95,
+          expand: false,
+          builder: (ctx, scrollController) => Padding(
+            padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
+            child: ListView(
+              controller: scrollController,
+              children: [
+                Center(
+                  child: Container(
+                    width: 44,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: NoorColors.hairline,
+                      borderRadius: BorderRadius.circular(2),
                     ),
                   ),
-                  ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: NoorColors.emeraldDark,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    ),
-                    icon: const Icon(Icons.touch_app, size: 16),
-                    label: const Text('Open Tasbih'),
-                    onPressed: () {
-                      Navigator.of(ctx).pop();
-                      Navigator.of(context).push(
-                        MaterialPageRoute(builder: (_) => const ZikrTasbihScreen(initialTab: 0)),
-                      );
-                    },
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-
-              if (duas.isEmpty) ...[
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 24),
-                  child: Center(
-                    child: Text('Dua text will be loaded from authenticated sources.'),
-                  ),
                 ),
-              ] else ...[
-                ...duas.map((d) => Container(
-                      margin: const EdgeInsets.only(bottom: 14),
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: NoorColors.cream,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: NoorColors.hairlineSoft),
-                      ),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            d.arabic,
-                            textDirection: TextDirection.rtl,
-                            style: NoorType.arabic(size: 20, color: NoorColors.emeraldDark),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(d.transliteration, style: NoorType.secondary.copyWith(fontWeight: FontWeight.w700)),
-                          const SizedBox(height: 4),
-                          Text(d.translation, style: NoorType.meta.copyWith(color: NoorColors.mutedDark, height: 1.4)),
-                          const SizedBox(height: 8),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(d.reference, style: NoorType.meta.copyWith(color: NoorColors.emerald, fontSize: 11)),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: NoorColors.emeraldSoft,
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Text('${d.count}x', style: NoorType.meta.copyWith(color: NoorColors.emeraldDark, fontWeight: FontWeight.w800)),
-                              ),
-                            ],
-                          ),
+                          Text(categoryName, style: NoorType.section.copyWith(color: NoorColors.emeraldDark)),
+                          Text('${duas.length} Authentic Supplications', style: NoorType.meta.copyWith(color: NoorColors.mutedDark)),
                         ],
                       ),
-                    )),
+                    ),
+                    ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: NoorColors.emeraldDark,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      ),
+                      icon: const Icon(Icons.touch_app, size: 16),
+                      label: const Text('Open Tasbih'),
+                      onPressed: () {
+                        Navigator.of(ctx).pop();
+                        Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => const ZikrTasbihScreen(initialTab: 0)),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+
+                // Font Size Selector Bar
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: NoorColors.emeraldSoft,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.format_size, size: 16, color: NoorColors.emeraldDark),
+                      const SizedBox(width: 8),
+                      Text('Arabic Text Size:', style: NoorType.meta.copyWith(color: NoorColors.emeraldDark, fontWeight: FontWeight.w600)),
+                      const Spacer(),
+                      for (final sizeOption in [
+                        ('Small', 20.0),
+                        ('Medium', 24.0),
+                        ('Large', 28.0),
+                      ]) ...[
+                        GestureDetector(
+                          onTap: () => setModalState(() => arabicFontSize = sizeOption.$2),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                            margin: const EdgeInsets.only(left: 6),
+                            decoration: BoxDecoration(
+                              color: arabicFontSize == sizeOption.$2 ? NoorColors.emeraldDark : Colors.white,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: arabicFontSize == sizeOption.$2 ? NoorColors.emeraldDark : NoorColors.hairlineSoft,
+                              ),
+                            ),
+                            child: Text(
+                              sizeOption.$1,
+                              style: NoorType.meta.copyWith(
+                                color: arabicFontSize == sizeOption.$2 ? Colors.white : NoorColors.ink,
+                                fontSize: 11,
+                                fontWeight: arabicFontSize == sizeOption.$2 ? FontWeight.w700 : FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                if (duas.isEmpty) ...[
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 24),
+                    child: Center(
+                      child: Text('Dua text will be loaded from authenticated sources.'),
+                    ),
+                  ),
+                ] else ...[
+                  ...duas.map((d) => Container(
+                        margin: const EdgeInsets.only(bottom: 14),
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: NoorColors.cream,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: NoorColors.hairlineSoft),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(vertical: 4),
+                              child: Text(
+                                d.arabic,
+                                textDirection: TextDirection.rtl,
+                                style: NoorType.arabic(size: arabicFontSize, color: NoorColors.emeraldDark),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(d.transliteration, style: NoorType.secondary.copyWith(fontWeight: FontWeight.w700)),
+                            const SizedBox(height: 4),
+                            Text(d.translation, style: NoorType.meta.copyWith(color: NoorColors.mutedDark, height: 1.4)),
+                            const SizedBox(height: 10),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    d.reference,
+                                    style: NoorType.meta.copyWith(color: NoorColors.emerald, fontSize: 11),
+                                  ),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: NoorColors.emeraldSoft,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text('${d.count}x', style: NoorType.meta.copyWith(color: NoorColors.emeraldDark, fontWeight: FontWeight.w800)),
+                                ),
+                              ],
+                            ),
+                            const Divider(height: 20, color: NoorColors.hairlineSoft),
+                            // Action buttons row
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: OutlinedButton.icon(
+                                    style: OutlinedButton.styleFrom(
+                                      side: const BorderSide(color: NoorColors.emeraldDark),
+                                      foregroundColor: NoorColors.emeraldDark,
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                      padding: const EdgeInsets.symmetric(vertical: 8),
+                                    ),
+                                    icon: const Icon(Icons.touch_app_outlined, size: 16),
+                                    label: const Text('Practice in Tasbih', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                                    onPressed: () {
+                                      Navigator.of(ctx).pop();
+                                      final dhikr = DhikrModel(
+                                        id: 'dua_${d.transliteration.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '_')}',
+                                        arabic: d.arabic,
+                                        transliteration: d.transliteration,
+                                        meaning: d.translation,
+                                        defaultTarget: d.count > 0 ? d.count : 33,
+                                        reference: d.reference,
+                                        category: 'custom',
+                                      );
+                                      Navigator.of(context).push(
+                                        MaterialPageRoute(
+                                          builder: (_) => ZikrTasbihScreen(
+                                            initialTab: 0,
+                                            initialCustomDhikr: dhikr,
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                IconButton(
+                                  tooltip: 'Copy Dua',
+                                  icon: const Icon(Icons.copy, size: 18, color: NoorColors.emeraldDark),
+                                  style: IconButton.styleFrom(
+                                    backgroundColor: Colors.white,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                      side: const BorderSide(color: NoorColors.hairlineSoft),
+                                    ),
+                                  ),
+                                  onPressed: () {
+                                    Clipboard.setData(ClipboardData(
+                                      text: '${d.arabic}\n\n${d.transliteration}\n\n${d.translation}\n\nReference: ${d.reference}',
+                                    ));
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Dua copied to clipboard'),
+                                        duration: Duration(seconds: 2),
+                                        backgroundColor: NoorColors.emeraldDark,
+                                      ),
+                                    );
+                                  },
+                                ),
+                                const SizedBox(width: 6),
+                                IconButton(
+                                  tooltip: 'Share Dua',
+                                  icon: const Icon(Icons.share_outlined, size: 18, color: NoorColors.emeraldDark),
+                                  style: IconButton.styleFrom(
+                                    backgroundColor: Colors.white,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                      side: const BorderSide(color: NoorColors.hairlineSoft),
+                                    ),
+                                  ),
+                                  onPressed: () {
+                                    SharePlus.instance.share(ShareParams(
+                                      text: '${d.arabic}\n\n${d.transliteration}\n\n${d.translation}\n\nReference: ${d.reference}\n\nShared via Noor AI Companion',
+                                    ));
+                                  },
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      )),
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ),
@@ -325,7 +467,12 @@ class _DuaLibraryScreenState extends State<DuaLibraryScreen> {
                     ),
                     child: TextField(
                       controller: _searchCtrl,
-                      onChanged: (v) => setState(() => _q = v),
+                      onChanged: (v) {
+                        _debounceTimer?.cancel();
+                        _debounceTimer = Timer(const Duration(milliseconds: 250), () {
+                          if (mounted) setState(() => _q = v);
+                        });
+                      },
                       decoration: InputDecoration(
                         border: InputBorder.none,
                         hintText: 'Search duas, categories...',
@@ -334,6 +481,7 @@ class _DuaLibraryScreenState extends State<DuaLibraryScreen> {
                             ? IconButton(
                                 icon: const Icon(Icons.clear, size: 18),
                                 onPressed: () {
+                                  _debounceTimer?.cancel();
                                   _searchCtrl.clear();
                                   setState(() => _q = '');
                                 },

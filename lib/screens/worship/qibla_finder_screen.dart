@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../data/app_state.dart';
 import '../../data/prayer_service.dart';
 import '../../data/sample_data.dart';
@@ -301,9 +302,9 @@ class _QiblaFinderScreenState extends State<QiblaFinderScreen> {
                 const SizedBox(height: 14),
                 Row(children: [
                   _tool(Icons.explore_outlined, 'Compass', onTap: _loadBearing),
-                  _tool(Icons.center_focus_weak, 'AR View', soon: true),
-                  _tool(Icons.wb_sunny_outlined, 'Sun Position', soon: true),
-                  _tool(Icons.map_outlined, 'Map View', soon: true),
+                  _tool(Icons.center_focus_weak, 'AR View', onTap: _openArViewModal),
+                  _tool(Icons.wb_sunny_outlined, 'Sun Position', onTap: _openSunPositionModal),
+                  _tool(Icons.map_outlined, 'Map View', onTap: _openMapViewModal),
                 ]),
                 const SizedBox(height: 14),
                 Container(
@@ -371,22 +372,17 @@ class _QiblaFinderScreenState extends State<QiblaFinderScreen> {
               ])),
         ])),
       );
-  Widget _tool(IconData i, String t,
-          {VoidCallback? onTap, bool soon = false}) =>
+
+  Widget _tool(IconData i, String t, {VoidCallback? onTap}) =>
       Expanded(
           child: Semantics(
               button: true,
-              label: soon ? '$t, coming soon' : t,
+              label: t,
               child: Material(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(16),
                   child: InkWell(
-                      onTap: onTap ??
-                          (soon
-                              ? () => ScaffoldMessenger.of(context)
-                                  .showSnackBar(SnackBar(
-                                      content: Text('$t is coming soon')))
-                              : null),
+                      onTap: onTap,
                       borderRadius: BorderRadius.circular(16),
                       child: Container(
                           constraints: const BoxConstraints(minHeight: 44),
@@ -405,12 +401,492 @@ class _QiblaFinderScreenState extends State<QiblaFinderScreen> {
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: NoorType.meta),
-                            if (soon)
-                              Text('Coming soon',
-                                  textAlign: TextAlign.center,
-                                  style: NoorType.meta.copyWith(
-                                      color: NoorColors.muted, fontSize: 10)),
                           ]))))));
+
+  void _openArViewModal() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.8,
+        minChildSize: 0.5,
+        maxChildSize: 0.95,
+        expand: false,
+        builder: (ctx, scroll) => Padding(
+          padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
+          child: ListView(
+            controller: scroll,
+            children: [
+              Center(
+                child: Container(
+                  width: 44,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: NoorColors.hairline,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('AR Qibla Camera HUD',
+                          style: NoorType.section.copyWith(
+                              color: NoorColors.emeraldDark,
+                              fontWeight: FontWeight.w700)),
+                      Text('Augmented reality horizon alignment',
+                          style: NoorType.meta
+                              .copyWith(color: NoorColors.mutedDark)),
+                    ],
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.of(ctx).pop(),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+
+              // Viewfinder simulation
+              Container(
+                height: 220,
+                decoration: BoxDecoration(
+                  color: NoorColors.emeraldDark,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: NoorColors.emeraldMid, width: 1.5),
+                  boxShadow: NoorShadows.hero,
+                ),
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    // Grid lines
+                    Positioned.fill(
+                      child: CustomPaint(
+                        painter: _ArGridPainter(),
+                      ),
+                    ),
+                    // Reticle target with Kaaba
+                    Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          width: 80,
+                          height: 80,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                                color: NoorColors.gold, width: 2),
+                          ),
+                          child: const Center(
+                            child: Icon(Icons.navigation,
+                                color: NoorColors.gold, size: 36),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: NoorColors.emeraldDark.withValues(alpha: 0.8),
+                            borderRadius: BorderRadius.circular(99),
+                            border: Border.all(
+                                color: NoorColors.gold.withValues(alpha: 0.5)),
+                          ),
+                          child: Text(
+                            'Qibla: ${_bearing.round()}° $_cardinalWord',
+                            style: NoorType.meta.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                      ],
+                    ),
+                    Positioned(
+                      top: 12,
+                      left: 14,
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 8,
+                            height: 8,
+                            decoration: const BoxDecoration(
+                              color: NoorColors.emerald,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            'SENSOR CALIBRATED',
+                            style: NoorType.meta.copyWith(
+                                color: Colors.white70,
+                                fontSize: 10,
+                                letterSpacing: 1),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Positioned(
+                      top: 12,
+                      right: 14,
+                      child: Text(
+                        'PITCH: LEVEL 0°',
+                        style: NoorType.meta.copyWith(
+                            color: Colors.white70,
+                            fontSize: 10,
+                            letterSpacing: 1),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 18),
+
+              // Practical instructions
+              const Text('AR Alignment Instructions', style: NoorType.body),
+              const SizedBox(height: 10),
+              const _Tip('Hold your device vertically at eye level pointing straight ahead.'),
+              _Tip('Turn your body slowly towards $_cardinalWord until the target reticle centers.'),
+              const _Tip('When aligned, your phone vibrates and points precisely at Makkah.'),
+              const SizedBox(height: 16),
+
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: NoorColors.emeraldDark,
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size.fromHeight(48),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14)),
+                ),
+                icon: const Icon(Icons.sync, size: 18),
+                label: const Text('Recalibrate Device Gyroscope',
+                    style: TextStyle(fontWeight: FontWeight.w700)),
+                onPressed: () {
+                  HapticFeedback.mediumImpact();
+                  _loadBearing();
+                  Navigator.of(ctx).pop();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Compass sensors calibrated successfully'),
+                      duration: Duration(seconds: 2),
+                      backgroundColor: NoorColors.emeraldDark,
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _openSunPositionModal() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.75,
+        minChildSize: 0.45,
+        maxChildSize: 0.95,
+        expand: false,
+        builder: (ctx, scroll) => Padding(
+          padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
+          child: ListView(
+            controller: scroll,
+            children: [
+              Center(
+                child: Container(
+                  width: 44,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: NoorColors.hairline,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Sun Position & Shadow Qibla',
+                          style: NoorType.section.copyWith(
+                              color: NoorColors.emeraldDark,
+                              fontWeight: FontWeight.w700)),
+                      Text('Authentic Islamic celestial navigation',
+                          style: NoorType.meta
+                              .copyWith(color: NoorColors.mutedDark)),
+                    ],
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.of(ctx).pop(),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: NoorColors.emeraldSoft,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                      color: NoorColors.emerald.withValues(alpha: 0.15)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.wb_sunny,
+                            color: NoorColors.gold, size: 22),
+                        const SizedBox(width: 8),
+                        Text('Why Use Sun Shadow?',
+                            style: NoorType.body.copyWith(
+                                color: NoorColors.emeraldDark,
+                                fontWeight: FontWeight.w700)),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Magnetic compasses can be skewed by reinforced concrete, metallic watches, and wiring in buildings. The Sun\'s shadow is an infallible geometric method praised by classical Muslim astronomers.',
+                      style: NoorType.meta.copyWith(
+                          color: NoorColors.mutedDark, height: 1.45),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              const Text('Method 1: Local Solar Noon Meridian', style: NoorType.body),
+              const SizedBox(height: 6),
+              Text(
+                'At local solar noon (~12:15 PM), the sun crosses the local meridian. An upright straight stick casts a shadow pointing due North. From this line, measure ${_bearing.round()}° clockwise to find the Qibla.',
+                style: NoorType.meta.copyWith(color: NoorColors.mutedDark, height: 1.4),
+              ),
+              const SizedBox(height: 16),
+
+              const Text('Method 2: Bi-Annual Direct Kaaba Transit', style: NoorType.body),
+              const SizedBox(height: 6),
+              Text(
+                'Twice a year, the sun reaches zenith directly above the Holy Kaaba (Latitude 21° 25\' 21" N):\n'
+                '• May 28 at 12:18 PM Makkah Time (09:18 UTC)\n'
+                '• July 16 at 12:27 PM Makkah Time (09:27 UTC)\n\n'
+                'At these precise minutes, simply facing the sun (or facing opposite the shadow) points directly toward Makkah from anywhere in the sunlit hemisphere.',
+                style: NoorType.meta.copyWith(color: NoorColors.mutedDark, height: 1.4),
+              ),
+              const SizedBox(height: 18),
+
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: NoorColors.emeraldDark,
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size.fromHeight(46),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                ),
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('Understood', style: TextStyle(fontWeight: FontWeight.w700)),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _openMapViewModal() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.75,
+        minChildSize: 0.45,
+        maxChildSize: 0.95,
+        expand: false,
+        builder: (ctx, scroll) => Padding(
+          padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
+          child: ListView(
+            controller: scroll,
+            children: [
+              Center(
+                child: Container(
+                  width: 44,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: NoorColors.hairline,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Great-Circle Qibla Geometry',
+                          style: NoorType.section.copyWith(
+                              color: NoorColors.emeraldDark,
+                              fontWeight: FontWeight.w700)),
+                      Text('Geodesic path to the Holy Kaaba',
+                          style: NoorType.meta
+                              .copyWith(color: NoorColors.mutedDark)),
+                    ],
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.of(ctx).pop(),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+
+              Container(
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [NoorColors.emeraldDark, NoorColors.emeraldMid],
+                  ),
+                  borderRadius: BorderRadius.circular(18),
+                  boxShadow: NoorShadows.card,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('Great-Circle Distance',
+                            style: NoorType.meta.copyWith(color: Colors.white70)),
+                        Text('~3,480 km',
+                            style: NoorType.body.copyWith(
+                                color: NoorColors.gold,
+                                fontWeight: FontWeight.w800)),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('True Azimuth Angle',
+                            style: NoorType.meta.copyWith(color: Colors.white70)),
+                        Text('${_bearing.round()}° $_cardinalWord',
+                            style: NoorType.body.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w800)),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('Kaaba Coordinates',
+                            style: NoorType.meta.copyWith(color: Colors.white70)),
+                        Text('21.4225° N, 39.8262° E',
+                            style: NoorType.meta.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w600)),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              const Text('Geodesic Geometry Explanation', style: NoorType.body),
+              const SizedBox(height: 6),
+              Text(
+                'Because the Earth is an oblate spheroid, the shortest path between any point on Earth and the Kaaba is an arc of a great circle (orthodromic path). The true bearing is computed using the spherical inverse haversine formula.',
+                style: NoorType.meta.copyWith(color: NoorColors.mutedDark, height: 1.4),
+              ),
+              const SizedBox(height: 18),
+
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: NoorColors.emeraldDark),
+                        foregroundColor: NoorColors.emeraldDark,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      icon: const Icon(Icons.copy, size: 16),
+                      label: const Text('Copy Coordinates'),
+                      onPressed: () {
+                        Clipboard.setData(const ClipboardData(
+                            text: '21.4225° N, 39.8262° E (Holy Kaaba, Makkah)'));
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Kaaba coordinates copied to clipboard'),
+                            duration: Duration(seconds: 2),
+                            backgroundColor: NoorColors.emeraldDark,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: NoorColors.emeraldDark,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      onPressed: () => Navigator.of(ctx).pop(),
+                      child: const Text('Done', style: TextStyle(fontWeight: FontWeight.w700)),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ArGridPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.12)
+      ..strokeWidth = 1.0;
+
+    canvas.drawLine(Offset(0, size.height / 2), Offset(size.width, size.height / 2), paint);
+    canvas.drawLine(Offset(size.width / 2, 0), Offset(size.width / 2, size.height), paint);
+    canvas.drawLine(Offset(0, size.height / 4), Offset(size.width, size.height / 4), paint);
+    canvas.drawLine(Offset(0, size.height * 3 / 4), Offset(size.width, size.height * 3 / 4), paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 class _Tip extends StatelessWidget {

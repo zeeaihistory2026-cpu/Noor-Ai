@@ -138,75 +138,105 @@ class _WorshipDashboardScreenState extends State<WorshipDashboardScreen> {
                     ]),
                     const SizedBox(height: 12),
                     // Next Prayer hero — tappable directly to Salah Tracker
-                    Material(
-                      color: Colors.transparent,
-                      borderRadius: BorderRadius.circular(NoorRadius.heroCard),
-                      child: InkWell(
-                        onTap: () => Navigator.of(context).push(
-                            MaterialPageRoute(
-                                builder: (_) => const SalahTrackerScreen())),
-                        borderRadius:
-                            BorderRadius.circular(NoorRadius.heroCard),
-                        child: Container(
-                            decoration: BoxDecoration(
-                                gradient: const LinearGradient(colors: [
-                                  NoorColors.emeraldDark,
-                                  NoorColors.emeraldMid
+                    Semantics(
+                      button: true,
+                      label: 'Next prayer: Asr at ${NoorAppState.nextPrayerTime}, tap to open Salah Tracker',
+                      child: Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(NoorRadius.heroCard),
+                          boxShadow: NoorShadows.hero,
+                        ),
+                        child: Material(
+                          color: Colors.transparent,
+                          borderRadius: BorderRadius.circular(NoorRadius.heroCard),
+                          clipBehavior: Clip.antiAlias,
+                          child: Ink(
+                            decoration: const BoxDecoration(
+                              gradient: LinearGradient(colors: [
+                                NoorColors.emeraldDark,
+                                NoorColors.emeraldMid
+                              ]),
+                            ),
+                            child: InkWell(
+                              onTap: () => Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                      builder: (_) => const SalahTrackerScreen())),
+                              splashColor: NoorColors.gold.withValues(alpha: 0.25),
+                              highlightColor: Colors.white.withValues(alpha: 0.1),
+                              child: Padding(
+                                padding: const EdgeInsets.all(18),
+                                child: Row(children: [
+                                  Container(
+                                      width: 58,
+                                      height: 58,
+                                      decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          border: Border.all(
+                                              color: NoorColors.gold, width: 1.6)),
+                                      child: const Icon(Icons.wb_sunny_outlined,
+                                          color: NoorColors.gold, size: 28)),
+                                  const SizedBox(width: 14),
+                                  Expanded(
+                                      child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                        Row(
+                                          children: [
+                                            Text('Next Prayer',
+                                                style: NoorType.meta.copyWith(
+                                                    color: Colors.white70)),
+                                            const SizedBox(width: 6),
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                              decoration: BoxDecoration(
+                                                color: Colors.white.withValues(alpha: 0.16),
+                                                borderRadius: BorderRadius.circular(99),
+                                              ),
+                                              child: Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  Text('Log',
+                                                      style: NoorType.meta.copyWith(
+                                                          color: Colors.white,
+                                                          fontSize: 10,
+                                                          fontWeight: FontWeight.w600)),
+                                                  const SizedBox(width: 2),
+                                                  const Icon(Icons.arrow_forward_ios,
+                                                      size: 7, color: Colors.white),
+                                                ],
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        Text('Asr',
+                                            style: NoorType.screenTitle
+                                                .copyWith(color: Colors.white)),
+                                        Text(NoorAppState.nextPrayerCountdownLabel,
+                                            style: NoorType.secondary
+                                                .copyWith(color: Colors.white)),
+                                        Text(NoorAppState.nextPrayerTime,
+                                            style: NoorType.meta
+                                                .copyWith(color: Colors.white70)),
+                                      ])),
+                                  ClipRRect(
+                                      borderRadius: BorderRadius.circular(10),
+                                      child: Image.asset(NoorAssets.nextPrayerMosque,
+                                          width: 84,
+                                          cacheWidth: 252,
+                                          height: 88,
+                                          fit: BoxFit.cover,
+                                          alignment: Alignment.bottomRight,
+                                          errorBuilder: (_, __, ___) =>
+                                              const SizedBox(
+                                                  width: 84, height: 88))),
+                                  const Icon(Icons.chevron_right,
+                                      color: Colors.white70, size: 20),
                                 ]),
-                                borderRadius:
-                                    BorderRadius.circular(NoorRadius.heroCard),
-                                boxShadow: NoorShadows.hero),
-                            padding: const EdgeInsets.all(18),
-                            child: Row(children: [
-                              Container(
-                                  width: 58,
-                                  height: 58,
-                                  decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      border: Border.all(
-                                          color: NoorColors.gold, width: 1.6)),
-                                  child: const Icon(Icons.wb_sunny_outlined,
-                                      color: NoorColors.gold, size: 28)),
-                              const SizedBox(width: 14),
-                              Expanded(
-                                  child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                    Row(
-                                      children: [
-                                        Text('Next Prayer',
-                                            style: NoorType.meta.copyWith(
-                                                color: Colors.white70)),
-                                        const SizedBox(width: 5),
-                                        const Icon(Icons.arrow_forward_ios,
-                                            size: 10, color: Colors.white60),
-                                      ],
-                                    ),
-                                    Text('Asr',
-                                        style: NoorType.screenTitle
-                                            .copyWith(color: Colors.white)),
-                                    Text(NoorAppState.nextPrayerCountdownLabel,
-                                        style: NoorType.secondary
-                                            .copyWith(color: Colors.white)),
-                                    Text(NoorAppState.nextPrayerTime,
-                                        style: NoorType.meta
-                                            .copyWith(color: Colors.white70)),
-                                  ])),
-                              ClipRRect(
-                                  borderRadius: BorderRadius.circular(10),
-                                  child: Image.asset(NoorAssets.nextPrayerMosque,
-                                      width: 84,
-                                      cacheWidth: 252,
-                                      height: 88,
-                                      fit: BoxFit.cover,
-                                      alignment: Alignment.bottomRight,
-                                      errorBuilder: (_, __, ___) =>
-                                          const SizedBox(
-                                              width: 84, height: 88))),
-                              const Icon(Icons.chevron_right,
-                                  color: Colors.white70, size: 20),
-                            ])),
+                              ),
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                     const SizedBox(height: 12),
