@@ -39,6 +39,17 @@ class NoorColors {
   static const heatMid = Color(0xFF8FB4A3);
   static const greyDisabled = Color(0xFFB9C4BC);
   static const inkDeep = Color(0xFF14231F);
+
+  /// Phase 4 — Midnight Emerald Palette (Dark Mode):
+  /// Construct the Midnight Emerald theme (#061812 / #0D271E).
+  /// Exceeds WCAG AAA requirements for pre-dawn Fajr and Tahajjud reading.
+  static const darkBg = Color(0xFF061812); // Midnight abyss background
+  static const darkSurface = Color(0xFF0D271E); // Deep emerald night surface
+  static const darkCard = Color(0xFF13382B); // Elevated dark card surface
+  static const darkBorder = Color(0xFF173C30); // Subtle borders & dividers
+  static const darkTextPrimary = Color(0xFFEBF5F0); // Primary text (>16:1 contrast)
+  static const darkTextSecondary = Color(0xFF8CA89B); // Secondary text (>6:1 contrast)
+  static const darkGold = Color(0xFFE5C158); // Accessible gold on emerald (>9:1 contrast)
 }
 
 /// The NOOR type scale (Phase 12, from SENIOR_REVIEW §3.6). Every
@@ -293,6 +304,99 @@ class NoorTheme {
         indicatorColor: NoorColors.emeraldSoft,
         labelTextStyle: WidgetStateProperty.all(
             const TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
+      ),
+    );
+  }
+
+  /// Midnight Emerald dark theme (Phase 4):
+  /// Tailored for pre-dawn Fajr and night Tahajjud reading.
+  /// Deep forest black background (#061812), emerald night surface (#0D271E),
+  /// elevated card (#13382B), subtle borders (#173C30), and gold accents (#E5C158).
+  static ThemeData dark() {
+    final base = ThemeData(
+      useMaterial3: true,
+      brightness: Brightness.dark,
+      scaffoldBackgroundColor: NoorColors.darkBg,
+      colorScheme: const ColorScheme.dark(
+        primary: NoorColors.emeraldMid,
+        secondary: NoorColors.darkGold,
+        surface: NoorColors.darkSurface,
+        onSurface: NoorColors.darkTextPrimary,
+        outline: NoorColors.darkBorder,
+      ),
+    );
+    return base.copyWith(
+      textTheme: GoogleFonts.manropeTextTheme(base.textTheme).copyWith(
+        headlineMedium: GoogleFonts.manrope(
+            textStyle: NoorType.screenTitle.copyWith(fontSize: 28),
+            color: NoorColors.darkGold),
+        titleLarge: GoogleFonts.manrope(
+            textStyle: NoorType.screenTitle.copyWith(color: NoorColors.darkTextPrimary)),
+        titleMedium: GoogleFonts.manrope(
+            textStyle: NoorType.cardTitle.copyWith(color: NoorColors.darkTextPrimary)),
+        bodyMedium: GoogleFonts.manrope(
+            textStyle: NoorType.body.copyWith(color: NoorColors.darkTextPrimary)),
+        bodySmall: GoogleFonts.manrope(
+            textStyle: NoorType.meta.copyWith(color: NoorColors.darkTextSecondary)),
+      ),
+      cardTheme: CardThemeData(
+        color: NoorColors.darkCard,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(NoorRadius.card),
+          side: const BorderSide(color: NoorColors.darkBorder, width: 1),
+        ),
+      ),
+      dividerTheme: const DividerThemeData(
+        color: NoorColors.darkBorder,
+        thickness: 1,
+      ),
+      switchTheme: SwitchThemeData(
+        thumbColor: WidgetStateProperty.resolveWith((states) =>
+            states.contains(WidgetState.selected)
+                ? NoorColors.darkGold
+                : Colors.white70),
+        trackColor: WidgetStateProperty.resolveWith((states) =>
+            states.contains(WidgetState.selected)
+                ? NoorColors.emeraldDark
+                : NoorColors.darkCard),
+        trackOutlineColor: WidgetStateProperty.all(NoorColors.darkBorder),
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          backgroundColor: NoorColors.emerald,
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(NoorRadius.button)),
+          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: NoorColors.darkGold,
+          side: const BorderSide(color: NoorColors.darkGold, width: 1.5),
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(NoorRadius.button)),
+          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
+        ),
+      ),
+      navigationBarTheme: NavigationBarThemeData(
+        backgroundColor: NoorColors.darkSurface,
+        indicatorColor: NoorColors.emeraldMid,
+        iconTheme: WidgetStateProperty.resolveWith((states) =>
+            states.contains(WidgetState.selected)
+                ? const IconThemeData(color: NoorColors.darkGold)
+                : const IconThemeData(color: NoorColors.darkTextSecondary)),
+        labelTextStyle: WidgetStateProperty.resolveWith((states) =>
+            states.contains(WidgetState.selected)
+                ? const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: NoorColors.darkGold)
+                : const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: NoorColors.darkTextSecondary)),
       ),
     );
   }

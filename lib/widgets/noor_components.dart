@@ -69,20 +69,30 @@ class _RosettePainter extends CustomPainter {
 }
 
 class NoorScaffold extends StatelessWidget {
-  const NoorScaffold({super.key, required this.child, this.bottom});
+  const NoorScaffold({
+    super.key,
+    required this.child,
+    this.bottom,
+    this.backgroundColor,
+  });
   final Widget child;
   final Widget? bottom;
+  final Color? backgroundColor;
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-        backgroundColor: NoorColors.cream,
-        body: SafeArea(
-          child: Column(children: [
-            Expanded(child: child),
-            if (bottom != null) bottom!,
-          ]),
-        ),
-      );
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Scaffold(
+      backgroundColor: backgroundColor ??
+          (isDark ? NoorColors.darkBg : NoorColors.cream),
+      body: SafeArea(
+        child: Column(children: [
+          Expanded(child: child),
+          if (bottom != null) bottom!,
+        ]),
+      ),
+    );
+  }
 }
 
 /// Small label used over sections in the design. Phase 12: this is
@@ -182,6 +192,7 @@ class NoorSecondaryButton extends StatelessWidget {
 }
 
 /// White card with the design's soft shadow + 20px radius (Tier 1 content card).
+/// In dark mode: Midnight Emerald elevated dark card with 1px border.
 class NoorCard extends StatelessWidget {
   const NoorCard({
     super.key,
@@ -189,20 +200,25 @@ class NoorCard extends StatelessWidget {
     this.padding,
     this.onTap,
     this.radius,
+    this.color,
   });
   final Widget child;
   final EdgeInsets? padding;
   final VoidCallback? onTap;
   final double? radius;
+  final Color? color;
 
   @override
   Widget build(BuildContext context) {
     final r = radius ?? NoorRadius.card;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardBg = color ?? (isDark ? NoorColors.darkCard : Colors.white);
     final card = Container(
       decoration: BoxDecoration(
-          color: Colors.white,
+          color: cardBg,
           borderRadius: BorderRadius.circular(r),
-          boxShadow: NoorShadows.card),
+          border: isDark ? Border.all(color: NoorColors.darkBorder, width: 1) : null,
+          boxShadow: isDark ? null : NoorShadows.card),
       padding: padding ?? NoorSpacing.card,
       child: child,
     );
@@ -240,8 +256,14 @@ class NoorOptionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final unselectedBg = isDark ? NoorColors.darkSurface : Colors.white;
+    final unselectedBorder = isDark ? NoorColors.darkBorder : NoorColors.hairline;
+    final unselectedTextColor = isDark ? NoorColors.darkTextPrimary : NoorColors.ink;
+    final unselectedSubtextColor = isDark ? NoorColors.darkTextSecondary : NoorColors.mutedDark;
+
     return Material(
-      color: selected ? NoorColors.emeraldDark : Colors.white,
+      color: selected ? NoorColors.emeraldDark : unselectedBg,
       borderRadius: BorderRadius.circular(NoorRadius.cardSmall),
       child: InkWell(
         onTap: onTap,
@@ -251,7 +273,7 @@ class NoorOptionTile extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(NoorRadius.cardSmall),
             border:
-                selected ? null : Border.all(color: NoorColors.hairline),
+                selected ? null : Border.all(color: unselectedBorder),
           ),
           child: Row(children: [
             if (leading != null) ...[leading!, const SizedBox(width: 12)],
@@ -259,20 +281,16 @@ class NoorOptionTile extends StatelessWidget {
               child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Phase 12: labels wrap to two lines at one
-                    // locked size. The old FittedBox(scaleDown)
-                    // silently shrank long labels and fought the
-                    // OS text-size setting (SENIOR_REVIEW §3.5).
                     Text(label,
                         maxLines: 2,
                         style: (labelStyle ?? NoorType.cardTitle).copyWith(
-                            color: selected ? Colors.white : NoorColors.ink)),
+                            color: selected ? Colors.white : unselectedTextColor)),
                     if (sublabel != null)
                       Text(sublabel!,
                           style: NoorType.meta.copyWith(
                               color: selected
                                   ? Colors.white
-                                  : NoorColors.mutedDark)),
+                                  : unselectedSubtextColor)),
                   ]),
             ),
             if (trailing != null) trailing!,
@@ -356,38 +374,46 @@ class NoorFormField extends StatelessWidget {
   final String? errorText;
 
   @override
-  Widget build(BuildContext context) => Column(
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(label,
-              style:
-                  NoorType.secondary),
+              style: NoorType.secondary.copyWith(
+                  color: isDark ? NoorColors.darkTextSecondary : NoorColors.mutedDark)),
           const SizedBox(height: 8),
           TextField(
             controller: controller,
             obscureText: obscure,
             keyboardType: keyboardType,
+            style: TextStyle(
+                color: isDark ? NoorColors.darkTextPrimary : NoorColors.ink),
             decoration: InputDecoration(
               suffixIcon: suffixIcon,
               errorText: errorText,
               hintText: hint,
-              hintStyle: NoorType.body.copyWith(color: NoorColors.mutedDark),
+              hintStyle: NoorType.body.copyWith(
+                  color: isDark ? NoorColors.darkTextSecondary : NoorColors.mutedDark),
               filled: true,
-              fillColor: Colors.white,
+              fillColor: isDark ? NoorColors.darkSurface : Colors.white,
               contentPadding:
                   const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(NoorRadius.cardSmall),
-                borderSide: const BorderSide(color: NoorColors.hairline),
+                borderSide: BorderSide(
+                    color: isDark ? NoorColors.darkBorder : NoorColors.hairline),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(NoorRadius.cardSmall),
-                borderSide: const BorderSide(color: NoorColors.emerald),
+                borderSide: BorderSide(
+                    color: isDark ? NoorColors.darkGold : NoorColors.emerald),
               ),
             ),
           ),
         ],
       );
+  }
 }
 
 /// Dark emerald header used by the Quran, Worship and Library screens:
@@ -530,6 +556,7 @@ class NoorListRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final row = ConstrainedBox(
       constraints: const BoxConstraints(minHeight: 48),
       child: Row(children: [
@@ -540,12 +567,14 @@ class NoorListRow extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(title,
-                    style: NoorType.cardTitle,
+                    style: NoorType.cardTitle.copyWith(
+                        color: isDark ? NoorColors.darkTextPrimary : NoorColors.ink),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis),
                 if (subtitle != null)
                   Text(subtitle!,
-                      style: NoorType.secondary,
+                      style: NoorType.secondary.copyWith(
+                          color: isDark ? NoorColors.darkTextSecondary : NoorColors.mutedDark),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis),
               ]),
@@ -553,7 +582,8 @@ class NoorListRow extends StatelessWidget {
         if (value != null) ...[
           Flexible(
             child: Text(value!,
-                style: NoorType.meta,
+                style: NoorType.meta.copyWith(
+                    color: isDark ? NoorColors.darkTextSecondary : NoorColors.mutedDark),
                 textAlign: TextAlign.end,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis),
@@ -673,50 +703,59 @@ Future<void> showNoorOverflowSheet(
   required String title,
   List<String>? info,
   List<(IconData, String, VoidCallback)>? actions,
-}) =>
-    showModalBottomSheet<void>(
-      context: context,
-      backgroundColor: NoorColors.cream,
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (sheetContext) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(24, 16, 24, 28),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                  child: Container(
-                      width: 44,
-                      height: 5,
-                      decoration: BoxDecoration(
-                          color: NoorColors.hairline,
-                          borderRadius: BorderRadius.circular(99)))),
-              const SizedBox(height: 14),
-              Text(title, style: NoorType.cardTitle),
-              if (info != null) ...[
-                const SizedBox(height: 10),
-                for (final line in info)
-                  Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: Text(line,
-                          style: NoorType.secondary
-                              .copyWith(color: NoorColors.mutedDark, height: 1.5))),
-              ],
-              const SizedBox(height: 6),
-              for (final a in actions ?? const <(IconData, String, VoidCallback)>[])
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: Icon(a.$1, color: NoorColors.emeraldDark, size: 21),
-                  title: Text(a.$2, style: NoorType.body),
-                  onTap: () {
-                    Navigator.of(sheetContext).pop();
-                    a.$3();
-                  },
-                ),
+}) {
+  final isDark = Theme.of(context).brightness == Brightness.dark;
+  return showModalBottomSheet<void>(
+    context: context,
+    backgroundColor: isDark ? NoorColors.darkSurface : NoorColors.cream,
+    shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+    builder: (sheetContext) => SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 16, 24, 28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+                child: Container(
+                    width: 44,
+                    height: 5,
+                    decoration: BoxDecoration(
+                        color: isDark ? NoorColors.darkBorder : NoorColors.hairline,
+                        borderRadius: BorderRadius.circular(99)))),
+            const SizedBox(height: 14),
+            Text(title,
+                style: NoorType.cardTitle.copyWith(
+                    color: isDark ? NoorColors.darkTextPrimary : NoorColors.ink)),
+            if (info != null) ...[
+              const SizedBox(height: 10),
+              for (final line in info)
+                Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Text(line,
+                        style: NoorType.secondary.copyWith(
+                            color: isDark ? NoorColors.darkTextSecondary : NoorColors.mutedDark,
+                            height: 1.5))),
             ],
-          ),
+            const SizedBox(height: 6),
+            for (final a in actions ?? const <(IconData, String, VoidCallback)>[])
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(a.$1,
+                    color: isDark ? NoorColors.darkGold : NoorColors.emeraldDark,
+                    size: 21),
+                title: Text(a.$2,
+                    style: NoorType.body.copyWith(
+                        color: isDark ? NoorColors.darkTextPrimary : NoorColors.ink)),
+                onTap: () {
+                  Navigator.of(sheetContext).pop();
+                  a.$3();
+                },
+              ),
+          ],
         ),
       ),
-    );
+    ),
+  );
+}

@@ -118,6 +118,17 @@ class NoorStore {
   static Future<void> setCountry(String country) =>
       _writeString('settings.country', country);
 
+  // ---- Theme Preference (Phase 4: solar | light | dark | system) ------
+
+  static const keyThemePreference = 'settings.themePreference';
+  static const defaultThemePreference = 'solar';
+
+  static Future<String> getThemePreference() async =>
+      await _readString(keyThemePreference) ?? defaultThemePreference;
+
+  static Future<void> setThemePreference(String pref) =>
+      _writeString(keyThemePreference, pref);
+
   // ---- Reminder toggles (Page 31) -------------------------------------
 
   static String _reminderKey(String id) => 'reminders.$id';

@@ -337,6 +337,35 @@ class PrayerDay {
         time: fallback,
         remaining: const Duration(hours: 1));
   }
+
+  /// True if [now] is between Maghrib (sunset) and tomorrow's Fajr (dawn).
+  /// In Islamic tradition, the day starts at Maghrib. Night prayer
+  /// (Tahajjud), Isha and pre-Fajr hours are in the dark window.
+  bool isNightTime([DateTime? now]) {
+    final n = now ?? DateTime.now();
+    final maghrib = timings['Maghrib'];
+    final fajr = timings['Fajr'];
+    if (maghrib != null && fajr != null) {
+      // Normalize to the same calendar day as the prayer timings
+      // so comparisons reflect time-of-day accurately.
+      final normalized = DateTime(
+        maghrib.year,
+        maghrib.month,
+        maghrib.day,
+        n.hour,
+        n.minute,
+        n.second,
+      );
+      // If after or at today's Maghrib -> Night time (post-Maghrib)
+      if (!normalized.isBefore(maghrib)) return true;
+      // If before today's Fajr -> Night time (pre-dawn/Tahajjud)
+      if (normalized.isBefore(fajr)) return true;
+      // Daytime between Fajr and Maghrib
+      return false;
+    }
+    // Fallback: 6 PM to 6 AM
+    return n.hour >= 18 || n.hour < 6;
+  }
 }
 
 class NextPrayer {

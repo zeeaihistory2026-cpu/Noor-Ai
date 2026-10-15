@@ -76,6 +76,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     void push(Widget page) =>
         Navigator.of(context).push(MaterialPageRoute(builder: (_) => page));
     return SafeArea(
@@ -88,14 +89,17 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
               child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Assalamu Alaikum,',
-                        style: NoorType.body),
+                    Text('Assalamu Alaikum,',
+                        style: NoorType.body.copyWith(
+                            color: isDark ? NoorColors.darkTextSecondary : NoorColors.ink)),
                     const SizedBox(height: 2),
                     Text(_userName.isNotEmpty ? _userName : '',
-                        style: NoorType.display.copyWith(color: NoorColors.emeraldDark)),
+                        style: NoorType.display.copyWith(
+                            color: isDark ? NoorColors.darkGold : NoorColors.emeraldDark)),
                     const SizedBox(height: 3),
                     Text(_hijriDate,
-                        style: NoorType.secondary.copyWith(color: NoorColors.emerald)),
+                        style: NoorType.secondary.copyWith(
+                            color: isDark ? NoorColors.darkTextSecondary : NoorColors.emerald)),
                   ]),
             ),
             Stack(children: [
@@ -103,12 +107,13 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: isDark ? NoorColors.darkCard : Colors.white,
                     borderRadius: BorderRadius.circular(14),
-                    boxShadow: NoorShadows.card),
+                    border: isDark ? Border.all(color: NoorColors.darkBorder) : null,
+                    boxShadow: isDark ? null : NoorShadows.card),
                 child: IconButton(
-                  icon: const Icon(Icons.notifications_none,
-                      color: NoorColors.ink, size: 21),
+                  icon: Icon(Icons.notifications_none,
+                      color: isDark ? NoorColors.darkTextPrimary : NoorColors.ink, size: 21),
                   onPressed: () => push(const NotificationsScreen()),
                 ),
               ),
@@ -246,9 +251,11 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                       child:
                           Row(mainAxisSize: MainAxisSize.min, children: [
                         Text('View All',
-                            style: NoorType.secondary.copyWith(color: NoorColors.emerald)),
-                        const Icon(Icons.arrow_forward,
-                            size: 15, color: NoorColors.emerald),
+                            style: NoorType.secondary.copyWith(
+                                color: isDark ? NoorColors.darkGold : NoorColors.emerald)),
+                        Icon(Icons.arrow_forward,
+                            size: 15,
+                            color: isDark ? NoorColors.darkGold : NoorColors.emerald),
                       ]),
                     ),
                   ),
@@ -262,6 +269,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
               for (var i = 0; i < NoorAppState.streaks.length; i++) ...[
                 if (i > 0) const SizedBox(width: 12),
                 _streakCard(
+                    context,
                     [
                       'assets/images/streak_salah.png',
                       'assets/images/streak_dhikr.png',
@@ -402,14 +410,16 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
     );
   }
 
-  Widget _streakCard(String assetPath, String label, int days) {
+  Widget _streakCard(BuildContext context, String assetPath, String label, int days) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Expanded(
       child: Container(
         height: NoorSizes.streakCardHeight + 18,
         decoration: BoxDecoration(
-            color: Colors.white,
+            color: isDark ? NoorColors.darkCard : Colors.white,
             borderRadius: BorderRadius.circular(NoorRadius.card),
-            boxShadow: NoorShadows.card),
+            border: isDark ? Border.all(color: NoorColors.darkBorder) : null,
+            boxShadow: isDark ? null : NoorShadows.card),
         padding: const EdgeInsets.all(13),
         child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
@@ -425,16 +435,19 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   textAlign: TextAlign.center,
-                  style: NoorType.secondary),
+                  style: NoorType.secondary.copyWith(
+                      color: isDark ? NoorColors.darkTextPrimary : NoorColors.ink)),
             ),
           ]),
           const SizedBox(height: 8),
           Text('$days',
               textAlign: TextAlign.center,
-              style: NoorType.screenTitle),
+              style: NoorType.screenTitle.copyWith(
+                  color: isDark ? NoorColors.darkGold : NoorColors.ink)),
           Text('Day Streak',
               textAlign: TextAlign.center,
-              style: NoorType.meta.copyWith(color: NoorColors.muted)),
+              style: NoorType.meta.copyWith(
+                  color: isDark ? NoorColors.darkTextSecondary : NoorColors.muted)),
           const SizedBox(height: 8),
           // One flame badge + the real count (Phase 12): five
           // flames previously showed 4 lit for 12, 8 and 17 days
@@ -447,7 +460,9 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
               const Icon(Icons.local_fire_department,
                   size: 15, color: NoorColors.amber),
               const SizedBox(width: 4),
-              Text('$days days', style: NoorType.meta),
+              Text('$days days',
+                  style: NoorType.meta.copyWith(
+                      color: isDark ? NoorColors.darkTextSecondary : NoorColors.mutedDark)),
             ]),
           ),
         ]),

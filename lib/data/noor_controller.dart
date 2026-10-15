@@ -1,7 +1,18 @@
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
 
 import 'app_state.dart';
+import 'noor_store.dart';
 import 'prayer_service.dart';
+
+/// Phase 4 — Theme Preference Modes:
+/// [solar] switches to Midnight Emerald dark mode automatically between
+/// Maghrib (sunset) and Fajr (dawn), and uses light mode during the day.
+enum NoorThemePreference {
+  solar,
+  light,
+  dark,
+  system,
+}
 
 /// Phase 13 — one app-wide reactive store.
 ///
@@ -15,7 +26,9 @@ import 'prayer_service.dart';
 /// a streak updating — propagates to all tabs without any screen
 /// fetching its own copy.
 class NoorController extends ChangeNotifier {
-  NoorController();
+  NoorController() {
+    loadThemePreference();
+  }
 
   PrayerDay? _liveDay;
   PrayerDay? get liveDay => _liveDay;
@@ -28,6 +41,32 @@ class NoorController extends ChangeNotifier {
     for (final s in NoorAppState.streaks) s.$1: s.$2,
   };
   Map<String, int> get streaks => Map.unmodifiable(_streaks);
+
+  NoorThemePreference _themePreference = NoorThemePreference.solar;
+  NoorThemePreference get themePreference => _themePreference;
+
+  String get themePreferenceLabel => switch (_themePreference) {
+        NoorThemePreference.solar => 'Solar (Auto post-Maghrib)',
+        NoorThemePreference.light => 'Light',
+        NoorThemePreference.dark => 'Midnight Emerald (Dark)',
+        NoorThemePreference.system => 'System Default',
+      };
+
+  /// True if [now] is between Maghrib and Fajr (night window).
+  bool isNightTime([DateTime? now]) {
+    final day = _liveDay ?? PrayerDay.sample();
+    return day.isNightTime(now);
+  }
+
+  /// Current active [ThemeMode] resolving solar timing, explicit dark/light,
+  /// or system OS setting.
+  ThemeMode get themeMode => switch (_themePreference) {
+        NoorThemePreference.light => ThemeMode.light,
+        NoorThemePreference.dark => ThemeMode.dark,
+        NoorThemePreference.system => ThemeMode.system,
+        NoorThemePreference.solar =>
+          isNightTime() ? ThemeMode.dark : ThemeMode.light,
+      };
 
   /// Next-prayer label every screen should show right now: the live
   /// day's next prayer when we have one, otherwise the canonical
@@ -62,6 +101,26 @@ class NoorController extends ChangeNotifier {
     if (_streaks[label] == days) return;
     _streaks = {..._streaks, label: days};
     notifyListeners();
+  }
+
+  Future<void> setThemePreference(NoorThemePreference pref) async {
+    if (_themePreference == pref) return;
+    _themePreference = pref;
+    await NoorStore.setThemePreference(pref.name);
+    notifyListeners();
+  }
+
+  Future<void> loadThemePreference() async {
+    final raw = await NoorStore.getThemePreference();
+    for (final p in NoorThemePreference.values) {
+      if (p.name == raw) {
+        if (_themePreference != p) {
+          _themePreference = p;
+          notifyListeners();
+        }
+        return;
+      }
+    }
   }
 }
 

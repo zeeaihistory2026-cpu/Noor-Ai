@@ -22,7 +22,22 @@ class _NoorAppState extends State<NoorApp> {
   final NoorController _controller = NoorController();
 
   @override
+  void initState() {
+    super.initState();
+    _controller.addListener(_onControllerChanged);
+  }
+
+  void _onControllerChanged() {
+    if (mounted) {
+      setState(() {
+        /* Rebuild MaterialApp on controller/theme update */
+      });
+    }
+  }
+
+  @override
   void dispose() {
+    _controller.removeListener(_onControllerChanged);
     _controller.dispose();
     super.dispose();
   }
@@ -35,10 +50,10 @@ class _NoorAppState extends State<NoorApp> {
         title: 'NOOR AI Companion',
         debugShowCheckedModeBanner: false,
         theme: NoorTheme.light(),
-        // Force light mode: the design is light-only. Without this,
-        // phones in system dark mode break the UI (messy colors,
-        // invisible navigation).
-        themeMode: ThemeMode.light,
+        darkTheme: NoorTheme.dark(),
+        // Phase 4: Dynamic themeMode resolving solar automatic switching
+        // (dark mode post-Maghrib until Fajr) and user preferences.
+        themeMode: _controller.themeMode,
         // Phase 13 RTL: an Arabic/Urdu interface locale mirrors the
         // whole layout (rows, padding, bubbles), not just the text.
         builder: (context, child) {
@@ -114,11 +129,12 @@ class _NoorTabShellState extends State<NoorTabShell> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      backgroundColor: NoorColors.cream,
+      backgroundColor: isDark ? NoorColors.darkBg : NoorColors.cream,
       body: IndexedStack(index: _index, children: _tabs),
       bottomNavigationBar: NavigationBar(
-        backgroundColor: Colors.white,
+        backgroundColor: isDark ? NoorColors.darkSurface : Colors.white,
         selectedIndex: _index,
         onDestinationSelected: setTab,
         destinations: const [
