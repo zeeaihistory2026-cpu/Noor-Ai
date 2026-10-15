@@ -1064,7 +1064,7 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
           onTap: () => _setTarget(t),
           borderRadius: BorderRadius.circular(NoorRadius.chip),
           child: Container(
-            width: 72,
+            width: 56,
             padding: const EdgeInsets.symmetric(vertical: 10),
             alignment: Alignment.center,
             decoration: BoxDecoration(
@@ -1095,7 +1095,7 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
         onTap: _openCustomTargetDialog,
         borderRadius: BorderRadius.circular(NoorRadius.chip),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           alignment: Alignment.center,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(NoorRadius.chip),
