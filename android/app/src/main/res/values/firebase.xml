@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="google_api_key" translatable="false">AIzaSyAw_Az1vdkdXANXe22jw1dIO__XM2fTOKc</string>
+    <string name="google_app_id" translatable="false">1:1036624378483:android:044d675bbd6caba80c0806</string>
+    <string name="gcm_defaultSenderId" translatable="false">1036624378483</string>
+    <string name="google_storage_bucket" translatable="false">noor-ai-916ed.firebasestorage.app</string>
+    <string name="project_id" translatable="false">noor-ai-916ed</string>
+</resources>

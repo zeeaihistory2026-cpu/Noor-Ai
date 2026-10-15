@@ -1,0 +1,50 @@
+name: noor_ai_companion
+description: NOOR AI Companion — Faith • Guidance • Growth. Flutter scaffold from the 42-page NOOR design.
+publish_to: 'none'
+version: 0.1.0+10
+
+environment:
+  sdk: ^3.5.0
+  flutter: ">=3.24.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  google_fonts: ^6.2.1
+  # Phase 6 live-data layer (mainstream, no native config required).
+  http: ^1.2.2
+  shared_preferences: ^2.3.4
+  flutter_local_notifications: ^22.3.1
+  timezone: ^0.11.1
+  flutter_timezone: ^5.1.1
+  just_audio: ^0.10.6
+  just_audio_web: ^0.4.16
+  crypto: ^3.0.7
+  share_plus: ^13.3.1
+  path_provider: ^2.1.6
+  archive: ^4.5.2
+  app_settings: ^9.0.0
+  # Phase 8: real local notifications wired in
+  # lib/data/notification_service*.dart (see SCAFFOLD_STATUS Phase 8).
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/
+  # Phase 12: bundled sacred-text fonts (SIL OFL 1.1; licence texts
+  # sit beside the font files in assets/fonts/).
+  fonts:
+    - family: AmiriQuran
+      fonts:
+        - asset: assets/fonts/AmiriQuran-Regular.ttf
+    - family: NotoNastaliqUrdu
+      fonts:
+        - asset: assets/fonts/NotoNastaliqUrdu-Regular.ttf
+        - asset: assets/fonts/NotoNastaliqUrdu-Bold.ttf
+          weight: 700
