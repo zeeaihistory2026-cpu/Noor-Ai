@@ -218,7 +218,7 @@ class _QiblaFinderScreenState extends State<QiblaFinderScreen> {
                           child: const Align(
                               alignment: Alignment.topCenter,
                               child: Icon(Icons.navigation,
-                                  color: NoorColors.gold, size: 22))),
+                                  color: NoorColors.goldDeep, size: 22))),
                       ClipRRect(
                           borderRadius: BorderRadius.circular(10),
                           child: Image.asset(NoorAssets.qiblaKaaba,
@@ -654,7 +654,7 @@ class _QiblaFinderScreenState extends State<QiblaFinderScreen> {
                     Row(
                       children: [
                         const Icon(Icons.wb_sunny,
-                            color: NoorColors.gold, size: 22),
+                            color: NoorColors.goldDeep, size: 22),
                         const SizedBox(width: 8),
                         Text('Why Use Sun Shadow?',
                             style: NoorType.body.copyWith(

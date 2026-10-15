@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../data/sample_data.dart';
 import '../../theme/noor_theme.dart';
+import '../../widgets/noor_components.dart';
 import '../worship/zikr_tasbih_screen.dart';
 
 /// Detailed Dua Model for category views
@@ -401,7 +402,20 @@ class _DuaLibraryScreenState extends State<DuaLibraryScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            _buildHeader(context),
+            NoorDarkHeader(
+              title: 'Dua & Adhkar Library',
+              subtitle: 'Authentic duas & daily adhkar',
+              actions: [
+                IconButton(
+                  tooltip: 'Tasbih Counter',
+                  icon: const Icon(Icons.touch_app, color: Colors.white),
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                        builder: (_) => const ZikrTasbihScreen(initialTab: 0)),
+                  ),
+                ),
+              ],
+            ),
             Expanded(
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
@@ -582,7 +596,7 @@ class _DuaLibraryScreenState extends State<DuaLibraryScreen> {
                                   ],
                                 ),
                               ),
-                              const Icon(Icons.chevron_right, size: 20, color: NoorColors.muted),
+                              const Icon(Icons.chevron_right, size: 20, color: NoorColors.mutedDark),
                             ],
                           ),
                         ),
@@ -597,9 +611,9 @@ class _DuaLibraryScreenState extends State<DuaLibraryScreen> {
                       child: Center(
                         child: Column(
                           children: [
-                            const Icon(Icons.search_off, size: 36, color: NoorColors.muted),
+                            const Icon(Icons.search_off, size: 36, color: NoorColors.mutedDark),
                             const SizedBox(height: 8),
-                            Text('No categories match your search.', style: NoorType.secondary.copyWith(color: NoorColors.muted)),
+                            Text('No categories match your search.', style: NoorType.secondary.copyWith(color: NoorColors.mutedDark)),
                           ],
                         ),
                       ),
@@ -609,51 +623,6 @@ class _DuaLibraryScreenState extends State<DuaLibraryScreen> {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildHeader(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [NoorColors.emeraldDark, NoorColors.emeraldMid],
-        ),
-        borderRadius: BorderRadius.vertical(bottom: Radius.circular(28)),
-      ),
-      padding: const EdgeInsets.fromLTRB(14, 10, 14, 18),
-      child: Row(
-        children: [
-          IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.white),
-            onPressed: () => Navigator.of(context).maybePop(),
-          ),
-          Expanded(
-            child: Column(
-              children: [
-                Text(
-                  'Dua & Adhkar Library',
-                  textAlign: TextAlign.center,
-                  style: NoorType.section.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  'Authentic duas & daily adhkar',
-                  style: NoorType.meta.copyWith(color: Colors.white70),
-                ),
-              ],
-            ),
-          ),
-          IconButton(
-            tooltip: 'Tasbih Counter',
-            icon: const Icon(Icons.touch_app, color: Colors.white),
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const ZikrTasbihScreen(initialTab: 0)),
-            ),
-          ),
-        ],
       ),
     );
   }

@@ -116,7 +116,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                   right: 11,
                   top: 10,
                   child: CircleAvatar(
-                      radius: 4, backgroundColor: NoorColors.gold)),
+                      radius: 4, backgroundColor: NoorColors.goldDeep)),
             ]),
             const SizedBox(width: 12),
             // Avatar shows the logged-in user's initials; tap opens profile.
@@ -338,7 +338,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                 const SizedBox(height: 14),
                 SizedBox(
                   width: double.infinity,
-                  height: 50,
+                  height: NoorSizes.buttonHeight,
                   child: FilledButton.icon(
                     icon: const Icon(Icons.menu_book, size: 19),
                     label: const Text('Continue Reading'),

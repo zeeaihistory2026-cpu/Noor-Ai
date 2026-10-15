@@ -104,13 +104,13 @@ class _SplashScreenState extends State<SplashScreen> {
               const Spacer(flex: 4),
               SizedBox(
                 width: double.infinity,
-                height: 56,
+                height: NoorSizes.buttonHeight,
                 child: FilledButton(
                   onPressed: _advance,
                   style: FilledButton.styleFrom(
                     backgroundColor: NoorColors.emeraldDark,
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(28)),
+                        borderRadius: BorderRadius.circular(NoorRadius.button)),
                     // No textStyle override — it would drop the
                     // theme's label font (Manrope) from the button.
                   ),

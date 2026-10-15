@@ -229,7 +229,7 @@ class _ShareCardStudioScreenState extends State<ShareCardStudioScreen> {
                                               BorderRadius.circular(16),
                                           border: Border.all(
                                               color: i == _template
-                                                  ? NoorColors.gold
+                                                  ? NoorColors.emeraldDark
                                                   : NoorColors.hairline,
                                               width: i == _template ? 2 : 1)),
                                       child: ClipRRect(
@@ -324,7 +324,7 @@ class _ShareCardStudioScreenState extends State<ShareCardStudioScreen> {
                           borderRadius: BorderRadius.circular(16),
                           border: Border.all(
                               color: selected
-                                  ? NoorColors.gold
+                                  ? NoorColors.emeraldDark
                                   : NoorColors.hairline,
                               width: selected ? 2 : 1)),
                       child: Column(children: [

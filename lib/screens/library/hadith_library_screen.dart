@@ -82,43 +82,29 @@ class _HadithLibraryScreenState extends State<HadithLibraryScreen> {
       backgroundColor: NoorColors.cream,
       body: SafeArea(
           child: Column(children: [
-        Container(
-          color: NoorColors.emeraldDark,
-          child: Column(children: [
-            Padding(
-                padding: const EdgeInsets.fromLTRB(6, 10, 6, 0),
-                child: Row(children: [
-                  IconButton(
-                      icon: const Icon(Icons.arrow_back_ios_new,
-                          color: Colors.white, size: 19),
-                      onPressed: () => Navigator.of(context).maybePop()),
-                  Expanded(
-                      child: Text('Hadith Library',
-                          textAlign: TextAlign.center,
-                          style: NoorType.screenTitle.copyWith(color: Colors.white))),
-                  IconButton(
-                      tooltip: 'About the databank',
-                      icon: const Icon(Icons.menu_book_outlined,
-                          color: Colors.white),
-                      // Phase 16 audit: honest databank info — the same
-                      // sourcing the HadithDatabankGate documents.
-                      onPressed: () => showNoorOverflowSheet(context,
-                          title: 'Hadith databank',
-                          info: const [
-                            'The complete text of all six books loads live from the free hadith-api CDN (fawazahmed0), in English, Arabic and Urdu.',
-                            'Sunnah.com grades are a future upgrade and need an API key — grades show only where the databank ships them.',
-                          ])),
-                ])),
-            // Height 74 ≈ the strip's own aspect at full width
-            // (Phase 11b): at 96 the sides — lanterns included —
-            // were cropped away by cover.
-            Image.asset(NoorAssets.hadithLibraryHeader,
-                cacheWidth: 1170,
-                height: 74,
-                width: double.infinity,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => const SizedBox(height: 24)),
-          ]),
+        NoorDarkHeader(
+          title: 'Hadith Library',
+          padding: const EdgeInsets.fromLTRB(6, 10, 6, 8),
+          actions: [
+            IconButton(
+                tooltip: 'About the databank',
+                icon: const Icon(Icons.menu_book_outlined,
+                    color: Colors.white),
+                // Phase 16 audit: honest databank info — the same
+                // sourcing the HadithDatabankGate documents.
+                onPressed: () => showNoorOverflowSheet(context,
+                    title: 'Hadith databank',
+                    info: const [
+                      'The complete text of all six books loads live from the free hadith-api CDN (fawazahmed0), in English, Arabic and Urdu.',
+                      'Sunnah.com grades are a future upgrade and need an API key — grades show only where the databank ships them.',
+                    ])),
+          ],
+          child: Image.asset(NoorAssets.hadithLibraryHeader,
+              cacheWidth: 1170,
+              height: 74,
+              width: double.infinity,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => const SizedBox(height: 24)),
         ),
         Transform.translate(
             offset: const Offset(0, -22),
@@ -135,7 +121,7 @@ class _HadithLibraryScreenState extends State<HadithLibraryScreen> {
                       decoration: InputDecoration(
                           border: InputBorder.none,
                           icon: const Icon(Icons.search,
-                              color: NoorColors.muted, size: 20),
+                              color: NoorColors.mutedDark, size: 20),
                           hintText:
                               'Search Hadith books, topics or keywords...',
                           hintStyle: NoorType.meta.copyWith(color: NoorColors.muted),
@@ -328,7 +314,7 @@ class _HadithLibraryScreenState extends State<HadithLibraryScreen> {
                           const SizedBox(height: 5),
                           Text(
                               'Read authentic Hadith and improve your understanding of Islam.',
-                              style: NoorType.meta.copyWith(color: NoorColors.muted,
+                              style: NoorType.meta.copyWith(color: NoorColors.mutedDark,
                                   height: 1.4)),
                           const SizedBox(height: 10),
                           FilledButton(

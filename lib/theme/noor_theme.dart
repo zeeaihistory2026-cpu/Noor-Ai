@@ -138,6 +138,7 @@ class NoorSpacing {
 /// buttons 16, inputs pill/28, splash logo tile 44.
 class NoorRadius {
   static const card = 20.0;
+  static const cardSmall = 16.0; // Tier 2 selectable/input tiles
   static const heroCard = 24.0;
   static const button = 16.0;
   static const input = 28.0;
@@ -148,6 +149,7 @@ class NoorRadius {
 
 /// Fixed sizes that recur in the PNGs.
 class NoorSizes {
+  static const buttonHeight = 52.0; // Standardized button height (Phase 3)
   static const bottomNavHeight = 64.0;
   static const streakCardHeight = 104.0;
   static const nextPrayerCardMinHeight = 132.0;
@@ -273,7 +275,16 @@ class NoorTheme {
           backgroundColor: NoorColors.emerald,
           foregroundColor: Colors.white,
           shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(NoorRadius.button)),
+          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: NoorColors.emeraldDark,
+          side: const BorderSide(color: NoorColors.emeraldDark, width: 1.5),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(NoorRadius.button)),
           padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 20),
         ),
       ),

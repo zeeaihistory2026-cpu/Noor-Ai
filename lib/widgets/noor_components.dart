@@ -96,47 +96,112 @@ class NoorSectionLabel extends StatelessWidget {
       Text(text.toUpperCase(), style: NoorType.eyebrow);
 }
 
-/// Emerald pill button as drawn on Pages 36–42 (label centred, 16px).
+/// Emerald primary button (Phase 3 design system):
+/// 52px height, 16px radius, emeraldDark fill, centered bold label.
 class NoorPrimaryButton extends StatelessWidget {
-  const NoorPrimaryButton(
-      {super.key, required this.label, required this.onPressed});
+  const NoorPrimaryButton({
+    super.key,
+    required this.label,
+    required this.onPressed,
+    this.icon,
+  });
   final String label;
   final VoidCallback? onPressed;
+  final Widget? icon;
+
   @override
   Widget build(BuildContext context) => Padding(
         padding: const EdgeInsets.fromLTRB(28, 8, 28, 24),
         child: SizedBox(
           width: double.infinity,
-          height: 58,
+          height: NoorSizes.buttonHeight,
           child: FilledButton(
             onPressed: onPressed,
             style: FilledButton.styleFrom(
               backgroundColor: NoorColors.emeraldDark,
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(29)),
+                  borderRadius: BorderRadius.circular(NoorRadius.button)),
               // No textStyle here: overriding it drops the theme's
               // label font (Manrope). Size/weight go on the child.
             ),
-            child: Text(label,
-                style:
-                    NoorType.cardTitle.copyWith(color: Colors.white)),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (icon != null) ...[icon!, const SizedBox(width: 8)],
+                Text(label,
+                    style:
+                        NoorType.cardTitle.copyWith(color: Colors.white)),
+              ],
+            ),
           ),
         ),
       );
 }
 
-/// White card with the design's soft shadow + 20px radius.
+/// Standardized secondary outlined button (Phase 3 design system):
+/// 52px height, 16px radius, 1.5px emeraldDark border, transparent fill.
+class NoorSecondaryButton extends StatelessWidget {
+  const NoorSecondaryButton({
+    super.key,
+    required this.label,
+    required this.onPressed,
+    this.icon,
+  });
+  final String label;
+  final VoidCallback? onPressed;
+  final Widget? icon;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.fromLTRB(28, 8, 28, 24),
+        child: SizedBox(
+          width: double.infinity,
+          height: NoorSizes.buttonHeight,
+          child: OutlinedButton(
+            onPressed: onPressed,
+            style: OutlinedButton.styleFrom(
+              side: const BorderSide(color: NoorColors.emeraldDark, width: 1.5),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(NoorRadius.button)),
+              foregroundColor: NoorColors.emeraldDark,
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (icon != null) ...[icon!, const SizedBox(width: 8)],
+                Text(label,
+                    style: NoorType.cardTitle
+                        .copyWith(color: NoorColors.emeraldDark)),
+              ],
+            ),
+          ),
+        ),
+      );
+}
+
+/// White card with the design's soft shadow + 20px radius (Tier 1 content card).
 class NoorCard extends StatelessWidget {
-  const NoorCard({super.key, required this.child, this.padding, this.onTap});
+  const NoorCard({
+    super.key,
+    required this.child,
+    this.padding,
+    this.onTap,
+    this.radius,
+  });
   final Widget child;
   final EdgeInsets? padding;
   final VoidCallback? onTap;
+  final double? radius;
+
   @override
   Widget build(BuildContext context) {
+    final r = radius ?? NoorRadius.card;
     final card = Container(
       decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(NoorRadius.card),
+          borderRadius: BorderRadius.circular(r),
           boxShadow: NoorShadows.card),
       padding: padding ?? NoorSpacing.card,
       child: child,
@@ -147,13 +212,13 @@ class NoorCard extends StatelessWidget {
             color: Colors.transparent,
             child: InkWell(
                 onTap: onTap,
-                borderRadius: BorderRadius.circular(NoorRadius.card),
+                borderRadius: BorderRadius.circular(r),
                 child: card));
   }
 }
 
-/// Selectable option row (Pages 38–40): white pill with soft border,
-/// emerald fill when selected. Leading slot takes an icon/initial.
+/// Selectable option row (Pages 38–40): Tier 2 tile with 16px radius,
+/// 1px hairline border, emerald fill when selected.
 class NoorOptionTile extends StatelessWidget {
   const NoorOptionTile({
     super.key,
@@ -177,14 +242,14 @@ class NoorOptionTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       color: selected ? NoorColors.emeraldDark : Colors.white,
-      borderRadius: BorderRadius.circular(NoorRadius.card),
+      borderRadius: BorderRadius.circular(NoorRadius.cardSmall),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(NoorRadius.card),
+        borderRadius: BorderRadius.circular(NoorRadius.cardSmall),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(NoorRadius.card),
+            borderRadius: BorderRadius.circular(NoorRadius.cardSmall),
             border:
                 selected ? null : Border.all(color: NoorColors.hairline),
           ),
@@ -306,17 +371,17 @@ class NoorFormField extends StatelessWidget {
               suffixIcon: suffixIcon,
               errorText: errorText,
               hintText: hint,
-              hintStyle: NoorType.body.copyWith(color: NoorColors.muted),
+              hintStyle: NoorType.body.copyWith(color: NoorColors.mutedDark),
               filled: true,
               fillColor: Colors.white,
               contentPadding:
                   const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
               enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(NoorRadius.card),
+                borderRadius: BorderRadius.circular(NoorRadius.cardSmall),
                 borderSide: const BorderSide(color: NoorColors.hairline),
               ),
               focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(NoorRadius.card),
+                borderRadius: BorderRadius.circular(NoorRadius.cardSmall),
                 borderSide: const BorderSide(color: NoorColors.emerald),
               ),
             ),
@@ -325,20 +390,25 @@ class NoorFormField extends StatelessWidget {
       );
 }
 
-/// Dark emerald header used by the Quran screens (Pages 11/02):
-/// back/search row, centred title, pill tab strip under it.
+/// Dark emerald header used by the Quran, Worship and Library screens:
+/// back/search row, centred title (and optional subtitle), action slots,
+/// optional child strip (e.g. pill tabs, search bar, banner art).
 class NoorDarkHeader extends StatelessWidget {
   const NoorDarkHeader({
     super.key,
     required this.title,
+    this.subtitle,
     this.leading,
     this.actions = const [],
     this.child,
+    this.padding,
   });
   final String title;
+  final String? subtitle;
   final Widget? leading;
   final List<Widget> actions;
   final Widget? child;
+  final EdgeInsetsGeometry? padding;
 
   @override
   Widget build(BuildContext context) => Container(
@@ -350,7 +420,7 @@ class NoorDarkHeader extends StatelessWidget {
           ),
           borderRadius: BorderRadius.vertical(bottom: Radius.circular(28)),
         ),
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+        padding: padding ?? const EdgeInsets.fromLTRB(16, 12, 16, 20),
         child: Column(children: [
           Row(children: [
             leading ??
@@ -361,9 +431,20 @@ class NoorDarkHeader extends StatelessWidget {
                   onPressed: () => Navigator.of(context).maybePop(),
                 ),
             Expanded(
-              child: Text(title,
-                  textAlign: TextAlign.center,
-                  style: NoorType.screenTitle.copyWith(color: Colors.white)),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(title,
+                      textAlign: TextAlign.center,
+                      style: NoorType.screenTitle.copyWith(color: Colors.white)),
+                  if (subtitle != null) ...[
+                    const SizedBox(height: 2),
+                    Text(subtitle!,
+                        textAlign: TextAlign.center,
+                        style: NoorType.meta.copyWith(color: Colors.white70)),
+                  ],
+                ],
+              ),
             ),
             ...actions,
           ]),

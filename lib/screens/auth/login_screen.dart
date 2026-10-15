@@ -118,13 +118,13 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
           const SizedBox(height: 28),
           SizedBox(
-            height: 58,
+            height: NoorSizes.buttonHeight,
             child: FilledButton(
               onPressed: _busy ? null : _submit,
               style: FilledButton.styleFrom(
                 backgroundColor: NoorColors.emeraldDark,
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(29)),
+                    borderRadius: BorderRadius.circular(NoorRadius.button)),
               ),
               child: Text(_busy ? 'Please wait…' : 'Login',
                   style: NoorType.cardTitle.copyWith(color: Colors.white)),

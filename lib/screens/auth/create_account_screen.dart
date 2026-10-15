@@ -111,13 +111,13 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
           ],
           const SizedBox(height: 36),
           SizedBox(
-            height: 58,
+            height: NoorSizes.buttonHeight,
             child: FilledButton(
               onPressed: _busy ? null : _submit,
               style: FilledButton.styleFrom(
                 backgroundColor: NoorColors.emeraldDark,
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(29)),
+                    borderRadius: BorderRadius.circular(NoorRadius.button)),
               ),
               child: Text(_busy ? 'Please wait…' : 'Create Account',
                   style: NoorType.cardTitle.copyWith(color: Colors.white)),

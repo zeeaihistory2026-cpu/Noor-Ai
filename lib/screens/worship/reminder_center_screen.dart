@@ -232,18 +232,9 @@ class _ReminderCenterScreenState extends State<ReminderCenterScreen> {
         backgroundColor: NoorColors.cream,
         body: SafeArea(
             child: Column(children: [
-          Container(
-            color: NoorColors.emeraldDark,
-            padding: const EdgeInsets.fromLTRB(6, 10, 6, 22),
-            child: Row(children: [
-              IconButton(
-                  icon: const Icon(Icons.arrow_back_ios_new,
-                      color: Colors.white, size: 19),
-                  onPressed: () => Navigator.of(context).maybePop()),
-              Expanded(
-                  child: Text('Reminder Center',
-                      textAlign: TextAlign.center,
-                      style: NoorType.screenTitle.copyWith(color: Colors.white))),
+          NoorDarkHeader(
+            title: 'Reminder Center',
+            actions: [
               IconButton(
                   tooltip: 'Reminder options',
                   icon: const Icon(Icons.more_vert, color: Colors.white),
@@ -264,7 +255,7 @@ class _ReminderCenterScreenState extends State<ReminderCenterScreen> {
                           () => _setAll(false)
                         ),
                       ])),
-            ]),
+            ],
           ),
           Expanded(
               child: ListView(
@@ -308,12 +299,12 @@ class _ReminderCenterScreenState extends State<ReminderCenterScreen> {
                 ],
                 Row(children: [
                   const Icon(Icons.schedule_outlined,
-                      size: 16, color: NoorColors.muted),
+                      size: 16, color: NoorColors.mutedDark),
                   const SizedBox(width: 7),
                   Expanded(
                       child: Text(
                           'Quiet hours respect sleep and focus periods. Custom reminders can be added for Friday or personal routines.',
-                          style: NoorType.meta.copyWith(color: NoorColors.muted,
+                          style: NoorType.meta.copyWith(color: NoorColors.mutedDark,
                               height: 1.5)))
                 ]),
                 if (_status != null) ...[
@@ -324,7 +315,7 @@ class _ReminderCenterScreenState extends State<ReminderCenterScreen> {
                     const SizedBox(width: 7),
                     Expanded(
                         child: Text(_status!,
-                            style: NoorType.meta.copyWith(color: NoorColors.muted,
+                            style: NoorType.meta.copyWith(color: NoorColors.mutedDark,
                                 height: 1.5)))
                   ]),
                   if (_showSettingsButton) ...[

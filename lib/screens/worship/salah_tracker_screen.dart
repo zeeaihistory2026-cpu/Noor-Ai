@@ -82,98 +82,81 @@ class _SalahTrackerScreenState extends State<SalahTrackerScreen> {
           padding: EdgeInsets.zero,
           children: [
             // Header with real skyline art (Page 06 crop).
-            Container(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                    colors: [NoorColors.emeraldDark, NoorColors.emeraldMid]),
+            NoorDarkHeader(
+              title: 'Salah Tracker',
+              padding: const EdgeInsets.fromLTRB(6, 10, 6, 0),
+              actions: [
+                IconButton(
+                    tooltip: 'About the salah log',
+                    icon: const Icon(Icons.calendar_month_outlined,
+                        color: Colors.white),
+                    // Phase 16 audit: honest — the log is kept for
+                    // today only; the sheet links prayer reminders.
+                    onPressed: () => showNoorOverflowSheet(context,
+                        title: 'Salah log',
+                        info: const [
+                          'Your log is kept for today in this version — past days are not stored yet.',
+                        ],
+                        actions: [
+                          (
+                            Icons.alarm_outlined,
+                            'Prayer reminders',
+                            () => Navigator.of(context).push(
+                                MaterialPageRoute(
+                                    builder: (_) =>
+                                        const ReminderCenterScreen()))
+                          ),
+                        ])),
+                IconButton(
+                    tooltip: "Today's log options",
+                    icon: const Icon(Icons.more_vert, color: Colors.white),
+                    // Phase 16 audit: real bulk actions on the log.
+                    onPressed: () => showNoorOverflowSheet(context,
+                        title: "Today's prayers",
+                        actions: [
+                          (
+                            Icons.done_all_outlined,
+                            'Mark all as prayed',
+                            () => setState(() {
+                              for (var i = 0; i < _done.length; i++) {
+                                _done[i] = true;
+                              }
+                            })
+                          ),
+                          (
+                            Icons.restart_alt_outlined,
+                            "Clear today's log",
+                            () => setState(() {
+                              for (var i = 0; i < _done.length; i++) {
+                                _done[i] = false;
+                              }
+                            })
+                          ),
+                        ])),
+              ],
+              child: ClipRRect(
                 borderRadius:
-                    BorderRadius.vertical(bottom: Radius.circular(28)),
+                    const BorderRadius.vertical(bottom: Radius.circular(28)),
+                child: Image.asset(NoorAssets.salahHeaderMosque,
+                    cacheWidth: 1170,
+                    // 98 ≈ the skyline strip's aspect at full
+                    // width (Phase 11b); at 84 the side domes
+                    // were cropped off.
+                    height: 98,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Padding(
+                          padding: const EdgeInsets.only(bottom: 16),
+                          child: Column(children: [
+                            const Text(NoorAppState.hijriLabel,
+                                style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w700)),
+                            Text(NoorAppState.gregorianLabel,
+                                style: const TextStyle(color: Colors.white70)),
+                          ]),
+                        )),
               ),
-              child: Column(children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(6, 10, 6, 0),
-                  child: Row(children: [
-                    IconButton(
-                        icon: const Icon(Icons.arrow_back_ios_new,
-                            color: Colors.white, size: 19),
-                        onPressed: () => Navigator.of(context).maybePop()),
-                    Expanded(
-                        child: Text('Salah Tracker',
-                            textAlign: TextAlign.center,
-                            style: NoorType.screenTitle.copyWith(color: Colors.white))),
-                    IconButton(
-                        tooltip: 'About the salah log',
-                        icon: const Icon(Icons.calendar_month_outlined,
-                            color: Colors.white),
-                        // Phase 16 audit: honest — the log is kept for
-                        // today only; the sheet links prayer reminders.
-                        onPressed: () => showNoorOverflowSheet(context,
-                            title: 'Salah log',
-                            info: const [
-                              'Your log is kept for today in this version — past days are not stored yet.',
-                            ],
-                            actions: [
-                              (
-                                Icons.alarm_outlined,
-                                'Prayer reminders',
-                                () => Navigator.of(context).push(
-                                    MaterialPageRoute(
-                                        builder: (_) =>
-                                            const ReminderCenterScreen()))
-                              ),
-                            ])),
-                    IconButton(
-                        tooltip: "Today's log options",
-                        icon: const Icon(Icons.more_vert, color: Colors.white),
-                        // Phase 16 audit: real bulk actions on the log.
-                        onPressed: () => showNoorOverflowSheet(context,
-                            title: "Today's prayers",
-                            actions: [
-                              (
-                                Icons.done_all_outlined,
-                                'Mark all as prayed',
-                                () => setState(() {
-                                  for (var i = 0; i < _done.length; i++) {
-                                    _done[i] = true;
-                                  }
-                                })
-                              ),
-                              (
-                                Icons.restart_alt_outlined,
-                                "Clear today's log",
-                                () => setState(() {
-                                  for (var i = 0; i < _done.length; i++) {
-                                    _done[i] = false;
-                                  }
-                                })
-                              ),
-                            ])),
-                  ]),
-                ),
-                ClipRRect(
-                  borderRadius:
-                      const BorderRadius.vertical(bottom: Radius.circular(28)),
-                  child: Image.asset(NoorAssets.salahHeaderMosque,
-                      cacheWidth: 1170,
-                      // 98 ≈ the skyline strip's aspect at full
-                      // width (Phase 11b); at 84 the side domes
-                      // were cropped off.
-                      height: 98,
-                      width: double.infinity,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Padding(
-                            padding: const EdgeInsets.only(bottom: 16),
-                            child: Column(children: [
-                              const Text(NoorAppState.hijriLabel,
-                                  style: TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w700)),
-                              Text(NoorAppState.gregorianLabel,
-                                  style: const TextStyle(color: Colors.white70)),
-                            ]),
-                          )),
-                ),
-              ]),
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
@@ -249,7 +232,7 @@ class _SalahTrackerScreenState extends State<SalahTrackerScreen> {
                                           textAlign: TextAlign.center,
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
-                                          style: NoorType.meta.copyWith(color: NoorColors.muted)),
+                                          style: NoorType.meta.copyWith(color: NoorColors.mutedDark)),
                                       const SizedBox(height: 6),
                                       SizedBox(
                                         height: 30,
@@ -508,6 +491,6 @@ class _Stat extends StatelessWidget {
         const SizedBox(height: 4),
         Text(label,
             textAlign: TextAlign.center,
-            style: NoorType.meta.copyWith(color: NoorColors.muted)),
+            style: NoorType.meta.copyWith(color: NoorColors.mutedDark)),
       ]);
 }
