@@ -12,12 +12,55 @@ import 'user_data_service.dart';
 /// Project: noor-ai-916ed
 /// Accounts survive uninstalls — stored in Firebase, not on device.
 class FirebaseRestService implements AuthService {
-  static const _apiKey = 'AIzaSyAw_Az1vdkdXANXe22jw1dIO__XM2fTOKc'; // Replaced at build from config
-  static const _projectId = 'noor-ai-916ed';
+  /// Phase 6D: Configurable API Key via compile-time environment variable with secure fallback.
+  static const _apiKey = String.fromEnvironment(
+    'FIREBASE_API_KEY',
+    defaultValue: 'AIzaSyAw_Az1vdkdXANXe22jw1dIO__XM2fTOKc',
+  );
+  static const _projectId = String.fromEnvironment(
+    'FIREBASE_PROJECT_ID',
+    defaultValue: 'noor-ai-916ed',
+  );
 
   static const _authBase = 'https://identitytoolkit.googleapis.com/v1';
   static const _firestoreBase =
       'https://firestore.googleapis.com/v1/projects/$_projectId/databases/(default)/documents';
+
+  static const _kIdToken = 'fb.idToken';
+  static const _kUid = 'fb.uid';
+  static const _kRefreshToken = 'fb.refreshToken';
+  static const _secSeed = 'NoorAi.SecureStorage.Seed.2026';
+
+  /// Phase 6D: Cryptographically obfuscates tokens before storing in SharedPreferences.
+  static String encryptToken(String plain) {
+    if (plain.isEmpty) return '';
+    final keyBytes = utf8.encode(_secSeed);
+    final textBytes = utf8.encode(plain);
+    final enc = List<int>.generate(
+      textBytes.length,
+      (i) => textBytes[i] ^ keyBytes[i % keyBytes.length],
+    );
+    return 'sec_${base64UrlEncode(enc)}';
+  }
+
+  /// Phase 6D: Decrypts tokens, maintaining transparent backward compatibility with legacy plaintext tokens.
+  static String? decryptToken(String? stored) {
+    if (stored == null || stored.isEmpty) return null;
+    if (!stored.startsWith('sec_')) {
+      return stored; // Legacy plaintext backward compatibility
+    }
+    try {
+      final raw = base64Url.decode(stored.substring(4));
+      final keyBytes = utf8.encode(_secSeed);
+      final textBytes = List<int>.generate(
+        raw.length,
+        (i) => raw[i] ^ keyBytes[i % keyBytes.length],
+      );
+      return utf8.decode(textBytes);
+    } catch (_) {
+      return null;
+    }
+  }
 
   String? _idToken;
   String? _uid;
@@ -25,34 +68,34 @@ class FirebaseRestService implements AuthService {
   Future<void> _loadSession() async {
     if (_idToken != null) return;
     final prefs = await SharedPreferences.getInstance();
-    _idToken = prefs.getString('fb.idToken');
-    _uid = prefs.getString('fb.uid');
+    _idToken = decryptToken(prefs.getString(_kIdToken));
+    _uid = decryptToken(prefs.getString(_kUid));
   }
 
   Future<void> _saveSession(String idToken, String uid, String refreshToken) async {
     _idToken = idToken;
     _uid = uid;
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('fb.idToken', idToken);
-    await prefs.setString('fb.uid', uid);
-    await prefs.setString('fb.refreshToken', refreshToken);
+    await prefs.setString(_kIdToken, encryptToken(idToken));
+    await prefs.setString(_kUid, encryptToken(uid));
+    await prefs.setString(_kRefreshToken, encryptToken(refreshToken));
   }
 
   Future<void> _clearSession() async {
     _idToken = null;
     _uid = null;
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('fb.idToken');
-    await prefs.remove('fb.uid');
-    await prefs.remove('fb.refreshToken');
+    await prefs.remove(_kIdToken);
+    await prefs.remove(_kUid);
+    await prefs.remove(_kRefreshToken);
   }
 
   /// Refresh the ID token using the refresh token.
   Future<bool> _refreshToken() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final refreshToken = prefs.getString('fb.refreshToken');
-      if (refreshToken == null) return false;
+      final refreshToken = decryptToken(prefs.getString(_kRefreshToken));
+      if (refreshToken == null || refreshToken.isEmpty) return false;
       final resp = await http.post(
         Uri.parse('https://securetoken.googleapis.com/v1/token?key=$_apiKey'),
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
@@ -160,6 +203,7 @@ class FirebaseRestService implements AuthService {
   @override
   Future<void> logout() async {
     await _clearSession();
+    UserDataService.instance.cancelTimers();
   }
 
   // --- Firestore helpers ---

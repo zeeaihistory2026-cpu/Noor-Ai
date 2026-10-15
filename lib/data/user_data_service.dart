@@ -1,8 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'firebase_rest_service.dart';
 import 'noor_store.dart';
 
 enum SyncState { idle, syncing, synced, offlinePending, error }
@@ -32,24 +34,42 @@ class UserDataService {
 
   Future<String?> _token() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('fb.idToken');
+    return FirebaseRestService.decryptToken(prefs.getString('fb.idToken'));
   }
 
   Future<String?> _refreshToken() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('fb.refreshToken');
+    return FirebaseRestService.decryptToken(prefs.getString('fb.refreshToken'));
   }
 
   Future<String?> _uid() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getString('fb.uid');
+    return FirebaseRestService.decryptToken(prefs.getString('fb.uid'));
+  }
+
+  /// Optional HTTP client for dependency injection and testing.
+  http.Client? httpClient;
+
+  Future<http.Response> _httpPost(Uri url, {Map<String, String>? headers, Object? body}) {
+    if (httpClient != null) return httpClient!.post(url, headers: headers, body: body);
+    return http.post(url, headers: headers, body: body);
+  }
+
+  Future<http.Response> _httpPatch(Uri url, {Map<String, String>? headers, Object? body}) {
+    if (httpClient != null) return httpClient!.patch(url, headers: headers, body: body);
+    return http.patch(url, headers: headers, body: body);
+  }
+
+  Future<http.Response> _httpGet(Uri url, {Map<String, String>? headers}) {
+    if (httpClient != null) return httpClient!.get(url, headers: headers);
+    return http.get(url, headers: headers);
   }
 
   Future<bool> _refreshIdToken() async {
     try {
       final rf = await _refreshToken();
       if (rf == null || rf.isEmpty) return false;
-      final resp = await http.post(
+      final resp = await _httpPost(
         Uri.parse('https://securetoken.googleapis.com/v1/token?key=$_apiKey'),
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
         body: 'grant_type=refresh_token&refresh_token=$rf',
@@ -60,8 +80,16 @@ class UserDataService {
       final newRf = data['refresh_token']?.toString();
       if (newIdToken != null) {
         final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('fb.idToken', newIdToken);
-        if (newRf != null) await prefs.setString('fb.refreshToken', newRf);
+        await prefs.setString(
+          'fb.idToken',
+          FirebaseRestService.encryptToken(newIdToken),
+        );
+        if (newRf != null) {
+          await prefs.setString(
+            'fb.refreshToken',
+            FirebaseRestService.encryptToken(newRf),
+          );
+        }
         return true;
       }
       return false;
@@ -75,13 +103,17 @@ class UserDataService {
     if (token == null) return null;
 
     try {
-      var resp = await http.patch(
-        Uri.parse('$_base/$path'),
-        headers: {
-          'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode({'fields': _toFs(data)}),
+      final url = Uri.parse('$_base/$path');
+      final headers = {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+      };
+      final body = jsonEncode({'fields': _toFs(data)});
+
+      var resp = await _httpPatch(
+        url,
+        headers: headers,
+        body: body,
       );
 
       // Auto-refresh token if 401
@@ -89,13 +121,11 @@ class UserDataService {
         final refreshed = await _refreshIdToken();
         if (refreshed) {
           token = await _token();
-          resp = await http.patch(
-            Uri.parse('$_base/$path'),
-            headers: {
-              'Authorization': 'Bearer $token',
-              'Content-Type': 'application/json',
-            },
-            body: jsonEncode({'fields': _toFs(data)}),
+          headers['Authorization'] = 'Bearer $token';
+          resp = await _httpPatch(
+            url,
+            headers: headers,
+            body: body,
           );
         }
       }
@@ -110,18 +140,21 @@ class UserDataService {
     if (token == null) return null;
 
     try {
-      var resp = await http.get(
-        Uri.parse('$_base/$path'),
-        headers: {'Authorization': 'Bearer $token'},
+      final url = Uri.parse('$_base/$path');
+      final headers = {'Authorization': 'Bearer $token'};
+      var resp = await _httpGet(
+        url,
+        headers: headers,
       );
 
       if (resp.statusCode == 401) {
         final refreshed = await _refreshIdToken();
         if (refreshed) {
           token = await _token();
-          resp = await http.get(
-            Uri.parse('$_base/$path'),
-            headers: {'Authorization': 'Bearer $token'},
+          headers['Authorization'] = 'Bearer $token';
+          resp = await _httpGet(
+            url,
+            headers: headers,
           );
         }
       }
@@ -285,9 +318,13 @@ class UserDataService {
 
   // --- Outbox Flush & Replay ---
 
-  /// Flushes pending offline operations to Firestore.
-  /// Safely exits without throwing if offline or not logged in.
-  Future<int> flushOutbox() async {
+  static const int maxRetryAttempts = 6;
+  static const int initialBackoffMs = 2000;
+  static const int maxBackoffMs = 300000; // 5 minutes
+
+  /// Phase 6D: Flushes pending offline operations to Firestore with exponential backoff.
+  /// If [forceRetry] is true, ignores backoff windows and attempts all pending items immediately.
+  Future<int> flushOutbox({bool forceRetry = false}) async {
     final uid = await _uid();
     final outbox = await NoorStore.getSyncOutbox();
     if (outbox.isEmpty) {
@@ -302,8 +339,19 @@ class UserDataService {
 
     syncState.value = SyncState.syncing;
     final List<String> successfullySynced = [];
+    final List<String> deadLetterIds = [];
+    final now = DateTime.now().millisecondsSinceEpoch;
 
     for (final op in outbox) {
+      final opId = op['id']?.toString() ?? '';
+      final attempts = (op['attempts'] as num?)?.toInt() ?? 0;
+      final nextRetryAt = (op['nextRetryAt'] as num?)?.toInt() ?? 0;
+
+      // Exponential backoff check
+      if (!forceRetry && attempts > 0 && now < nextRetryAt) {
+        continue;
+      }
+
       var path = op['path']?.toString() ?? '';
       if (path.contains('/local/')) {
         path = path.replaceFirst('/local/', '/$uid/');
@@ -314,10 +362,26 @@ class UserDataService {
 
       final resp = await _authenticatedPatch(path, payload);
       if (resp != null && resp.statusCode >= 200 && resp.statusCode < 300) {
-        final opId = op['id']?.toString();
-        if (opId != null) successfullySynced.add(opId);
+        if (opId.isNotEmpty) successfullySynced.add(opId);
       } else {
-        // Still offline or server unreachable; pause flush
+        final newAttempts = attempts + 1;
+        if (resp != null && resp.statusCode == 400) {
+          // Non-retryable Bad Request; drop from queue
+          if (opId.isNotEmpty) deadLetterIds.add(opId);
+        } else if (newAttempts >= maxRetryAttempts) {
+          // Exceeded max retry threshold; drop to avoid queue wedging
+          if (opId.isNotEmpty) deadLetterIds.add(opId);
+        } else {
+          // Exponential backoff: initialBackoff * 2^(attempts-1) up to maxBackoff
+          final backoff = math.min(
+            initialBackoffMs * math.pow(2, newAttempts - 1).toInt(),
+            maxBackoffMs,
+          );
+          op['attempts'] = newAttempts;
+          op['lastAttemptAt'] = now;
+          op['nextRetryAt'] = now + backoff;
+          await NoorStore.enqueueSyncOperation(op);
+        }
         syncState.value = SyncState.offlinePending;
         break;
       }
@@ -325,6 +389,9 @@ class UserDataService {
 
     if (successfullySynced.isNotEmpty) {
       await NoorStore.removeSyncOperations(successfullySynced);
+    }
+    if (deadLetterIds.isNotEmpty) {
+      await NoorStore.removeSyncOperations(deadLetterIds);
     }
 
     final remaining = await NoorStore.getSyncOutbox();

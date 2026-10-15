@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:archive/archive.dart';
 import 'package:http/http.dart' as http;
 
+import 'file_cache_store.dart';
 import 'noor_store.dart';
 
 /// Phase 16 (Job 4) — FULL hadith databank: all six canonical books,
@@ -185,20 +186,20 @@ class HadithService {
     _inFlightEditions.clear();
     for (final b in books) {
       for (final l in HadithLanguage.values) {
-        await NoorStore.cacheJson(_cacheKey(editionId(b.id, l)), '');
+        final key = _cacheKey(editionId(b.id, l));
+        await FileCacheStore.delete(key);
+        await NoorStore.cacheJson(key, '');
       }
     }
   }
 
-  /// Disk cache: the raw CDN body, gzip-compressed then base64'd
-  /// into NoorStore. eng-bukhari is ~4.8 MB uncompressed — storing
-  /// it raw would blow the web localStorage quota, so compression
-  /// is required, not optional.
+  /// Phase 6D: Dedicated file cache for large Hadith books (decoupled from SharedPreferences).
+  /// GZip compressed bytes written directly to app file storage.
   Future<void> _writeDiskCache(String edition, String body) async {
     try {
       final bytes = utf8.encode(body);
       final zipped = const GZipEncoder().encode(bytes);
-      await NoorStore.cacheJson(_cacheKey(edition), base64Encode(zipped));
+      await FileCacheStore.writeBytes(_cacheKey(edition), zipped);
     } catch (_) {
       /* cache write failure must never break reading */
     }
@@ -206,9 +207,18 @@ class HadithService {
 
   Future<HadithBook?> _readDiskCache(String edition) async {
     try {
-      final raw = await NoorStore.cachedJson(_cacheKey(edition));
-      if (raw == null || raw.isEmpty) return null;
-      final zipped = base64Decode(raw);
+      final zipped = await FileCacheStore.readBytes(_cacheKey(edition));
+      if (zipped == null || zipped.isEmpty) {
+        // Automatic migration check from legacy SharedPreferences cache
+        final legacy = await NoorStore.cachedJson(_cacheKey(edition));
+        if (legacy == null || legacy.isEmpty) return null;
+        final legacyZipped = base64Decode(legacy);
+        final bytes = const GZipDecoder().decodeBytes(legacyZipped);
+        await FileCacheStore.writeBytes(_cacheKey(edition), legacyZipped);
+        await NoorStore.cacheJson(_cacheKey(edition), '');
+        return parseEditionJson(utf8.decode(bytes),
+            bookId: _bookIdForEdition(edition), language: _langForEdition(edition));
+      }
       final bytes = const GZipDecoder().decodeBytes(zipped);
       return parseEditionJson(utf8.decode(bytes),
           bookId: _bookIdForEdition(edition), language: _langForEdition(edition));
