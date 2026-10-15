@@ -137,118 +137,149 @@ class _WorshipDashboardScreenState extends State<WorshipDashboardScreen> {
                           style: NoorType.meta.copyWith(color: NoorColors.mutedDark))
                     ]),
                     const SizedBox(height: 12),
-                    Container(
-                        decoration: BoxDecoration(
-                            gradient: const LinearGradient(colors: [
-                              NoorColors.emeraldDark,
-                              NoorColors.emeraldMid
-                            ]),
-                            borderRadius:
-                                BorderRadius.circular(NoorRadius.heroCard),
-                            boxShadow: NoorShadows.hero),
-                        padding: const EdgeInsets.all(18),
-                        child: Row(children: [
-                          Container(
-                              width: 58,
-                              height: 58,
-                              decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                      color: NoorColors.gold, width: 1.6)),
-                              child: const Icon(Icons.wb_sunny_outlined,
-                                  color: NoorColors.gold, size: 28)),
-                          const SizedBox(width: 14),
-                          Expanded(
-                              child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                Text('Next Prayer',
-                                    style: NoorType.meta.copyWith(color: Colors.white70)),
-                                Text('Asr',
-                                    style: NoorType.screenTitle.copyWith(color: Colors.white)),
-                                Text(NoorAppState.nextPrayerCountdownLabel,
-                                    style: NoorType.secondary.copyWith(color: Colors.white)),
-                                Text(NoorAppState.nextPrayerTime,
-                                    style: NoorType.meta.copyWith(color: Colors.white70)),
-                              ])),
-
-                          // No zoom transform (Phase 11b): scale 1.38 pushed
-                          // the dome out of the thumb box. Cover anchored
-                          // bottom-right keeps dome + minaret inside.
-                          ClipRRect(
-                              borderRadius: BorderRadius.circular(10),
-                              child: Image.asset(NoorAssets.nextPrayerMosque,
-                                  width: 84,
-                                  cacheWidth: 252,
-                                  height: 88,
-                                  fit: BoxFit.cover,
-                                  alignment: Alignment.bottomRight,
-                                  errorBuilder: (_, __, ___) =>
-                                      const SizedBox(width: 84, height: 88))),
-                          const Icon(Icons.chevron_right,
-                              color: Colors.white70, size: 20),
-                        ])),
-                    const SizedBox(height: 10),
-                    NoorCard(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 6),
-                      child: Column(children: [
-                        for (var i = 0; i < _prayerRows.length; i++)
-                          Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 4),
-                              child: Row(children: [
-                                Icon(_prayerIcons[i],
-                                    size: 19, color: NoorColors.amber),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                    child: Text(_prayerRows[i].$1,
-                                        style: NoorType.body)),
-                                Text(_prayerRows[i].$2,
-                                    style: NoorType.tabular(NoorType.secondary)),
-                                IconButton(
-                                    tooltip: _notify[i]
-                                        ? 'Reminder on'
-                                        : 'Reminder off',
-                                    onPressed: () => setState(
-                                        () => _notify[i] = !_notify[i]),
-                                    icon: Icon(
-                                        _notify[i]
-                                            ? Icons.notifications
-                                            : Icons.notifications_off_outlined,
-                                        size: 19,
-                                        color: _notify[i]
-                                            ? NoorColors.emeraldDark
-                                            : NoorColors.greyDisabled)),
-                              ])),
-                      ]),
-                    ),
-                    const SizedBox(height: 6),
+                    // Next Prayer hero — tappable directly to Salah Tracker
                     Material(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(14),
-                        child: InkWell(
+                      color: Colors.transparent,
+                      borderRadius: BorderRadius.circular(NoorRadius.heroCard),
+                      child: InkWell(
+                        onTap: () => Navigator.of(context).push(
+                            MaterialPageRoute(
+                                builder: (_) => const SalahTrackerScreen())),
+                        borderRadius:
+                            BorderRadius.circular(NoorRadius.heroCard),
+                        child: Container(
+                            decoration: BoxDecoration(
+                                gradient: const LinearGradient(colors: [
+                                  NoorColors.emeraldDark,
+                                  NoorColors.emeraldMid
+                                ]),
+                                borderRadius:
+                                    BorderRadius.circular(NoorRadius.heroCard),
+                                boxShadow: NoorShadows.hero),
+                            padding: const EdgeInsets.all(18),
+                            child: Row(children: [
+                              Container(
+                                  width: 58,
+                                  height: 58,
+                                  decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                          color: NoorColors.gold, width: 1.6)),
+                                  child: const Icon(Icons.wb_sunny_outlined,
+                                      color: NoorColors.gold, size: 28)),
+                              const SizedBox(width: 14),
+                              Expanded(
+                                  child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                    Row(
+                                      children: [
+                                        Text('Next Prayer',
+                                            style: NoorType.meta.copyWith(
+                                                color: Colors.white70)),
+                                        const SizedBox(width: 5),
+                                        const Icon(Icons.arrow_forward_ios,
+                                            size: 10, color: Colors.white60),
+                                      ],
+                                    ),
+                                    Text('Asr',
+                                        style: NoorType.screenTitle
+                                            .copyWith(color: Colors.white)),
+                                    Text(NoorAppState.nextPrayerCountdownLabel,
+                                        style: NoorType.secondary
+                                            .copyWith(color: Colors.white)),
+                                    Text(NoorAppState.nextPrayerTime,
+                                        style: NoorType.meta
+                                            .copyWith(color: Colors.white70)),
+                                  ])),
+                              ClipRRect(
+                                  borderRadius: BorderRadius.circular(10),
+                                  child: Image.asset(NoorAssets.nextPrayerMosque,
+                                      width: 84,
+                                      cacheWidth: 252,
+                                      height: 88,
+                                      fit: BoxFit.cover,
+                                      alignment: Alignment.bottomRight,
+                                      errorBuilder: (_, __, ___) =>
+                                          const SizedBox(
+                                              width: 84, height: 88))),
+                              const Icon(Icons.chevron_right,
+                                  color: Colors.white70, size: 20),
+                            ])),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    // Unified Prayer Table Card with integrated Full Timings footer
+                    NoorCard(
+                      padding: EdgeInsets.zero,
+                      child: Column(children: [
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(14, 8, 14, 6),
+                          child: Column(children: [
+                            for (var i = 0; i < _prayerRows.length; i++)
+                              Padding(
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 4),
+                                  child: Row(children: [
+                                    Icon(_prayerIcons[i],
+                                        size: 19, color: NoorColors.amber),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                        child: Text(_prayerRows[i].$1,
+                                            style: NoorType.body)),
+                                    Text(_prayerRows[i].$2,
+                                        style: NoorType.tabular(
+                                            NoorType.secondary)),
+                                    IconButton(
+                                        tooltip: _notify[i]
+                                            ? 'Reminder on'
+                                            : 'Reminder off',
+                                        onPressed: () => setState(
+                                            () => _notify[i] = !_notify[i]),
+                                        icon: Icon(
+                                            _notify[i]
+                                                ? Icons.notifications
+                                                : Icons
+                                                    .notifications_off_outlined,
+                                            size: 19,
+                                            color: _notify[i]
+                                                ? NoorColors.emeraldDark
+                                                : NoorColors.greyDisabled)),
+                                  ])),
+                          ]),
+                        ),
+                        const Divider(
+                            height: 1,
+                            thickness: 1,
+                            color: NoorColors.hairlineSoft),
+                        Material(
+                          color: Colors.transparent,
+                          child: InkWell(
                             onTap: () => Navigator.of(context).push(
                                 MaterialPageRoute(
                                     builder: (_) =>
                                         const SalahTrackerScreen())),
-                            borderRadius: BorderRadius.circular(14),
-                            child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 16, vertical: 15),
-                                decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(14),
-                                    border: Border.all(
-                                        color: NoorColors.hairlineSoft)),
-                                child: const Row(children: [
-                                  Icon(Icons.calendar_month_outlined,
-                                      color: NoorColors.emeraldDark, size: 20),
-                                  SizedBox(width: 10),
-                                  Expanded(
-                                      child: Text('Full Prayer Timings',
-                                          style: NoorType.secondary)),
-                                  Icon(Icons.chevron_right,
-                                      color: NoorColors.muted, size: 19)
-                                ])))),
+                            borderRadius: const BorderRadius.vertical(
+                                bottom: Radius.circular(NoorRadius.card)),
+                            child: const Padding(
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 14),
+                              child: Row(children: [
+                                Icon(Icons.calendar_month_outlined,
+                                    color: NoorColors.emeraldDark, size: 19),
+                                SizedBox(width: 10),
+                                Expanded(
+                                    child: Text('Full Prayer Timings & Salah Log',
+                                        style: NoorType.secondary)),
+                                Icon(Icons.chevron_right,
+                                    color: NoorColors.muted, size: 19),
+                              ]),
+                            ),
+                          ),
+                        ),
+                      ]),
+                    ),
                     const SizedBox(height: 22),
                     const Text('Worship Tools',
                         style: NoorType.cardTitle),
@@ -287,17 +318,19 @@ class _WorshipDashboardScreenState extends State<WorshipDashboardScreen> {
                                         Navigator.of(context).push(
                                             MaterialPageRoute(
                                                 builder: (_) =>
-                                                    const ZikrTasbihScreen(initialTab: 1)));
+                                                    const ZikrTasbihScreen(
+                                                        initialTab: 1)));
+                                      } else if (i == 4) {
+                                        _openIslamicCalendar(context);
+                                      } else if (i == 5) {
+                                        _openFastingTracker(context);
                                       } else if (i == 6) {
                                         Navigator.of(context).push(
                                             MaterialPageRoute(
                                                 builder: (_) =>
                                                     const SalahTrackerScreen()));
-                                      } else {
-                                        ScaffoldMessenger.of(context)
-                                            .showSnackBar(SnackBar(
-                                                content: Text(
-                                                    '${SampleData.worshipTools[i]} is coming soon')));
+                                      } else if (i == 7) {
+                                        _openZakatCalculator(context);
                                       }
                                     },
                                     child: Container(
@@ -431,4 +464,378 @@ class _WorshipDashboardScreenState extends State<WorshipDashboardScreen> {
                   ])),
         ])),
       );
+
+  void _openIslamicCalendar(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: NoorColors.cream,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.75,
+        minChildSize: 0.5,
+        maxChildSize: 0.92,
+        expand: false,
+        builder: (_, scrollController) => Padding(
+          padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
+          child: ListView(
+            controller: scrollController,
+            children: [
+              Center(
+                  child: Container(
+                      width: 44,
+                      height: 5,
+                      decoration: BoxDecoration(
+                          color: NoorColors.hairline,
+                          borderRadius: BorderRadius.circular(99)))),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: const BoxDecoration(
+                      color: NoorColors.emeraldSoft,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.calendar_month,
+                        color: NoorColors.emeraldDark, size: 22),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('Islamic Calendar',
+                            style: NoorType.cardTitle),
+                        Text(NoorAppState.hijriLabel,
+                            style: NoorType.meta
+                                .copyWith(color: NoorColors.emeraldDark)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 18),
+              const Text('KEY ISLAMIC OBSERVANCES & DATES',
+                  style: NoorType.eyebrow),
+              const SizedBox(height: 10),
+              _calendarEventTile('15 Sha\'ban', 'Nisf Sha\'ban',
+                  'Night of forgiveness and spiritual preparation for Ramadan.'),
+              _calendarEventTile('1 Ramadan', 'Beginning of Ramadan',
+                  'First day of the holy month of fasting and revelation.'),
+              _calendarEventTile('21–29 Ramadan', 'The Last 10 Nights',
+                  'Search for Laylatul Qadr (Night of Decree), better than 1,000 months.'),
+              _calendarEventTile('1 Shawwal', 'Eid al-Fitr',
+                  'Celebration of the completion of Ramadan fasting.'),
+              _calendarEventTile('9 Dhul-Hijjah', 'Day of Arafah',
+                  'The greatest day of Hajj; fasting expiates sins of two years.'),
+              _calendarEventTile('10 Dhul-Hijjah', 'Eid al-Adha',
+                  'Festival of Sacrifice commemorating Prophet Ibrahim’s faith.'),
+              _calendarEventTile('10 Muharram', 'Day of Ashura',
+                  'Fasting commemorates Allah saving Musa (AS) and Bani Israel.'),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _calendarEventTile(String date, String title, String description) =>
+      Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: NoorColors.hairlineSoft),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: NoorColors.emeraldDark,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                date,
+                textAlign: TextAlign.center,
+                style: NoorType.meta.copyWith(
+                    color: Colors.white, fontWeight: FontWeight.w700),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title,
+                      style: NoorType.cardTitle.copyWith(fontSize: 15)),
+                  const SizedBox(height: 4),
+                  Text(description,
+                      style: NoorType.secondary
+                          .copyWith(color: NoorColors.mutedDark, height: 1.4)),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+
+  void _openFastingTracker(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: NoorColors.cream,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setSheetState) {
+          return Padding(
+            padding: const EdgeInsets.fromLTRB(20, 14, 20, 32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                    child: Container(
+                        width: 44,
+                        height: 5,
+                        decoration: BoxDecoration(
+                            color: NoorColors.hairline,
+                            borderRadius: BorderRadius.circular(99)))),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Container(
+                      width: 44,
+                      height: 44,
+                      decoration: const BoxDecoration(
+                        color: NoorColors.emeraldSoft,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.nightlight_round,
+                          color: NoorColors.emeraldDark, size: 22),
+                    ),
+                    const SizedBox(width: 14),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Fasting Tracker',
+                              style: NoorType.cardTitle),
+                          Text('Suhoor & Iftar Timings',
+                              style: NoorType.meta),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 18),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: NoorColors.hairlineSoft),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('SUHOOR ENDS',
+                                style: NoorType.eyebrow
+                                    .copyWith(color: NoorColors.mutedDark)),
+                            const SizedBox(height: 6),
+                            const Text('05:32 AM',
+                                style: NoorType.screenTitle),
+                            const SizedBox(height: 2),
+                            Text('Fajr Prayer',
+                                style: NoorType.meta
+                                    .copyWith(color: NoorColors.emeraldDark)),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: NoorColors.hairlineSoft),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('IFTAR TIME',
+                                style: NoorType.eyebrow
+                                    .copyWith(color: NoorColors.mutedDark)),
+                            const SizedBox(height: 6),
+                            const Text('05:56 PM',
+                                style: NoorType.screenTitle),
+                            const SizedBox(height: 2),
+                            Text('Maghrib Prayer',
+                                style: NoorType.meta
+                                    .copyWith(color: NoorColors.emeraldDark)),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: NoorColors.surfaceWarm,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: NoorColors.gold.withValues(alpha: 0.4)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('DUA AT IFTAR', style: NoorType.eyebrow.copyWith(color: NoorColors.goldDeep)),
+                      const SizedBox(height: 6),
+                      Text(
+                        'ذَهَبَ الظَّمَأُ وَابْتَلَّتِ الْعُرُوقُ وَثَبَتَ الأَجْرُ إِنْ شَاءَ اللَّهُ',
+                        textDirection: TextDirection.rtl,
+                        style: NoorType.arabic(size: 18, color: NoorColors.ink),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        '"The thirst is gone, the veins are moistened, and the reward is confirmed, if Allah wills." (Abu Dawud)',
+                        style: NoorType.secondary.copyWith(color: NoorColors.mutedDark, height: 1.4),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  void _openZakatCalculator(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: NoorColors.cream,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setSheetState) {
+          double cash = 10000;
+          double gold = 5000;
+          double business = 2000;
+          double total = cash + gold + business;
+          double zakat = total * 0.025;
+
+          return Padding(
+            padding: EdgeInsets.fromLTRB(
+                20, 14, 20, MediaQuery.of(context).viewInsets.bottom + 24),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                      child: Container(
+                          width: 44,
+                          height: 5,
+                          decoration: BoxDecoration(
+                              color: NoorColors.hairline,
+                              borderRadius: BorderRadius.circular(99)))),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Container(
+                        width: 44,
+                        height: 44,
+                        decoration: const BoxDecoration(
+                          color: NoorColors.emeraldSoft,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.calculate,
+                            color: NoorColors.emeraldDark, size: 22),
+                      ),
+                      const SizedBox(width: 14),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Zakat Calculator',
+                                style: NoorType.cardTitle),
+                            Text('2.5% on qualifying wealth above Nisab',
+                                style: NoorType.meta),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(18),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                          colors: [NoorColors.emeraldDark, NoorColors.emeraldMid]),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Column(
+                      children: [
+                        Text('ESTIMATED ZAKAT DUE (2.5%)',
+                            style: NoorType.eyebrow
+                                .copyWith(color: Colors.white70)),
+                        const SizedBox(height: 8),
+                        Text('\$${zakat.toStringAsFixed(2)}',
+                            style: NoorType.display
+                                .copyWith(fontSize: 34, color: NoorColors.gold)),
+                        const SizedBox(height: 4),
+                        Text('Based on \$${total.toStringAsFixed(2)} net zakatable assets',
+                            style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  const Text('NISAB THRESHOLD BENCHMARK', style: NoorType.eyebrow),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: NoorColors.hairlineSoft),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.info_outline,
+                            color: NoorColors.emerald, size: 20),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            'Nisab is the minimum wealth threshold (equal to 87.48 grams of gold or 612.36 grams of silver) held for one full lunar year (Hawl).',
+                            style: NoorType.secondary
+                                .copyWith(color: NoorColors.mutedDark, height: 1.45),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
 }

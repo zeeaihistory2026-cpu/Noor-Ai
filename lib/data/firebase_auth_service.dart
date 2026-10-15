@@ -1,3 +1,8 @@
+// NOTE: Native FirebaseAuth SDK is not in pubspec.yaml because the app uses pure
+// REST APIs in lib/data/firebase_rest_service.dart.
+// If you configure native Firebase Auth in the future, uncomment the code below and
+// add firebase_auth and cloud_firestore to pubspec.yaml.
+/*
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'auth_service.dart';
@@ -115,3 +120,4 @@ class FirebaseAuthService implements AuthService {
     }
   }
 }
+*/

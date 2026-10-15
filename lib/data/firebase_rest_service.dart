@@ -100,7 +100,7 @@ class FirebaseRestService implements AuthService {
       return AuthResult.success(
           AuthProfile(name: name.trim(), email: email.trim()));
     } catch (e) {
-      return AuthResult.failure('Network error. Check connection and try again.');
+      return const AuthResult.failure('Network error. Check connection and try again.');
     }
   }
 
@@ -133,7 +133,7 @@ class FirebaseRestService implements AuthService {
       return AuthResult.success(
           AuthProfile(name: name, email: email.trim()));
     } catch (e) {
-      return AuthResult.failure('Network error. Check connection and try again.');
+      return const AuthResult.failure('Network error. Check connection and try again.');
     }
   }
 

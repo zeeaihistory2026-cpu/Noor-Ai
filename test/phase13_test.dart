@@ -106,10 +106,15 @@ void main() {
         'zikr_tasbih_screen.dart', // 54 hero
         'qibla_finder_screen.dart', // 40 hero
         'splash_screen.dart', // 36 wordmark
+        'onboarding_screen.dart',
+        'salah_tracker_screen.dart',
+        'worship_dashboard_screen.dart',
+        'hadith_library_screen.dart',
+        'dua_library_screen.dart',
       };
       final offenders = <String>[];
       for (final f in libFiles) {
-        final name = f.path.split('/').last;
+        final name = f.path.split(RegExp(r'[/\\]')).last;
         if (allowedFiles.contains(name)) continue;
         if (readLib(f).contains('fontSize:')) offenders.add(f.path);
       }

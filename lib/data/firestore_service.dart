@@ -1,3 +1,8 @@
+// NOTE: Native Firestore SDK is not in pubspec.yaml because the app uses pure
+// REST APIs in lib/data/firebase_rest_service.dart.
+// If you configure native Cloud Firestore in the future, uncomment the code below and
+// add cloud_firestore and firebase_auth to pubspec.yaml.
+/*
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fb;
 
@@ -177,3 +182,4 @@ class FirestoreService {
     return doc.collection('reminders').orderBy('time').snapshots();
   }
 }
+*/

@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import '../../app.dart';
-import '../../data/auth_service.dart';
 import '../../data/firebase_rest_service.dart';
 import '../../theme/noor_theme.dart';
 import 'onboarding_screen.dart';

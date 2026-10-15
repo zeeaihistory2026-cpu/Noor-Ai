@@ -78,9 +78,13 @@ class UserDataService {
   Map<String, dynamic> _toFs(Map<String, dynamic> data) {
     final fields = <String, dynamic>{};
     data.forEach((k, v) {
-      if (v is String) fields[k] = {'stringValue': v};
-      else if (v is int) fields[k] = {'integerValue': '$v'};
-      else if (v is bool) fields[k] = {'booleanValue': v};
+      if (v is String) {
+        fields[k] = {'stringValue': v};
+      } else if (v is int) {
+        fields[k] = {'integerValue': '$v'};
+      } else if (v is bool) {
+        fields[k] = {'booleanValue': v};
+      }
     });
     return fields;
   }
@@ -89,9 +93,11 @@ class UserDataService {
     final result = <String, dynamic>{};
     fields.forEach((k, v) {
       if (v is Map) {
-        if (v.containsKey('stringValue')) result[k] = v['stringValue'];
-        else if (v.containsKey('booleanValue')) result[k] = v['booleanValue'];
-        else if (v.containsKey('integerValue')) {
+        if (v.containsKey('stringValue')) {
+          result[k] = v['stringValue'];
+        } else if (v.containsKey('booleanValue')) {
+          result[k] = v['booleanValue'];
+        } else if (v.containsKey('integerValue')) {
           result[k] = int.tryParse(v['integerValue'].toString()) ?? 0;
         }
       }

@@ -1,3 +1,8 @@
+// NOTE: Native Firebase SDK is not in pubspec.yaml because the app uses pure
+// REST APIs in lib/data/firebase_rest_service.dart.
+// If you configure native Firebase in the future, uncomment the code below and
+// add firebase_core to pubspec.yaml.
+/*
 // Generated for NOOR AI Companion Firebase project: noor-ai-916ed
 import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
 import 'package:flutter/foundation.dart'
@@ -34,3 +39,4 @@ class DefaultFirebaseOptions {
     iosBundleId: 'com.noorai.com',
   );
 }
+*/

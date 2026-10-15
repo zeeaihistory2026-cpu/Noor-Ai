@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../../app.dart';
 import '../../data/auth_service.dart';
 import '../../data/firebase_rest_service.dart';
-import '../../data/firebase_rest_service.dart';
 import '../../theme/noor_theme.dart';
 import '../../widgets/noor_components.dart';
 import 'create_account_screen.dart';
@@ -149,6 +148,19 @@ class _LoginScreenState extends State<LoginScreen> {
                   style: NoorType.secondary.copyWith(color: NoorColors.emeraldDark)),
             ),
           ]),
+          const SizedBox(height: 8),
+          Center(
+            child: TextButton(
+              onPressed: () => Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(builder: (_) => const NoorTabShell()),
+                  (_) => false),
+              style: TextButton.styleFrom(minimumSize: const Size(48, 44)),
+              child: Text('Continue as Guest',
+                  style: NoorType.secondary.copyWith(
+                      color: NoorColors.mutedDark,
+                      fontWeight: FontWeight.w600)),
+            ),
+          ),
         ],
       ),
     );

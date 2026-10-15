@@ -55,22 +55,14 @@ class _AiChatScreenState extends State<AiChatScreen> {
   bool _sending = false;
   final _input = TextEditingController();
   final _focus = FocusNode();
+  final _scrollController = ScrollController();
   List<KnowledgeResult>? _lastResults;
   bool _lastLive = false;
   String? _lastQuestion;
   String? _pendingPrefix;
 
-  final List<_ChatEntry> _messages = [
-    const _ChatEntry.user('What does Islam say about patience?'),
-    const _ChatEntry.answer(
-        'Patience (sabr) is repeatedly praised in the Quran. Allah '
-        'connects patience with prayer, perseverance and reward.'),
-    const _ChatEntry.user('Show me the strongest sources.'),
-    const _ChatEntry.answer(
-        'Here are references to check: Quran 2:153, 39:10, and '
-        'supporting authentic Hadith. Tap any source to open it '
-        'in context.'),
-  ];
+  // Clean conversational start: no dummy messages.
+  final List<_ChatEntry> _messages = [];
 
   @override
   void initState() {
@@ -94,7 +86,20 @@ class _AiChatScreenState extends State<AiChatScreen> {
   void dispose() {
     _input.dispose();
     _focus.dispose();
+    _scrollController.dispose();
     super.dispose();
+  }
+
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
   }
 
   static bool _looksLikeSearch(String text) {
@@ -123,6 +128,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
       _sending = true;
       _lastQuestion = text;
     });
+    _scrollToBottom();
 
     if (_looksLikeSearch(text)) {
       final response = await _search.search(text);
@@ -149,6 +155,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
           ));
         }
       });
+      _scrollToBottom();
       return;
     }
 
@@ -158,6 +165,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
       _messages.add(_ChatEntry.answer(answer.text));
       _sending = false;
     });
+    _scrollToBottom();
   }
 
   void _chip(String prefix, String hint) {
@@ -242,8 +250,10 @@ class _AiChatScreenState extends State<AiChatScreen> {
                       (
                         Icons.delete_outline,
                         'Clear conversation',
-                        () => setState(() => _messages.removeRange(
-                            4, _messages.length))
+                        () => setState(() {
+                          _messages.clear();
+                          _lastResults = null;
+                        })
                       ),
                     ])),
             ]),
@@ -259,41 +269,63 @@ class _AiChatScreenState extends State<AiChatScreen> {
             ),
           ),
           Expanded(
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
-              children: [
-                _databankSection(),
-                const SizedBox(height: 16),
-                for (final m in _messages) ...[
-                  _bubble(m.isUser, m.text),
-                  if (m.results != null) ...[
-                    const SizedBox(height: 10),
-                    for (final r in m.results!) ...[
-                      _resultCard(r),
-                      const SizedBox(height: 10),
+            child: GestureDetector(
+              onTap: () => FocusScope.of(context).unfocus(),
+              behavior: HitTestBehavior.opaque,
+              child: ListView(
+                controller: _scrollController,
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
+                children: [
+                  _databankSection(),
+                  const SizedBox(height: 16),
+                  if (_messages.isEmpty)
+                    _emptyChatState()
+                  else ...[
+                    for (final m in _messages) ...[
+                      _bubble(m.isUser, m.text),
+                      if (m.results != null) ...[
+                        const SizedBox(height: 10),
+                        for (final r in m.results!) ...[
+                          _resultCard(r),
+                          const SizedBox(height: 10),
+                        ],
+                      ],
+                      const SizedBox(height: 12),
                     ],
+                    if (_sending)
+                      const Padding(
+                        padding: EdgeInsets.only(bottom: 12),
+                        child: Row(
+                          children: [
+                            SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: NoorColors.emerald,
+                              ),
+                            ),
+                            SizedBox(width: 10),
+                            Text('Searching referenced sources…',
+                                style: NoorType.meta),
+                          ],
+                        ),
+                      ),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: TextButton.icon(
+                        onPressed: _openSources,
+                        icon: const Icon(Icons.library_books_outlined,
+                            size: 17, color: NoorColors.emerald),
+                        label: const Text('Show sources',
+                            style: TextStyle(
+                                color: NoorColors.emerald,
+                                fontWeight: FontWeight.w700)),
+                      ),
+                    ),
                   ],
-                  const SizedBox(height: 12),
                 ],
-                if (_sending)
-                  const Padding(
-                    padding: EdgeInsets.only(bottom: 12),
-                    child: Text('Searching referenced sources…',
-                        style: NoorType.meta),
-                  ),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: TextButton.icon(
-                    onPressed: _openSources,
-                    icon: const Icon(Icons.library_books_outlined,
-                        size: 17, color: NoorColors.emerald),
-                    label: const Text('Show sources',
-                        style: TextStyle(
-                            color: NoorColors.emerald,
-                            fontWeight: FontWeight.w700)),
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
           Padding(
@@ -303,7 +335,9 @@ class _AiChatScreenState extends State<AiChatScreen> {
               focusNode: _focus,
               onSubmitted: (_) => _send(),
               decoration: InputDecoration(
-                hintText: 'Ask a follow-up...',
+                hintText: _messages.isEmpty
+                    ? 'Ask a question about Islam...'
+                    : 'Ask a follow-up...',
                 hintStyle: NoorType.secondary.copyWith(color: NoorColors.muted),
                 filled: true,
                 fillColor: Colors.white,
@@ -468,6 +502,99 @@ class _AiChatScreenState extends State<AiChatScreen> {
           child: Text(text,
               style: NoorType.body.copyWith(
                   color: user ? Colors.white : NoorColors.ink, height: 1.5)),
+        ),
+      );
+
+  Widget _emptyChatState() => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 4),
+        child: Column(
+          children: [
+            Container(
+              width: 64,
+              height: 64,
+              decoration: const BoxDecoration(
+                color: NoorColors.emeraldSoft,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.auto_awesome,
+                  color: NoorColors.emeraldDark, size: 30),
+            ),
+            const SizedBox(height: 16),
+            const Text('Assalamu Alaikum',
+                style: NoorType.screenTitle),
+            const SizedBox(height: 6),
+            Text(
+              'Ask Noor AI for referenced guidance grounded in the Qur’an, authentic Hadith, and recognized scholarship.',
+              textAlign: TextAlign.center,
+              style: NoorType.secondary.copyWith(
+                  color: NoorColors.mutedDark, height: 1.5),
+            ),
+            const SizedBox(height: 24),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'POPULAR INQUIRIES',
+                style: NoorType.eyebrow.copyWith(letterSpacing: 1.1),
+              ),
+            ),
+            const SizedBox(height: 10),
+            _promptSuggestionTile(
+              Icons.menu_book_outlined,
+              'What does the Qur’an say about patience?',
+              () => _runQuery('What does the Qur’an say about patience?'),
+            ),
+            const SizedBox(height: 8),
+            _promptSuggestionTile(
+              Icons.pan_tool_outlined,
+              'Authentic Duas for relief from anxiety and hardship',
+              () => _runQuery('Duas for relief from anxiety and hardship'),
+            ),
+            const SizedBox(height: 8),
+            _promptSuggestionTile(
+              Icons.nightlight_outlined,
+              'Virtues and timings of Tahajjud prayer',
+              () => _runQuery('Virtues and timings of Tahajjud prayer'),
+            ),
+            const SizedBox(height: 8),
+            _promptSuggestionTile(
+              Icons.water_drop_outlined,
+              'Essential rulings on Wudu and purification',
+              () => _runQuery('What are the essential steps of Wudu?'),
+            ),
+          ],
+        ),
+      );
+
+  Widget _promptSuggestionTile(
+          IconData icon, String title, VoidCallback onTap) =>
+      Material(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(14),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: NoorColors.hairline),
+            ),
+            child: Row(
+              children: [
+                Icon(icon, size: 18, color: NoorColors.emeraldDark),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: NoorType.secondary.copyWith(
+                        color: NoorColors.ink, fontWeight: FontWeight.w600),
+                  ),
+                ),
+                const Icon(Icons.arrow_forward_ios,
+                    size: 13, color: NoorColors.muted),
+              ],
+            ),
+          ),
         ),
       );
 }

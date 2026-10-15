@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../data/auth_service.dart';
-import '../../data/firebase_rest_service.dart';
 import '../../data/firebase_rest_service.dart';
 import '../../data/sample_data.dart';
 import '../../widgets/noor_components.dart';

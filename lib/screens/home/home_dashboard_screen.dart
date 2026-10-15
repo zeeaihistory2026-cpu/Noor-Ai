@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../data/app_state.dart';
-import '../../data/auth_service.dart';
 import '../../data/firebase_rest_service.dart';
-import '../../data/firebase_rest_service.dart';
+import '../worship/salah_tracker_screen.dart';
 import '../../data/noor_controller.dart';
 import '../../data/prayer_service.dart';
 import '../../data/sample_data.dart';
@@ -127,76 +126,82 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
             ),
           ]),
           const SizedBox(height: 18),
-          // Next Prayer hero — mosque art cropped from Page 01.
-          Container(
-            constraints: const BoxConstraints(
-                minHeight: NoorSizes.nextPrayerCardMinHeight),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                  colors: [NoorColors.emeraldDark, NoorColors.emeraldMid]),
+          // Next Prayer hero — mosque art cropped from Page 01 (tappable to Salah Tracker).
+          Material(
+            color: Colors.transparent,
+            borderRadius: BorderRadius.circular(NoorRadius.heroCard),
+            child: InkWell(
+              onTap: () => push(const SalahTrackerScreen()),
               borderRadius: BorderRadius.circular(NoorRadius.heroCard),
-              boxShadow: NoorShadows.hero,
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(NoorRadius.heroCard),
-              child: Stack(children: [
-                Positioned(
-                  right: 0,
-                  top: 0,
-                  bottom: 0,
-                  // The mosque scene fills the card height at its
-                  // natural width (Phase 11b: the old 1.15 zoom
-                  // pushed the dome out of the card, and the crop's
-                  // pale top band is now removed from the asset).
-                  // Right-anchored so dome + minaret stay inside;
-                  // the left edge fades into the card gradient, as
-                  // drawn on Page 01 — no hard seam.
-                  child: ShaderMask(
-                      shaderCallback: (rect) => const LinearGradient(
-                          begin: Alignment.centerLeft,
-                          end: Alignment.centerRight,
-                          colors: [Colors.transparent, Colors.white],
-                          stops: [0, 0.6]).createShader(rect),
-                      blendMode: BlendMode.dstIn,
-                      child: Image.asset(NoorAssets.nextPrayerMosque,
-                          width: 218,
-                          cacheWidth: 654,
-                          fit: BoxFit.cover,
-                          alignment: Alignment.centerRight,
-                          errorBuilder: (_, __, ___) =>
-                              const SizedBox.shrink())),
+              child: Container(
+                constraints: const BoxConstraints(
+                    minHeight: NoorSizes.nextPrayerCardMinHeight),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                      colors: [NoorColors.emeraldDark, NoorColors.emeraldMid]),
+                  borderRadius: BorderRadius.circular(NoorRadius.heroCard),
+                  boxShadow: NoorShadows.hero,
                 ),
-                Padding(
-                  // Right inset keeps text clear of the mosque art
-                  // (Page 01: text left ~55%, mosque right ~45%).
-                  padding: const EdgeInsets.fromLTRB(20, 20, 150, 20),
-                  child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('NEXT PRAYER',
-                            style: NoorType.meta.copyWith(color: Colors.white70,
-                                letterSpacing: 1.2)),
-                        const SizedBox(height: 6),
-                        Text(_nextPrayer,
-                            style: NoorType.display.copyWith(color: Colors.white)),
-                        const SizedBox(height: 2),
-                        Text(_nextPrayerTime,
-                            style: NoorType.screenTitle.copyWith(color: NoorColors.gold)),
-                        const SizedBox(height: 8),
-                        Row(mainAxisSize: MainAxisSize.min, children: [
-                          const Icon(Icons.schedule,
-                              color: Colors.white70, size: 15),
-                          const SizedBox(width: 5),
-                          Flexible(
-                            child: Text(_nextPrayerIn,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(color: Colors.white70)),
-                          ),
-                        ]),
-                      ]),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(NoorRadius.heroCard),
+                  child: Stack(children: [
+                    Positioned(
+                      right: 0,
+                      top: 0,
+                      bottom: 0,
+                      child: ShaderMask(
+                          shaderCallback: (rect) => const LinearGradient(
+                              begin: Alignment.centerLeft,
+                              end: Alignment.centerRight,
+                              colors: [Colors.transparent, Colors.white],
+                              stops: [0, 0.6]).createShader(rect),
+                          blendMode: BlendMode.dstIn,
+                          child: Image.asset(NoorAssets.nextPrayerMosque,
+                              width: 218,
+                              cacheWidth: 654,
+                              fit: BoxFit.cover,
+                              alignment: Alignment.centerRight,
+                              errorBuilder: (_, __, ___) =>
+                                  const SizedBox.shrink())),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 20, 150, 20),
+                      child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Text('NEXT PRAYER',
+                                    style: NoorType.meta.copyWith(color: Colors.white70,
+                                        letterSpacing: 1.2)),
+                                const SizedBox(width: 6),
+                                const Icon(Icons.arrow_forward_ios,
+                                    size: 11, color: Colors.white60),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+                            Text(_nextPrayer,
+                                style: NoorType.display.copyWith(color: Colors.white)),
+                            const SizedBox(height: 2),
+                            Text(_nextPrayerTime,
+                                style: NoorType.screenTitle.copyWith(color: NoorColors.gold)),
+                            const SizedBox(height: 8),
+                            Row(mainAxisSize: MainAxisSize.min, children: [
+                              const Icon(Icons.schedule,
+                                  color: Colors.white70, size: 15),
+                              const SizedBox(width: 5),
+                              Flexible(
+                                child: Text(_nextPrayerIn,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(color: Colors.white70)),
+                              ),
+                            ]),
+                          ]),
+                    ),
+                  ]),
                 ),
-              ]),
+              ),
             ),
           ),
           const SizedBox(height: 20),

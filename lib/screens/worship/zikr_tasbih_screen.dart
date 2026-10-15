@@ -36,7 +36,14 @@ class DhikrModel {
 /// - Interactive Dhikr cards with Arabic calligraphy, transliteration, and translation
 /// - Balanced Today's Progress card and styled Daily Tip
 class ZikrTasbihScreen extends StatefulWidget {
-  const ZikrTasbihScreen({super.key});
+  final int initialTab;
+  final String? initialDhikrId;
+
+  const ZikrTasbihScreen({
+    super.key,
+    this.initialTab = 0,
+    this.initialDhikrId,
+  });
 
   @override
   State<ZikrTasbihScreen> createState() => _ZikrTasbihScreenState();
@@ -227,7 +234,18 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
   @override
   void initState() {
     super.initState();
-    _activeDhikr = _tasbihDhikrs[0];
+    _tab = widget.initialTab.clamp(0, 2);
+
+    if (widget.initialDhikrId != null) {
+      final match = _tasbihDhikrs.firstWhere(
+        (d) => d.id == widget.initialDhikrId,
+        orElse: () => _tasbihDhikrs[0],
+      );
+      _activeDhikr = match;
+    } else {
+      _activeDhikr = _tasbihDhikrs[0];
+    }
+
     _target = _activeDhikr.defaultTarget;
     _count = _countsMap[_activeDhikr.id] ?? 27;
 
@@ -267,6 +285,8 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
     if (_hapticEnabled) {
       if (_count + 1 >= _target) {
         HapticFeedback.heavyImpact();
+      } else if ((_count + 1) % 33 == 0) {
+        HapticFeedback.mediumImpact();
       } else {
         HapticFeedback.lightImpact();
       }
@@ -297,6 +317,47 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
         _countsMap[_activeDhikr.id] = _count;
       });
     }
+  }
+
+  void _confirmReset() {
+    if (_count == 0) return;
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        title: Row(
+          children: [
+            const Icon(Icons.refresh, color: NoorColors.emeraldDark),
+            const SizedBox(width: 8),
+            Text('Reset Counter?', style: NoorType.section.copyWith(color: NoorColors.emeraldDark)),
+          ],
+        ),
+        content: Text(
+          'Are you sure you want to reset your count of $_count for "${_activeDhikr.transliteration}" back to 0?',
+          style: NoorType.body.copyWith(color: NoorColors.mutedDark),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancel', style: TextStyle(color: NoorColors.mutedDark)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: NoorColors.error,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              _reset();
+            },
+            child: const Text('Reset to 0'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _reset() {
@@ -476,8 +537,8 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
                 title: const Text('Reset Counter to Zero', style: NoorType.body),
                 trailing: TextButton(
                   onPressed: () {
-                    _reset();
                     Navigator.of(ctx).pop();
+                    _confirmReset();
                   },
                   child: const Text('Reset Now', style: TextStyle(color: NoorColors.error, fontWeight: FontWeight.w700)),
                 ),
@@ -775,34 +836,38 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
                   ),
                 ),
                 Flexible(
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: ['M', 'T', 'W', 'T', 'F', 'S', 'S']
-                        .asMap()
-                        .entries
-                        .map((e) => Padding(
-                              padding: const EdgeInsetsDirectional.only(start: 3),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    e.value,
-                                    textAlign: TextAlign.center,
-                                    style: NoorType.meta.copyWith(
-                                      color: Colors.white70,
-                                      fontSize: 10,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerRight,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: ['M', 'T', 'W', 'T', 'F', 'S', 'S']
+                          .asMap()
+                          .entries
+                          .map((e) => Padding(
+                                padding: const EdgeInsetsDirectional.only(start: 3),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      e.value,
+                                      textAlign: TextAlign.center,
+                                      style: NoorType.meta.copyWith(
+                                        color: Colors.white70,
+                                        fontSize: 10,
+                                      ),
                                     ),
-                                  ),
-                                  const SizedBox(height: 3),
-                                  Icon(
-                                    e.key < 6 ? Icons.check_circle : Icons.radio_button_unchecked,
-                                    size: 14,
-                                    color: e.key < 6 ? NoorColors.success : Colors.white38,
-                                  ),
-                                ],
-                              ),
-                            ))
-                        .toList(),
+                                    const SizedBox(height: 3),
+                                    Icon(
+                                      e.key < 6 ? Icons.check_circle : Icons.radio_button_unchecked,
+                                      size: 14,
+                                      color: e.key < 6 ? NoorColors.success : Colors.white38,
+                                    ),
+                                  ],
+                                ),
+                              ))
+                          .toList(),
+                    ),
                   ),
                 ),
               ],
@@ -853,7 +918,7 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
               ),
             ),
             const SizedBox(width: 8),
-            _smallIconButton(Icons.refresh, onTap: _reset, tooltip: 'Reset'),
+            _smallIconButton(Icons.refresh, onTap: _confirmReset, tooltip: 'Reset'),
           ],
         ),
 
@@ -964,7 +1029,9 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
 
     return Semantics(
       button: true,
+      liveRegion: true,
       label: 'Tasbih counter, $_count of $_target. Tap to count.',
+      value: '$_count of $_target',
       child: GestureDetector(
         onTap: _tap,
         child: ScaleTransition(

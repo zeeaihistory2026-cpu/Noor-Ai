@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import '../../data/sample_data.dart';
 import '../../theme/noor_theme.dart';
 import '../../data/app_state.dart';
-import '../../data/auth_service.dart';
-import '../../data/firebase_rest_service.dart';
 import '../../data/firebase_rest_service.dart';
 import '../../widgets/noor_components.dart';
 import '../../widgets/noor_share_card.dart';

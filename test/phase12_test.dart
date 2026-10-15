@@ -124,7 +124,7 @@ void main() {
           final conditional =
               line.contains('? null') || line.contains('?null');
           final allowedFallback =
-              entity.path.endsWith('widgets/noor_share_card.dart');
+              entity.path.replaceAll('\\', '/').endsWith('widgets/noor_share_card.dart');
           if (!conditional && !allowedFallback) {
             offenders.add('${entity.path}:${i + 1}');
           }
