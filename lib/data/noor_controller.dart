@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 
 import 'app_state.dart';
 import 'noor_store.dart';
 import 'prayer_service.dart';
+import 'user_data_service.dart';
 
 /// Phase 4 — Theme Preference Modes:
 /// [solar] switches to Midnight Emerald dark mode automatically between
@@ -28,6 +30,7 @@ enum NoorThemePreference {
 class NoorController extends ChangeNotifier {
   NoorController() {
     loadThemePreference();
+    unawaited(UserDataService.instance.flushOutbox());
   }
 
   PrayerDay? _liveDay;

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:noor_ai_companion/data/noor_store.dart';
+import 'package:noor_ai_companion/data/user_data_service.dart';
 import 'package:noor_ai_companion/screens/library/saved_content_screen.dart';
 import 'package:noor_ai_companion/screens/worship/salah_tracker_screen.dart';
 import 'package:noor_ai_companion/screens/worship/zikr_tasbih_screen.dart';
@@ -11,6 +12,10 @@ void main() {
 
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
+  });
+
+  tearDown(() {
+    UserDataService.instance.cancelTimers();
   });
 
   group('Phase 6A: NoorStore Data Persistence', () {
@@ -106,6 +111,7 @@ void main() {
       expect(dhuhrFinder, findsOneWidget);
       await tester.tap(dhuhrFinder);
       await tester.pumpAndSettle();
+      await tester.pump(const Duration(seconds: 2));
 
       final updatedPrayers = await NoorStore.getPrayersList(today);
       expect(updatedPrayers[1], isTrue);
@@ -126,6 +132,7 @@ void main() {
       final tapTarget = find.byType(GestureDetector).first;
       await tester.tap(tapTarget);
       await tester.pumpAndSettle();
+      await tester.pump(const Duration(seconds: 2));
 
       final savedCount = await NoorStore.getTasbihCounts();
       expect(savedCount['subhanallah'], greaterThanOrEqualTo(10));

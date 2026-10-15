@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'auth_service.dart';
+import 'user_data_service.dart';
 
 /// Firebase backend via REST API (no native SDK needed).
 /// - Auth: Firebase Auth REST API
@@ -97,6 +99,7 @@ class FirebaseRestService implements AuthService {
         'email': email.trim(),
         'createdAt': DateTime.now().toIso8601String(),
       });
+      unawaited(UserDataService.instance.flushOutbox());
       return AuthResult.success(
           AuthProfile(name: name.trim(), email: email.trim()));
     } catch (e) {
@@ -130,6 +133,7 @@ class FirebaseRestService implements AuthService {
       // Load profile from Firestore
       final profile = await _getDoc('users/${data['localId']}');
       final name = profile?['name']?.toString() ?? '';
+      unawaited(UserDataService.instance.flushOutbox());
       return AuthResult.success(
           AuthProfile(name: name, email: email.trim()));
     } catch (e) {

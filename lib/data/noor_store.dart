@@ -389,4 +389,44 @@ class NoorStore {
       _writeString('cache.$key', json);
 
   static Future<String?> cachedJson(String key) => _readString('cache.$key');
+
+  // ---- Sync Outbox (Phase 6B: Offline write queue) --------------------
+  static const _kSyncOutbox = 'sync.outbox';
+
+  static Future<List<Map<String, dynamic>>> getSyncOutbox() async {
+    final raw = await _readString(_kSyncOutbox);
+    if (raw == null || raw.isEmpty) return <Map<String, dynamic>>[];
+    try {
+      final list = jsonDecode(raw) as List<dynamic>;
+      return list
+          .whereType<Map>()
+          .map((e) => Map<String, dynamic>.from(e))
+          .toList();
+    } catch (_) {
+      return <Map<String, dynamic>>[];
+    }
+  }
+
+  static Future<void> enqueueSyncOperation(Map<String, dynamic> op) async {
+    final list = await getSyncOutbox();
+    final path = op['path'];
+    final idx = path != null ? list.indexWhere((e) => e['path'] == path) : -1;
+    if (idx >= 0) {
+      list[idx] = op;
+    } else {
+      list.add(op);
+    }
+    await _writeString(_kSyncOutbox, jsonEncode(list));
+  }
+
+  static Future<void> removeSyncOperations(List<String> opIds) async {
+    if (opIds.isEmpty) return;
+    final list = await getSyncOutbox();
+    list.removeWhere((e) => opIds.contains(e['id']));
+    await _writeString(_kSyncOutbox, jsonEncode(list));
+  }
+
+  static Future<void> clearSyncOutbox() async {
+    await _writeString(_kSyncOutbox, jsonEncode([]));
+  }
 }

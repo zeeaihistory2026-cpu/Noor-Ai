@@ -4,6 +4,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import '../../data/firebase_rest_service.dart';
 import '../../data/noor_store.dart';
+import '../../data/user_data_service.dart';
 import '../../theme/noor_theme.dart';
 import '../../widgets/noor_components.dart';
 import '../library/dua_library_screen.dart';
@@ -321,6 +322,15 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
         }
       });
     }
+
+    // Background sync with cloud if authenticated
+    try {
+      final cloudTotal = await UserDataService.instance.loadTasbihTotal(_today);
+      if (cloudTotal != null && cloudTotal > total && mounted) {
+        setState(() => _totalToday = cloudTotal);
+        await NoorStore.setTasbihTotalToday(_today, cloudTotal);
+      }
+    } catch (_) {}
   }
 
   @override
@@ -366,6 +376,7 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
 
     NoorStore.setTasbihCount(_activeDhikr.id, _count);
     NoorStore.setTasbihTotalToday(_today, _totalToday);
+    UserDataService.instance.saveTasbihTotal(_today, _totalToday);
 
     if (mounted) {
       SemanticsService.sendAnnouncement(
@@ -397,6 +408,7 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
       });
       NoorStore.setTasbihCount(_activeDhikr.id, _count);
       NoorStore.setTasbihTotalToday(_today, _totalToday);
+      UserDataService.instance.saveTasbihTotal(_today, _totalToday);
       if (mounted) {
         SemanticsService.sendAnnouncement(
           View.of(context),
@@ -1552,6 +1564,7 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
                         });
                         NoorStore.setTasbihCount(d.id, next);
                         NoorStore.setTasbihTotalToday(_today, _totalToday);
+                        UserDataService.instance.saveTasbihTotal(_today, _totalToday);
                       },
                       borderRadius: BorderRadius.circular(20),
                       child: Container(
@@ -1688,6 +1701,7 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
                           });
                           NoorStore.setTasbihCount(d.id, next);
                           NoorStore.setTasbihTotalToday(_today, _totalToday);
+                          UserDataService.instance.saveTasbihTotal(_today, _totalToday);
                         },
                         borderRadius: BorderRadius.circular(20),
                         child: Container(
