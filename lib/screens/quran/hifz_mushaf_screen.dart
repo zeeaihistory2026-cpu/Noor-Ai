@@ -34,6 +34,16 @@ class _HifzMushafScreenState extends State<HifzMushafScreen> {
 
   Future<void> _toggleBookmark() async {
     final now = await NoorStore.toggleBookmark(_bookmarkId);
+    if (now) {
+      await NoorStore.saveRichItem(
+        id: _bookmarkId,
+        title: 'Mushaf · Surah Al-Baqarah (Page 2)',
+        subtitle: 'Alif Lam Meem. Dhalikal kitabu la rayba feeh...',
+        tag: 'Quran Page',
+      );
+    } else {
+      await NoorStore.removeRichItem(_bookmarkId);
+    }
     if (!mounted) return;
     setState(() => _bookmarked = now);
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(

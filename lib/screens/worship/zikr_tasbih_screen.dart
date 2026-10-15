@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import '../../data/firebase_rest_service.dart';
+import '../../data/noor_store.dart';
 import '../../theme/noor_theme.dart';
 import '../../widgets/noor_components.dart';
 import '../library/dua_library_screen.dart';
@@ -26,6 +27,26 @@ class DhikrModel {
     this.reference,
     this.category = 'tasbih',
   });
+
+  Map<String, dynamic> toMap() => {
+    'id': id,
+    'arabic': arabic,
+    'transliteration': transliteration,
+    'meaning': meaning,
+    'defaultTarget': defaultTarget,
+    'reference': reference,
+    'category': category,
+  };
+
+  factory DhikrModel.fromMap(Map<String, dynamic> map) => DhikrModel(
+    id: map['id']?.toString() ?? '',
+    arabic: map['arabic']?.toString() ?? '',
+    transliteration: map['transliteration']?.toString() ?? '',
+    meaning: map['meaning']?.toString() ?? '',
+    defaultTarget: (map['defaultTarget'] as num?)?.toInt() ?? 33,
+    reference: map['reference']?.toString(),
+    category: map['category']?.toString() ?? 'custom',
+  );
 }
 
 /// Page 07 — Zikr & Tasbih Screen.
@@ -271,6 +292,35 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
     );
 
     _loadName();
+    _loadPersistedState();
+  }
+
+  String get _today => DateTime.now().toIso8601String().split('T').first;
+
+  Future<void> _loadPersistedState() async {
+    final savedCounts = await NoorStore.getTasbihCounts();
+    final customList = await NoorStore.getCustomDhikrs();
+    final total = await NoorStore.getTasbihTotalToday(_today);
+
+    if (mounted) {
+      setState(() {
+        if (savedCounts.isNotEmpty) {
+          _countsMap.addAll(savedCounts);
+        }
+        for (final map in customList) {
+          final customDhikr = DhikrModel.fromMap(map);
+          if (!_customDhikrs.any((d) => d.id == customDhikr.id)) {
+            _customDhikrs.add(customDhikr);
+          }
+        }
+        if (total > 0) {
+          _totalToday = total;
+        }
+        if (_countsMap.containsKey(_activeDhikr.id)) {
+          _count = _countsMap[_activeDhikr.id]!;
+        }
+      });
+    }
   }
 
   @override
@@ -314,6 +364,9 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
       _countsMap[_activeDhikr.id] = _count;
     });
 
+    NoorStore.setTasbihCount(_activeDhikr.id, _count);
+    NoorStore.setTasbihTotalToday(_today, _totalToday);
+
     if (mounted) {
       SemanticsService.sendAnnouncement(
         View.of(context),
@@ -342,6 +395,8 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
         if (_totalToday > 0) _totalToday--;
         _countsMap[_activeDhikr.id] = _count;
       });
+      NoorStore.setTasbihCount(_activeDhikr.id, _count);
+      NoorStore.setTasbihTotalToday(_today, _totalToday);
       if (mounted) {
         SemanticsService.sendAnnouncement(
           View.of(context),
@@ -400,6 +455,7 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
       _count = 0;
       _countsMap[_activeDhikr.id] = 0;
     });
+    NoorStore.setTasbihCount(_activeDhikr.id, 0);
     if (mounted) {
       SemanticsService.sendAnnouncement(
         View.of(context),
@@ -751,6 +807,8 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
                   _customDhikrs.add(newDhikr);
                   _countsMap[newDhikr.id] = 0;
                 });
+                NoorStore.saveCustomDhikr(newDhikr.toMap());
+                NoorStore.setTasbihCount(newDhikr.id, 0);
                 Navigator.of(ctx).pop();
               }
             },
@@ -1486,12 +1544,14 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
                     InkWell(
                       onTap: () {
                         if (_hapticEnabled) HapticFeedback.lightImpact();
+                        final current = _countsMap[d.id] ?? 0;
+                        final next = current + 1 > d.defaultTarget ? d.defaultTarget : current + 1;
                         setState(() {
-                          final current = _countsMap[d.id] ?? 0;
-                          final next = current + 1 > d.defaultTarget ? d.defaultTarget : current + 1;
                           _countsMap[d.id] = next;
                           _totalToday++;
                         });
+                        NoorStore.setTasbihCount(d.id, next);
+                        NoorStore.setTasbihTotalToday(_today, _totalToday);
                       },
                       borderRadius: BorderRadius.circular(20),
                       child: Container(
@@ -1620,12 +1680,14 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
                       InkWell(
                         onTap: () {
                           if (_hapticEnabled) HapticFeedback.lightImpact();
+                          final current = _countsMap[d.id] ?? 0;
+                          final next = current + 1 > d.defaultTarget ? d.defaultTarget : current + 1;
                           setState(() {
-                            final current = _countsMap[d.id] ?? 0;
-                            final next = current + 1 > d.defaultTarget ? d.defaultTarget : current + 1;
                             _countsMap[d.id] = next;
                             _totalToday++;
                           });
+                          NoorStore.setTasbihCount(d.id, next);
+                          NoorStore.setTasbihTotalToday(_today, _totalToday);
                         },
                         borderRadius: BorderRadius.circular(20),
                         child: Container(
@@ -1652,8 +1714,19 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
                     Text(d.meaning, style: NoorType.meta.copyWith(color: NoorColors.mutedDark)),
                   ],
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
+                      IconButton(
+                        icon: const Icon(Icons.delete_outline, size: 18, color: NoorColors.mutedDark),
+                        tooltip: 'Delete custom zikr',
+                        onPressed: () async {
+                          setState(() {
+                            _customDhikrs.removeWhere((item) => item.id == d.id);
+                            _countsMap.remove(d.id);
+                          });
+                          await NoorStore.deleteCustomDhikr(d.id);
+                        },
+                      ),
                       TextButton.icon(
                         icon: const Icon(Icons.play_arrow, size: 16),
                         label: const Text('Count in Tasbih'),

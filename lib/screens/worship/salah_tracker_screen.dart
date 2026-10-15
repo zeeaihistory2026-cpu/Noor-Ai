@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../data/app_state.dart';
+import '../../data/noor_store.dart';
 import '../../data/user_data_service.dart';
 import '../../theme/noor_theme.dart';
 import '../../widgets/noor_components.dart';
@@ -39,18 +40,35 @@ class _SalahTrackerScreenState extends State<SalahTrackerScreen> {
       DateTime.now().toIso8601String().split('T').first;
 
   Future<void> _loadPrayers() async {
-    final saved = await UserDataService.instance.loadPrayers(_today);
-    if (saved != null && mounted) {
+    // 1. Instant offline load from local NoorStore
+    final local = await NoorStore.getPrayersList(_today);
+    if (mounted && local.any((element) => element)) {
       setState(() {
-        for (var i = 0; i < 5 && i < saved.length; i++) {
-          _done[i] = saved[i];
+        for (var i = 0; i < 5 && i < local.length; i++) {
+          _done[i] = local[i];
         }
       });
     }
+
+    // 2. In background, sync with cloud UserDataService if authenticated
+    try {
+      final saved = await UserDataService.instance.loadPrayers(_today);
+      if (saved != null && mounted) {
+        setState(() {
+          for (var i = 0; i < 5 && i < saved.length; i++) {
+            _done[i] = saved[i];
+          }
+        });
+        await NoorStore.setPrayersList(_today, _done);
+      }
+    } catch (_) {}
   }
 
   void _togglePrayer(int i) {
     setState(() => _done[i] = !_done[i]);
+    // Save locally first to guarantee zero data loss
+    NoorStore.setPrayersList(_today, _done);
+    // Push to cloud if logged in
     UserDataService.instance.savePrayers(_today, _done);
   }
 
@@ -178,44 +196,43 @@ class _SalahTrackerScreenState extends State<SalahTrackerScreen> {
                               children: List.generate(5, (i) {
                                 final next = i == 2;
                                 return Expanded(
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        vertical: 8),
-                                    decoration: next
-                                        ? BoxDecoration(
-                                            color: NoorColors.emeraldSoft,
-                                            borderRadius:
-                                                BorderRadius.circular(14))
-                                        : null,
-                                    child: Column(children: [
-                                      // Solid mosque glyphs as drawn
-                                      // (Phase 11 fix; was outline).
-                                      Icon(_prayerIcons[i],
-                                          size: 24,
-                                          color: _done[i] || next
-                                              ? NoorColors.emeraldDark
-                                              : NoorColors.greyDisabled),
-                                      const SizedBox(height: 6),
-                                      Padding(
-                                        padding: const EdgeInsets.symmetric(horizontal: 2),
-                                        child: FittedBox(
-                                          fit: BoxFit.scaleDown,
-                                          child: Text(NoorAppState.prayerTimes[i].$1,
-                                              textAlign: TextAlign.center,
-                                              maxLines: 1,
-                                              style: NoorType.meta),
+                                  child: InkWell(
+                                    onTap: () => _togglePrayer(i),
+                                    borderRadius: BorderRadius.circular(14),
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          vertical: 8),
+                                      decoration: next
+                                          ? BoxDecoration(
+                                              color: NoorColors.emeraldSoft,
+                                              borderRadius:
+                                                  BorderRadius.circular(14))
+                                          : null,
+                                      child: Column(children: [
+                                        // Solid mosque glyphs as drawn
+                                        // (Phase 11 fix; was outline).
+                                        Icon(_prayerIcons[i],
+                                            size: 24,
+                                            color: _done[i] || next
+                                                ? NoorColors.emeraldDark
+                                                : NoorColors.greyDisabled),
+                                        const SizedBox(height: 6),
+                                        Padding(
+                                          padding: const EdgeInsets.symmetric(horizontal: 2),
+                                          child: FittedBox(
+                                            fit: BoxFit.scaleDown,
+                                            child: Text(NoorAppState.prayerTimes[i].$1,
+                                                textAlign: TextAlign.center,
+                                                maxLines: 1,
+                                                style: NoorType.meta),
+                                          ),
                                         ),
-                                      ),
-                                      const SizedBox(height: 6),
-                                      Semantics(
-                                        button: true,
-                                        checked: _done[i],
-                                        label:
-                                            '${NoorAppState.prayerTimes[i].$1} prayer, ${_done[i] ? "prayed" : "not prayed"}. Tap to toggle.',
-                                        child: InkWell(
-                                          onTap: () => _togglePrayer(i),
-                                          borderRadius:
-                                              BorderRadius.circular(24),
+                                        const SizedBox(height: 6),
+                                        Semantics(
+                                          button: true,
+                                          checked: _done[i],
+                                          label:
+                                              '${NoorAppState.prayerTimes[i].$1} prayer, ${_done[i] ? "prayed" : "not prayed"}. Tap to toggle.',
                                           child: SizedBox(
                                             width: 48,
                                             height: 48,
@@ -233,7 +250,6 @@ class _SalahTrackerScreenState extends State<SalahTrackerScreen> {
                                             ),
                                           ),
                                         ),
-                                      ),
                                       const SizedBox(height: 6),
                                       Padding(
                                         padding: const EdgeInsets.symmetric(horizontal: 2),
@@ -263,8 +279,9 @@ class _SalahTrackerScreenState extends State<SalahTrackerScreen> {
                                       ),
                                     ]),
                                   ),
-                                );
-                              }),
+                                ),
+                              );
+                            }),
                             ),
                             // The design card ends at the prayer
                             // times; the tappable checks themselves

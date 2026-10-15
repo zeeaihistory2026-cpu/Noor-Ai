@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
+import '../../data/noor_store.dart';
 import '../../data/sample_data.dart';
 import '../../theme/noor_theme.dart';
 import '../../widgets/noor_components.dart';
@@ -355,6 +356,36 @@ class _DuaLibraryScreenState extends State<DuaLibraryScreen> {
                                         backgroundColor: NoorColors.emeraldDark,
                                       ),
                                     );
+                                  },
+                                ),
+                                const SizedBox(width: 6),
+                                IconButton(
+                                  tooltip: 'Save to Bookmarks',
+                                  icon: const Icon(Icons.bookmark_add_outlined, size: 18, color: NoorColors.emeraldDark),
+                                  style: IconButton.styleFrom(
+                                    backgroundColor: Colors.white,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                      side: const BorderSide(color: NoorColors.hairlineSoft),
+                                    ),
+                                  ),
+                                  onPressed: () async {
+                                    final duaId = 'dua_${d.transliteration.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '_')}';
+                                    await NoorStore.saveRichItem(
+                                      id: duaId,
+                                      title: d.transliteration,
+                                      subtitle: d.translation,
+                                      tag: 'Dua',
+                                    );
+                                    if (mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                          content: Text('Saved to Bookmarks'),
+                                          duration: Duration(seconds: 2),
+                                          backgroundColor: NoorColors.emeraldDark,
+                                        ),
+                                      );
+                                    }
                                   },
                                 ),
                                 const SizedBox(width: 6),

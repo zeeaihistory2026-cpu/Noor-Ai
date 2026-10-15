@@ -118,6 +118,25 @@ class _QuranReaderScreenState extends State<QuranReaderScreen> {
     return t.isEmpty ? null : t;
   }
 
+  Future<void> _toggleBookmarkCurrentAyah() async {
+    final key = QuranReaderScreen.bookmarkKeyFor(widget.surah, _ayah);
+    final v = await NoorStore.toggleBookmark(key);
+    if (v) {
+      final textEn = _liveText('en.asad') ?? _liveText('en.sahih') ?? '$_surahTitle, Ayah $_ayah';
+      final cleanText = textEn.replaceAll('\n', ' ').trim();
+      final snippet = cleanText.length > 80 ? '${cleanText.substring(0, 80)}...' : cleanText;
+      await NoorStore.saveRichItem(
+        id: key,
+        title: '$_surahTitle, Ayah $_ayah',
+        subtitle: snippet,
+        tag: 'Ayah $_ayah',
+      );
+    } else {
+      await NoorStore.removeRichItem(key);
+    }
+    if (mounted) setState(() => _bookmarked = v);
+  }
+
   /// Text for a specific ayah number (1-based) — used by the
   /// full-surah scroll view.
   String? _liveTextFor(String edition, int ayahNum) {
@@ -173,11 +192,7 @@ class _QuranReaderScreenState extends State<QuranReaderScreen> {
               IconButton(
                 icon: Icon(_bookmarked ? Icons.bookmark : Icons.bookmark_border,
                     color: Colors.white),
-                onPressed: () async {
-                  final v = await NoorStore.toggleBookmark(
-                      QuranReaderScreen.bookmarkKeyFor(widget.surah, _ayah));
-                  if (mounted) setState(() => _bookmarked = v);
-                },
+                onPressed: _toggleBookmarkCurrentAyah,
               ),
               // Prominent audio play button — directly visible, not buried in menu.
               Container(
@@ -203,9 +218,7 @@ class _QuranReaderScreenState extends State<QuranReaderScreen> {
                 tooltip: 'Reader options',
                 onSelected: (v) async {
                   if (v == 'bookmark') {
-                    final nv = await NoorStore.toggleBookmark(
-                        QuranReaderScreen.bookmarkKeyFor(widget.surah, _ayah));
-                    if (mounted) setState(() => _bookmarked = nv);
+                    await _toggleBookmarkCurrentAyah();
                   } else if (v == 'audio') {
                     if (!mounted) return;
                     final surah = widget.surah;

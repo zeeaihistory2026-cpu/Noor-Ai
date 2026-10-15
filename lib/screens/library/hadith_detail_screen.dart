@@ -87,6 +87,18 @@ class _HadithDetailScreenState extends State<HadithDetailScreen> {
 
   Future<void> _toggleSave() async {
     final v = await NoorStore.toggleBookmark(_bookmarkId);
+    if (v) {
+      final cleanText = _entry.text.replaceAll('\n', ' ').trim();
+      final snippet = cleanText.length > 80 ? '${cleanText.substring(0, 80)}...' : cleanText;
+      await NoorStore.saveRichItem(
+        id: _bookmarkId,
+        title: '${widget.book.name} #${_entry.hadithnumber}',
+        subtitle: snippet,
+        tag: 'Hadith',
+      );
+    } else {
+      await NoorStore.removeRichItem(_bookmarkId);
+    }
     if (mounted) {
       setState(() => _saved = v);
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(

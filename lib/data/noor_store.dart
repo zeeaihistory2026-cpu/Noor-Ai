@@ -203,6 +203,96 @@ class NoorStore {
     return log[dateKey]?[prayer] ?? false;
   }
 
+  static const _prayerNames = ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'];
+
+  static Future<List<bool>> getPrayersList(String dateKey) async {
+    final log = await getSalahLog();
+    final day = log[dateKey];
+    if (day == null) return List.filled(5, false);
+    return [
+      day['fajr'] ?? day['Fajr'] ?? false,
+      day['dhuhr'] ?? day['Dhuhr'] ?? false,
+      day['asr'] ?? day['Asr'] ?? false,
+      day['maghrib'] ?? day['Maghrib'] ?? false,
+      day['isha'] ?? day['Isha'] ?? false,
+    ];
+  }
+
+  static Future<void> setPrayersList(String dateKey, List<bool> done) async {
+    final log = await getSalahLog();
+    final day = log.putIfAbsent(dateKey, () => <String, bool>{});
+    for (var i = 0; i < 5 && i < done.length; i++) {
+      day[_prayerNames[i]] = done[i];
+    }
+    await _writeString(_salahLogKey, jsonEncode(log));
+  }
+
+  // ---- Tasbih Counts & Today's Total ----------------------------------
+  static const _tasbihCountsKey = 'tasbih.counts';
+
+  static Future<Map<String, int>> getTasbihCounts() async {
+    final raw = await _readString(_tasbihCountsKey);
+    if (raw == null || raw.isEmpty) return <String, int>{};
+    try {
+      final decoded = jsonDecode(raw) as Map<String, dynamic>;
+      return decoded.map((k, v) => MapEntry(k, (v as num).toInt()));
+    } catch (_) {
+      return <String, int>{};
+    }
+  }
+
+  static Future<void> setTasbihCount(String id, int count) async {
+    final counts = await getTasbihCounts();
+    counts[id] = count;
+    await _writeString(_tasbihCountsKey, jsonEncode(counts));
+  }
+
+  static Future<void> setAllTasbihCounts(Map<String, int> counts) async {
+    await _writeString(_tasbihCountsKey, jsonEncode(counts));
+  }
+
+  static Future<int> getTasbihTotalToday(String dateKey) async {
+    final v = await _readInt('tasbih.total.$dateKey');
+    return v ?? 0;
+  }
+
+  static Future<void> setTasbihTotalToday(String dateKey, int total) =>
+      _writeInt('tasbih.total.$dateKey', total);
+
+  // ---- Custom Dhikrs --------------------------------------------------
+  static const _customDhikrsKey = 'tasbih.customDhikrs';
+
+  static Future<List<Map<String, dynamic>>> getCustomDhikrs() async {
+    final raw = await _readString(_customDhikrsKey);
+    if (raw == null || raw.isEmpty) return <Map<String, dynamic>>[];
+    try {
+      final list = jsonDecode(raw) as List<dynamic>;
+      return list
+          .whereType<Map<String, dynamic>>()
+          .map((e) => Map<String, dynamic>.from(e))
+          .toList();
+    } catch (_) {
+      return <Map<String, dynamic>>[];
+    }
+  }
+
+  static Future<void> saveCustomDhikr(Map<String, dynamic> dhikrMap) async {
+    final list = await getCustomDhikrs();
+    final idx = list.indexWhere((d) => d['id'] == dhikrMap['id']);
+    if (idx >= 0) {
+      list[idx] = dhikrMap;
+    } else {
+      list.insert(0, dhikrMap);
+    }
+    await _writeString(_customDhikrsKey, jsonEncode(list));
+  }
+
+  static Future<void> deleteCustomDhikr(String id) async {
+    final list = await getCustomDhikrs();
+    list.removeWhere((d) => d['id'] == id);
+    await _writeString(_customDhikrsKey, jsonEncode(list));
+  }
+
   // ---- Bookmarks (Pages 02/03/33) --------------------------------------
   // IDs are opaque strings chosen by the caller, e.g. 'quran:18:18',
   // 'hadith:bukhari:1', 'dua:knowledge'.
@@ -235,6 +325,63 @@ class NoorStore {
 
   static Future<bool> isBookmarked(String id) async =>
       (await getBookmarks()).contains(id);
+
+  // ---- Rich Saved Items (Bookmarks & Notes) ----------------------------
+  static const _savedItemsKey = 'saved.richItems';
+
+  static Future<List<Map<String, dynamic>>> getSavedItems() async {
+    final raw = await _readString(_savedItemsKey);
+    if (raw == null || raw.isEmpty) return <Map<String, dynamic>>[];
+    try {
+      final list = jsonDecode(raw) as List<dynamic>;
+      return list
+          .whereType<Map>()
+          .map((e) => Map<String, dynamic>.from(e))
+          .toList();
+    } catch (_) {
+      return <Map<String, dynamic>>[];
+    }
+  }
+
+  static Future<void> saveRichItem({
+    required String id,
+    required String title,
+    required String subtitle,
+    required String tag,
+  }) async {
+    final list = await getSavedItems();
+    final idx = list.indexWhere((e) => e['id'] == id);
+    final item = {
+      'id': id,
+      'title': title,
+      'subtitle': subtitle,
+      'tag': tag,
+      'createdAt': DateTime.now().toIso8601String(),
+    };
+    if (idx >= 0) {
+      list[idx] = item;
+    } else {
+      list.insert(0, item);
+    }
+    await _writeString(_savedItemsKey, jsonEncode(list));
+    // Also keep the simple ID list in sync
+    final ids = await getBookmarks();
+    if (!ids.contains(id)) {
+      ids.add(id);
+      await _writeString(_bookmarksKey, jsonEncode(ids));
+    }
+  }
+
+  static Future<void> removeRichItem(String id) async {
+    final list = await getSavedItems();
+    list.removeWhere((e) => e['id'] == id);
+    await _writeString(_savedItemsKey, jsonEncode(list));
+    final ids = await getBookmarks();
+    if (ids.contains(id)) {
+      ids.remove(id);
+      await _writeString(_bookmarksKey, jsonEncode(ids));
+    }
+  }
 
   // ---- Generic JSON cache (used by the live services) -----------------
 
