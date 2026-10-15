@@ -6,6 +6,7 @@ import '../../theme/noor_theme.dart';
 import '../../widgets/noor_components.dart';
 import '../worship/reminder_center_screen.dart';
 import '../library/share_card_studio_screen.dart';
+import '../library/dua_library_screen.dart';
 
 /// Page 08 — Dua of the Day. Cream header (title + Hijri/Greg date),
 /// white dua card with mosque badge, brief Arabic excerpt,
@@ -166,8 +167,19 @@ class _DuaOfTheDayScreenState extends State<DuaOfTheDayScreen> {
                     children: [
                       const Text('More Duas for You',
                           style: NoorType.cardTitle),
-                      Text('View All',
-                          style: NoorType.secondary.copyWith(color: NoorColors.emerald))
+                      InkWell(
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                              builder: (_) => const DuaLibraryScreen()),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                          child: Text('View All',
+                              style: NoorType.secondary.copyWith(
+                                  color: NoorColors.emerald,
+                                  fontWeight: FontWeight.w700)),
+                        ),
+                      ),
                     ]),
                 const SizedBox(height: 12),
                 Row(children: [
@@ -177,27 +189,38 @@ class _DuaOfTheDayScreenState extends State<DuaOfTheDayScreen> {
                     ('Allahumma hdina', 'Guidance')
                   ]) ...[
                     Expanded(
-                        child: Container(
-                            constraints: const BoxConstraints(minHeight: 96),
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(14),
-                                boxShadow: NoorShadows.card),
-                            child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(d.$1,
-                                      style: NoorType.meta,
-                                      maxLines: 2),
-                                  const SizedBox(height: 5),
-                                  Text(d.$2,
-                                      style: NoorType.meta.copyWith(color: NoorColors.muted)),
-                                  const Align(
-                                      alignment: Alignment.centerRight,
-                                      child: Icon(Icons.bookmark_border,
-                                          size: 15, color: NoorColors.muted))
-                                ]))),
+                        child: Material(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(14),
+                          elevation: 1,
+                          child: InkWell(
+                            onTap: () => Navigator.of(context).push(
+                              MaterialPageRoute(
+                                  builder: (_) => const DuaLibraryScreen()),
+                            ),
+                            borderRadius: BorderRadius.circular(14),
+                            child: Container(
+                                constraints: const BoxConstraints(minHeight: 96),
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(14),
+                                    border: Border.all(color: NoorColors.hairlineSoft)),
+                                child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(d.$1,
+                                          style: NoorType.meta,
+                                          maxLines: 2),
+                                      const SizedBox(height: 5),
+                                      Text(d.$2,
+                                          style: NoorType.meta.copyWith(color: NoorColors.muted)),
+                                      const Align(
+                                          alignment: Alignment.centerRight,
+                                          child: Icon(Icons.chevron_right,
+                                              size: 15, color: NoorColors.muted))
+                                    ])),
+                          ),
+                        )),
                     const SizedBox(width: 10),
                   ],
                 ]),

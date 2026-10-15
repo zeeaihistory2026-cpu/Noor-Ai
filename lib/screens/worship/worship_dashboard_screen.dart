@@ -278,11 +278,16 @@ class _WorshipDashboardScreenState extends State<WorshipDashboardScreen> {
                                             MaterialPageRoute(
                                                 builder: (_) =>
                                                     const ZikrTasbihScreen()));
-                                      } else if (i == 2 || i == 3) {
+                                      } else if (i == 2) {
                                         Navigator.of(context).push(
                                             MaterialPageRoute(
                                                 builder: (_) =>
                                                     const DuaLibraryScreen()));
+                                      } else if (i == 3) {
+                                        Navigator.of(context).push(
+                                            MaterialPageRoute(
+                                                builder: (_) =>
+                                                    const ZikrTasbihScreen(initialTab: 1)));
                                       } else if (i == 6) {
                                         Navigator.of(context).push(
                                             MaterialPageRoute(
