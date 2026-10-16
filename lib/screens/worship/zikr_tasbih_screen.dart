@@ -1088,18 +1088,14 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
         const SizedBox(height: 18),
 
         // Target Chips (33, 66, 99, 100, Custom)
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          physics: const BouncingScrollPhysics(),
-          child: Row(
-            children: [
-              for (final t in [33, 66, 99, 100]) ...[
-                _buildTargetChip(t),
-                const SizedBox(width: 8),
-              ],
-              _buildCustomChip(),
+        Row(
+          children: [
+            for (final t in [33, 66, 99, 100]) ...[
+              Expanded(child: _buildTargetChip(t)),
+              const SizedBox(width: 6),
             ],
-          ),
+            Expanded(flex: 2, child: _buildCustomChip()),
+          ],
         ),
 
         const SizedBox(height: 24),
@@ -1256,19 +1252,21 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
           onTap: () => _setTarget(t),
           borderRadius: BorderRadius.circular(NoorRadius.chip),
           child: Container(
-            width: 56,
             padding: const EdgeInsets.symmetric(vertical: 10),
             alignment: Alignment.center,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(NoorRadius.chip),
               border: isSelected ? null : Border.all(color: NoorColors.hairline),
             ),
-            child: Text(
-              '$t',
-              style: TextStyle(
-                color: isSelected ? Colors.white : NoorColors.ink,
-                fontWeight: FontWeight.w700,
-                fontSize: 14,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                '$t',
+                style: TextStyle(
+                  color: isSelected ? Colors.white : NoorColors.ink,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 14,
+                ),
               ),
             ),
           ),
@@ -1287,31 +1285,35 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
         onTap: _openCustomTargetDialog,
         borderRadius: BorderRadius.circular(NoorRadius.chip),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
           alignment: Alignment.center,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(NoorRadius.chip),
             border: isCustom ? null : Border.all(color: NoorColors.hairline),
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                isCustom ? 'Custom ($_target)' : 'Custom',
-                softWrap: false,
-                style: TextStyle(
-                  color: isCustom ? Colors.white : NoorColors.ink,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 14,
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  isCustom ? 'Custom ($_target)' : 'Custom',
+                  maxLines: 1,
+                  style: TextStyle(
+                    color: isCustom ? Colors.white : NoorColors.ink,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                  ),
                 ),
-              ),
-              const SizedBox(width: 4),
-              Icon(
-                Icons.edit,
-                size: 14,
-                color: isCustom ? NoorColors.goldPale : NoorColors.muted,
-              ),
-            ],
+                const SizedBox(width: 3),
+                Icon(
+                  Icons.edit,
+                  size: 13,
+                  color: isCustom ? NoorColors.goldPale : NoorColors.muted,
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -1618,20 +1620,24 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
       children: [
         Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('My Custom Zikr', style: NoorType.section.copyWith(color: NoorColors.emeraldDark)),
-                const SizedBox(height: 2),
-                Text('Personal goals & custom remembrances', style: NoorType.meta.copyWith(color: NoorColors.mutedDark)),
-              ],
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('My Custom Zikr', style: NoorType.section.copyWith(color: NoorColors.emeraldDark)),
+                  const SizedBox(height: 2),
+                  Text('Personal goals & custom remembrances', style: NoorType.meta.copyWith(color: NoorColors.mutedDark)),
+                ],
+              ),
             ),
+            const SizedBox(width: 10),
             ElevatedButton.icon(
               style: ElevatedButton.styleFrom(
                 backgroundColor: NoorColors.emeraldDark,
                 foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
               icon: const Icon(Icons.add, size: 18),

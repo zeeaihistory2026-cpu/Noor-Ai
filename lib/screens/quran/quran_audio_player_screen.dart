@@ -320,7 +320,8 @@ class _QuranAudioPlayerScreenState extends State<QuranAudioPlayerScreen> {
           ),
           Expanded(
             child: ListView(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+              physics: const BouncingScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 36),
               children: [
                 // Cream arch card with real design art (Page 05 crop).
                 Container(
@@ -338,7 +339,6 @@ class _QuranAudioPlayerScreenState extends State<QuranAudioPlayerScreen> {
                       child: AspectRatio(
                           aspectRatio: 417 / 255,
                           child: Image.asset(NoorAssets.playerArch,
-                              cacheWidth: 1170,
                               width: double.infinity,
                               fit: BoxFit.cover,
                               errorBuilder: (_, __, ___) => Container(
@@ -552,7 +552,7 @@ class _QuranAudioPlayerScreenState extends State<QuranAudioPlayerScreen> {
                             _upNextB?.$4 ?? '135 Ayahs'),
                       ]),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 28),
               ],
             ),
           ),

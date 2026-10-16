@@ -129,7 +129,7 @@ class _ShareCardStudioScreenState extends State<ShareCardStudioScreen> {
               ]),
               const SizedBox(height: 12),
               SizedBox(
-                height: 118,
+                height: 130,
                 child: ListView.separated(
                   scrollDirection: Axis.horizontal,
                   itemCount:
@@ -225,13 +225,15 @@ class _ShareCardStudioScreenState extends State<ShareCardStudioScreen> {
                                   borderRadius: BorderRadius.circular(16),
                                   child: Container(
                                       decoration: BoxDecoration(
+                                          color: Colors.white,
                                           borderRadius:
                                               BorderRadius.circular(16),
                                           border: Border.all(
                                               color: i == _template
                                                   ? NoorColors.emeraldDark
                                                   : NoorColors.hairline,
-                                              width: i == _template ? 2 : 1)),
+                                              width: i == _template ? 2 : 1),
+                                          boxShadow: NoorShadows.card),
                                       child: ClipRRect(
                                           borderRadius:
                                               BorderRadius.circular(15),
@@ -269,8 +271,9 @@ class _ShareCardStudioScreenState extends State<ShareCardStudioScreen> {
                                   streak: _streak,
                                   initialStyle: _template,
                                   format: format,
-                                ))))),
-                const SizedBox(width: 10),
+                                ))),
+                        primary: false)),
+                const SizedBox(width: 8),
                 Expanded(
                     child: _btn(
                         context,
@@ -281,8 +284,9 @@ class _ShareCardStudioScreenState extends State<ShareCardStudioScreen> {
                                   item: _streak == null ? _item : null,
                                   streak: _streak,
                                   initialStyle: _template,
-                                ))))),
-                const SizedBox(width: 10),
+                                ))),
+                        primary: false)),
+                const SizedBox(width: 8),
                 Expanded(
                     child: _btn(
                         context,
@@ -294,7 +298,8 @@ class _ShareCardStudioScreenState extends State<ShareCardStudioScreen> {
                                   streak: _streak,
                                   initialStyle: _template,
                                   format: format,
-                                ))))),
+                                ))),
+                        primary: true)),
               ]),
             ])),
       ])),
@@ -320,7 +325,9 @@ class _ShareCardStudioScreenState extends State<ShareCardStudioScreen> {
                   borderRadius: BorderRadius.circular(16),
                   child: Container(
                       width: 112,
+                      clipBehavior: Clip.antiAlias,
                       decoration: BoxDecoration(
+                          color: Colors.white,
                           borderRadius: BorderRadius.circular(16),
                           border: Border.all(
                               color: selected
@@ -335,37 +342,71 @@ class _ShareCardStudioScreenState extends State<ShareCardStudioScreen> {
                                 child: child)),
                         Container(
                           width: double.infinity,
-                          color: Colors.white,
                           padding: const EdgeInsets.symmetric(
                               horizontal: 8, vertical: 6),
+                          decoration: const BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.vertical(
+                                bottom: Radius.circular(15)),
+                          ),
                           child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(label,
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
-                                    style: NoorType.meta),
+                                    style: NoorType.meta.copyWith(
+                                        fontWeight: FontWeight.w700)),
+                                const SizedBox(height: 1),
                                 Text(ref,
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
-                                    style: NoorType.meta
-                                        .copyWith(color: NoorColors.muted)),
+                                    style: NoorType.meta.copyWith(
+                                        color: NoorColors.muted, fontSize: 11)),
                               ]),
                         ),
                       ])))));
 
-  Widget _btn(BuildContext c, String l, IconData i, VoidCallback f) => SizedBox(
-      height: 50,
-      child: FilledButton.icon(
-          icon: Icon(i, size: 16, color: Colors.white),
-          label: FittedBox(
-              fit: BoxFit.scaleDown,
-              child:
-                  Text(l, maxLines: 1, softWrap: false, style: NoorType.meta.copyWith(color: Colors.white))),
-          onPressed: f,
-          style: FilledButton.styleFrom(
-              backgroundColor: NoorColors.emeraldDark,
-              padding: const EdgeInsets.symmetric(horizontal: 6),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14)))));
+  Widget _btn(BuildContext c, String l, IconData i, VoidCallback f,
+          {bool primary = false}) =>
+      SizedBox(
+          height: 48,
+          child: primary
+              ? FilledButton.icon(
+                  icon: Icon(i, size: 16, color: Colors.white),
+                  label: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(l,
+                          maxLines: 1,
+                          softWrap: false,
+                          style: NoorType.meta.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700))),
+                  onPressed: f,
+                  style: FilledButton.styleFrom(
+                      backgroundColor: NoorColors.emeraldDark,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14))),
+                )
+              : OutlinedButton.icon(
+                  icon: Icon(i, size: 16, color: NoorColors.emeraldDark),
+                  label: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(l,
+                          maxLines: 1,
+                          softWrap: false,
+                          style: NoorType.meta.copyWith(
+                              color: NoorColors.emeraldDark,
+                              fontWeight: FontWeight.w700))),
+                  onPressed: f,
+                  style: OutlinedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: NoorColors.emeraldDark,
+                      side: const BorderSide(color: NoorColors.hairline),
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14))),
+                ));
 }

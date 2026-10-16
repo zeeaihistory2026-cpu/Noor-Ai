@@ -53,7 +53,7 @@ class NoorShareCard extends StatelessWidget {
           borderRadius: BorderRadius.circular(NoorRadius.heroCard),
           boxShadow: NoorShadows.hero),
       padding: EdgeInsets.symmetric(
-          horizontal: mini ? 10 : 24, vertical: mini ? 8 : 22),
+          horizontal: mini ? 8 : 24, vertical: mini ? 4 : 22),
       child: Column(children: [
         if (!minimal && !mini)
           Text(
@@ -72,19 +72,19 @@ class NoorShareCard extends StatelessWidget {
                   ? Icons.calendar_month_outlined
                   : Icons.local_fire_department_outlined,
               color: sub,
-              size: mini ? 12 : 38),
+              size: mini ? 14 : 38),
           SizedBox(height: mini ? 2 : 8),
           Text(streak!.headline,
               style: TextStyle(
                   color: fg,
-                  fontSize: mini ? 15 : 64,
+                  fontSize: mini ? 16 : 64,
                   fontWeight: FontWeight.w800,
                   height: 1)),
           Text(streak!.label,
               textAlign: TextAlign.center,
               style: TextStyle(
                   color: fg,
-                  fontSize: mini ? 7 : 16,
+                  fontSize: mini ? 8 : 16,
                   fontWeight: FontWeight.w700)),
           if (!mini) ...[
             const SizedBox(height: 8),
@@ -100,12 +100,12 @@ class NoorShareCard extends StatelessWidget {
                 maxLines: mini ? 1 : null,
                 overflow: mini ? TextOverflow.ellipsis : null,
                 style: (emphasis == 2
-                    ? NoorType.urdu(size: mini ? 10 : 26, color: fg)
+                    ? NoorType.urdu(size: mini ? 11 : 26, color: fg)
                     : NoorType.arabic(
-                        size: mini ? 10 : (emphasis == 1 ? 22 : 30),
+                        size: mini ? 11 : (emphasis == 1 ? 22 : 30),
                         color: fg))),
-          SizedBox(height: mini ? 4 : 14),
-          if (!mini)
+          if (!mini) ...[
+            const SizedBox(height: 14),
             Text(item?.text ?? SampleData.duaTranslation,
                 textAlign: TextAlign.center,
                 style: TextStyle(
@@ -113,6 +113,7 @@ class NoorShareCard extends StatelessWidget {
                     fontSize: emphasis == 1 ? 18 : 15,
                     fontWeight:
                         emphasis == 1 ? FontWeight.w700 : FontWeight.w400)),
+          ],
         ],
         const Spacer(),
         Text(

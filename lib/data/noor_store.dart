@@ -326,6 +326,18 @@ class NoorStore {
   static Future<bool> isBookmarked(String id) async =>
       (await getBookmarks()).contains(id);
 
+  // ---- Last Read 16-Line Mushaf Page -----------------------------------
+  static const _lastMushafPageKey = 'mushaf.lastPage';
+
+  static Future<int> getLastMushafPage() async {
+    final str = await _readString(_lastMushafPageKey);
+    return int.tryParse(str ?? '') ?? 2;
+  }
+
+  static Future<void> setLastMushafPage(int page) async {
+    await _writeString(_lastMushafPageKey, '$page');
+  }
+
   // ---- Rich Saved Items (Bookmarks & Notes) ----------------------------
   static const _savedItemsKey = 'saved.richItems';
 
