@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:archive/archive.dart';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import 'file_cache_store.dart';
@@ -52,6 +53,13 @@ class HadithService {
 
   static const String cdnBase =
       'https://cdn.jsdelivr.net/gh/fawazahmed0/hadith-api@1';
+
+  /// Primary CDN with fallback mirrors in case jsDelivr is blocked, throttled, or times out.
+  static const List<String> cdnMirrors = [
+    'https://cdn.jsdelivr.net/gh/fawazahmed0/hadith-api@1',
+    'https://raw.githubusercontent.com/fawazahmed0/hadith-api/1',
+    'https://gcore.jsdelivr.net/gh/fawazahmed0/hadith-api@1',
+  ];
 
   /// The six canonical books. Display names match the user's design.
   static const List<HadithBookMeta> books = <HadithBookMeta>[
@@ -127,20 +135,29 @@ class HadithService {
   /// uses this to label "Live databank" vs offline honestly before
   /// any multi-MB edition is fetched.
   Future<bool> checkLive() async {
-    try {
-      final res = await _client
-          .get(Uri.parse('$cdnBase/editions.json'))
-          .timeout(const Duration(seconds: 10));
-      _hasLive = res.statusCode == 200;
-    } catch (_) {
-      _hasLive = false;
+    for (final base in cdnMirrors) {
+      try {
+        final res = await _client
+            .get(
+              Uri.parse('$base/editions.json'),
+              headers: const {'Accept': 'application/json', 'User-Agent': 'NoorApp/1.0'},
+            )
+            .timeout(const Duration(seconds: 8));
+        if (res.statusCode == 200) {
+          _hasLive = true;
+          return true;
+        }
+      } catch (e) {
+        debugPrint('HadithService: Mirror check failed for $base: $e');
+      }
     }
-    return _hasLive;
+    _hasLive = false;
+    return false;
   }
 
   /// One edition of one book (e.g. fetchEdition('bukhari')).
-  /// Order: memory -> compressed disk cache -> network (20s
-  /// timeout) with single-flight request coalescing.
+  /// Order: memory -> compressed disk cache -> network (with
+  /// multi-mirror fallback and 25s timeout) with single-flight request coalescing.
   Future<HadithBook> fetchEdition(
     String bookId, {
     HadithLanguage language = HadithLanguage.eng,
@@ -162,21 +179,49 @@ class HadithService {
 
     final future = () async {
       try {
-        final uri = Uri.parse('$cdnBase/editions/$edition.min.json');
-        final res = await _client
-            .get(uri)
-            .timeout(const Duration(seconds: 20), onTimeout: () {
-          throw HadithServiceException('Timed out fetching $edition');
-        });
-        if (res.statusCode != 200) {
-          _hasLive = false;
-          throw HadithServiceException('Hadith CDN HTTP ${res.statusCode}');
+        String? body;
+        Object? lastError;
+        for (final base in cdnMirrors) {
+          try {
+            final uri = Uri.parse('$base/editions/$edition.min.json');
+            final res = await _client.get(
+              uri,
+              headers: const {
+                'Accept': 'application/json',
+                'User-Agent': 'NoorApp/1.0',
+              },
+            ).timeout(const Duration(seconds: 25));
+            if (res.statusCode == 200 && res.body.isNotEmpty) {
+              body = res.body;
+              break;
+            } else if (res.statusCode != 200) {
+              lastError = HadithServiceException('Hadith CDN HTTP ${res.statusCode}');
+            }
+          } catch (e) {
+            lastError = e;
+          }
         }
+
+        if (body == null) {
+          final disk = await _readDiskCache(edition);
+          if (disk != null) {
+            _hasLive = false;
+            _memory[edition] = disk;
+            return disk;
+          }
+          _hasLive = false;
+          if (lastError is HadithServiceException) throw lastError;
+          throw HadithServiceException(
+              lastError is TimeoutException
+                  ? 'Connection timed out while loading $edition'
+                  : 'Unable to load Hadith databank ($edition). Please check connection.');
+        }
+
         _hasLive = true;
-        final book = parseEditionJson(res.body,
+        final book = parseEditionJson(body,
             bookId: bookId, language: language);
         _memory[edition] = book;
-        unawaited(_writeDiskCache(edition, res.body));
+        unawaited(_writeDiskCache(edition, body));
         return book;
       } finally {
         _inFlightEditions.remove(edition);
@@ -200,7 +245,8 @@ class HadithService {
       final disk = await _readDiskCache(edition);
       if (disk != null) _memory[edition] = disk;
       return disk;
-    } catch (_) {
+    } catch (e) {
+      debugPrint('HadithService: getOrFetchDisk error for $edition: $e');
       return null;
     }
   }
@@ -224,8 +270,8 @@ class HadithService {
       final bytes = utf8.encode(body);
       final zipped = const GZipEncoder().encode(bytes);
       await FileCacheStore.writeBytes(_cacheKey(edition), zipped);
-    } catch (_) {
-      /* cache write failure must never break reading */
+    } catch (e) {
+      debugPrint('HadithService: Failed to write disk cache for $edition: $e');
     }
   }
 
@@ -246,7 +292,8 @@ class HadithService {
       final bytes = const GZipDecoder().decodeBytes(zipped);
       return parseEditionJson(utf8.decode(bytes),
           bookId: _bookIdForEdition(edition), language: _langForEdition(edition));
-    } catch (_) {
+    } catch (e) {
+      debugPrint('HadithService: Failed to read disk cache for $edition: $e');
       return null;
     }
   }
@@ -263,6 +310,21 @@ class HadithService {
       if (edition.startsWith('${l.prefix}-')) return l;
     }
     return HadithLanguage.eng;
+  }
+
+  static int _parseInt(dynamic val) {
+    if (val == null) return 0;
+    if (val is int) return val;
+    if (val is double) return val.toInt();
+    if (val is num) return val.toInt();
+    if (val is String) {
+      final s = val.trim();
+      final parsedInt = int.tryParse(s);
+      if (parsedInt != null) return parsedInt;
+      final parsedDouble = double.tryParse(s);
+      if (parsedDouble != null) return parsedDouble.toInt();
+    }
+    return 0;
   }
 
   // ---- Parsing (pure, fully unit-testable) ---------------------------
@@ -288,38 +350,49 @@ class HadithService {
     final hadiths = <HadithEntry>[];
     final counts = <int, int>{};
     for (final e in rawHadiths) {
-      final m = e as Map<String, dynamic>;
+      if (e is! Map<String, dynamic>) continue;
+      final m = e;
       final text = (m['text'] as String?)?.trim() ?? '';
       if (text.isEmpty) continue; // no text -> not displayable
       final ref = (m['reference'] as Map<String, dynamic>?) ?? const {};
-      final sectionNumber = (ref['book'] as num?)?.toInt() ?? 0;
+      final sectionNumber = _parseInt(ref['book']);
+      final hadithnumber = _parseInt(m['hadithnumber']);
+      if (hadithnumber <= 0) continue; // never fabricate numbers
+
       final entry = HadithEntry(
-        hadithnumber: (m['hadithnumber'] as num?)?.toInt() ?? 0,
-        arabicnumber: (m['arabicnumber'] as num?)?.toInt() ?? 0,
+        hadithnumber: hadithnumber,
+        arabicnumber: _parseInt(m['arabicnumber']),
         text: text,
         grades: _parseGrades(m['grades']),
         sectionNumber: sectionNumber,
-        hadithInSection: (ref['hadith'] as num?)?.toInt() ?? 0,
+        hadithInSection: _parseInt(ref['hadith']),
       );
-      if (entry.hadithnumber <= 0) continue; // never fabricate numbers
       hadiths.add(entry);
       counts[sectionNumber] = (counts[sectionNumber] ?? 0) + 1;
     }
 
     final sections = <HadithSection>[];
-    final numbers = sectionsRaw.keys
-        .map((k) => int.tryParse(k))
-        .whereType<int>()
-        .toList()
-      ..sort();
-    for (final n in numbers) {
+    final allNumbers = <int>{
+      ...sectionsRaw.keys.map((k) => int.tryParse(k)).whereType<int>(),
+      ...counts.keys,
+    }.toList()..sort();
+
+    for (final n in allNumbers) {
       final title = sectionsRaw['$n']?.toString().trim() ?? '';
       final count = counts[n] ?? 0;
       if (count == 0 && title.isEmpty) continue; // empty, unused slot
       sections.add(HadithSection(
         number: n,
-        title: title.isEmpty ? 'General' : title,
+        title: title.isEmpty ? (n == 0 ? 'General' : 'Chapter $n') : title,
         count: count,
+      ));
+    }
+
+    if (sections.isEmpty && hadiths.isNotEmpty) {
+      sections.add(HadithSection(
+        number: 0,
+        title: 'All Hadiths',
+        count: hadiths.length,
       ));
     }
     return HadithBook(

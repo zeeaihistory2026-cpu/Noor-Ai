@@ -835,7 +835,7 @@ class _HifzMushafScreenState extends State<HifzMushafScreen> {
       decoration: const BoxDecoration(
         border: Border(
           bottom: BorderSide(
-            color: Color(0x1A0B3D2E),
+            color: NoorColors.hairline,
             width: 0.6,
           ),
         ),

@@ -166,14 +166,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 shape: BoxShape.circle,
                                 color: NoorColors.emeraldDark,
                                 border: Border.all(
-                                  color: const Color(0xFFCDAA6D),
+                                  color: NoorColors.goldSoft,
                                   width: 1.5,
                                 ),
                               ),
                               alignment: Alignment.center,
                               child: const NoorLogoBadge(
                                 size: 26,
-                                color: Color(0xFFCDAA6D),
+                                color: NoorColors.goldSoft,
                               ),
                             ),
                             const SizedBox(width: 14),
@@ -198,7 +198,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                     style: TextStyle(
                                       fontSize: 13,
                                       fontWeight: FontWeight.w400,
-                                      color: isDark ? NoorColors.darkTextSecondary : const Color(0xFF737D78),
+                                      color: isDark ? NoorColors.darkTextSecondary : NoorColors.muted,
                                     ),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
@@ -208,7 +208,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             ),
                             Icon(
                               Icons.chevron_right,
-                              color: isDark ? NoorColors.darkTextSecondary : const Color(0xFF9CA79E),
+                              color: isDark ? NoorColors.darkTextSecondary : NoorColors.iconMuted,
                               size: 20,
                             ),
                           ],
@@ -236,7 +236,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       color: isDark ? NoorColors.darkSurface : Colors.white,
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(
-                        color: isDark ? NoorColors.darkBorder : const Color(0xFF166857),
+                        color: isDark ? NoorColors.darkBorder : NoorColors.emeraldMid,
                         width: 1.2,
                       ),
                     ),
@@ -258,13 +258,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             Icon(
                               Icons.logout_rounded,
                               size: 20,
-                              color: isDark ? NoorColors.darkGold : const Color(0xFF166857),
+                              color: isDark ? NoorColors.darkGold : NoorColors.emeraldMid,
                             ),
                             const SizedBox(width: 8),
                             Text(
                               'Log Out',
                               style: TextStyle(
-                                color: isDark ? NoorColors.darkTextPrimary : const Color(0xFF166857),
+                                color: isDark ? NoorColors.darkTextPrimary : NoorColors.emeraldMid,
                                 fontSize: 16,
                                 fontWeight: FontWeight.w700,
                               ),
@@ -461,7 +461,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       selected: _textSize == size,
                       onTap: () {
                         setState(() => _textSize = size);
-                        setModalState(() {});
+                        setModalState(() {
+                          /* refresh modal sheet */
+                        });
                         Navigator.of(sheetContext).pop();
                       },
                     ),
@@ -604,7 +606,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
               'If NOOR has enriched your daily spiritual journey, please leave a 5-star review on the App Store or Google Play.',
               Icons.star_border,
             ),
-        _ => () {},
+        _ => () => _showSimpleSheet(
+              c,
+              label,
+              'Configuration options for $label.',
+              Icons.tune_outlined,
+            ),
       };
 
   Widget _buildLeading(String label, IconData defaultIcon, bool isDark) {
@@ -719,7 +726,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                       style: TextStyle(
                                         fontSize: 12.5,
                                         fontWeight: FontWeight.w400,
-                                        color: isDark ? NoorColors.darkTextSecondary : const Color(0xFF737D78),
+                                        color: isDark ? NoorColors.darkTextSecondary : NoorColors.muted,
                                       ),
                                     ),
                                   ],
@@ -731,7 +738,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                   style: TextStyle(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w600,
-                                    color: isDark ? NoorColors.darkGold : const Color(0xFF166857),
+                                    color: isDark ? NoorColors.darkGold : NoorColors.emeraldMid,
                                   ),
                                 ),
                                 const SizedBox(width: 4),
@@ -739,7 +746,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               Icon(
                                 Icons.chevron_right,
                                 size: 18,
-                                color: isDark ? NoorColors.darkTextSecondary : const Color(0xFF9CA79E),
+                                color: isDark ? NoorColors.darkTextSecondary : NoorColors.iconMuted,
                               ),
                             ],
                           ),
@@ -766,7 +773,7 @@ class NoorLogoBadge extends StatelessWidget {
   const NoorLogoBadge({
     super.key,
     this.size = 28,
-    this.color = const Color(0xFFCDAA6D),
+    this.color = NoorColors.goldSoft,
   });
 
   @override

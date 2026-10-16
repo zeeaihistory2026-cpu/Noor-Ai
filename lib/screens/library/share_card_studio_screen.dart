@@ -129,12 +129,13 @@ class _ShareCardStudioScreenState extends State<ShareCardStudioScreen> {
               ]),
               const SizedBox(height: 12),
               SizedBox(
-                height: 130,
+                height: 142,
                 child: ListView.separated(
                   scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
                   itemCount:
                       _section == 3 ? streaks.length : _sectionItems.length,
-                  separatorBuilder: (_, __) => const SizedBox(width: 10),
+                  separatorBuilder: (_, __) => const SizedBox(width: 12),
                   itemBuilder: (_, i) {
                     if (_section == 3) {
                       final s = streaks[i];
@@ -143,7 +144,11 @@ class _ShareCardStudioScreenState extends State<ShareCardStudioScreen> {
                         selected: selected,
                         onTap: () => setState(() => _streak = s),
                         child: NoorShareCard(
-                            style: _template, streak: s, mini: true),
+                            style: _template,
+                            streak: s,
+                            mini: true,
+                            borderRadius: BorderRadius.zero,
+                            hasShadow: false),
                         label: s.label,
                         ref: '${s.days} days',
                       );
@@ -157,7 +162,11 @@ class _ShareCardStudioScreenState extends State<ShareCardStudioScreen> {
                         _streak = null;
                       }),
                       child: NoorShareCard(
-                          style: _template, item: item, mini: true),
+                          style: _template,
+                          item: item,
+                          mini: true,
+                          borderRadius: BorderRadius.zero,
+                          hasShadow: false),
                       label: item.title,
                       ref: item.reference,
                     );
@@ -217,34 +226,39 @@ class _ShareCardStudioScreenState extends State<ShareCardStudioScreen> {
                           button: true,
                           selected: i == _template,
                           label: 'Template ${i + 1}',
-                          child: Material(
-                              color: Colors.transparent,
+                          child: InkWell(
+                              onTap: () => setState(() => _template = i),
                               borderRadius: BorderRadius.circular(16),
-                              child: InkWell(
-                                  onTap: () => setState(() => _template = i),
-                                  borderRadius: BorderRadius.circular(16),
-                                  child: Container(
-                                      decoration: BoxDecoration(
-                                          color: Colors.white,
-                                          borderRadius:
-                                              BorderRadius.circular(16),
-                                          border: Border.all(
-                                              color: i == _template
-                                                  ? NoorColors.emeraldDark
-                                                  : NoorColors.hairline,
-                                              width: i == _template ? 2 : 1),
-                                          boxShadow: NoorShadows.card),
-                                      child: ClipRRect(
-                                          borderRadius:
-                                              BorderRadius.circular(15),
-                                          child: NoorShareCard(
-                                              style: i,
-                                              height: 92,
-                                              item: _streak == null
-                                                  ? _item
-                                                  : null,
-                                              streak: _streak,
-                                              mini: true))))))),
+                              child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 200),
+                                  decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(16),
+                                      border: Border.all(
+                                          color: i == _template
+                                              ? NoorColors.emeraldDark
+                                              : NoorColors.hairline,
+                                          width: i == _template ? 2.5 : 1),
+                                      boxShadow: i == _template
+                                          ? [
+                                              BoxShadow(
+                                                  color: NoorColors.emeraldDark
+                                                      .withValues(alpha: 0.22),
+                                                  blurRadius: 8,
+                                                  offset: const Offset(0, 3))
+                                            ]
+                                          : NoorShadows.card),
+                                  child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(14),
+                                      child: NoorShareCard(
+                                          style: i,
+                                          height: 96,
+                                          item: _streak == null
+                                              ? _item
+                                              : null,
+                                          streak: _streak,
+                                          mini: true,
+                                          borderRadius: BorderRadius.zero,
+                                          hasShadow: false)))))),
                   if (i < 3) const SizedBox(width: 10),
                 ],
               ]),
@@ -319,13 +333,12 @@ class _ShareCardStudioScreenState extends State<ShareCardStudioScreen> {
           label: '$label, $ref',
           child: Material(
               color: Colors.transparent,
-              borderRadius: BorderRadius.circular(16),
               child: InkWell(
                   onTap: onTap,
                   borderRadius: BorderRadius.circular(16),
-                  child: Container(
-                      width: 112,
-                      clipBehavior: Clip.antiAlias,
+                  child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      width: 120,
                       decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(16),
@@ -333,39 +346,49 @@ class _ShareCardStudioScreenState extends State<ShareCardStudioScreen> {
                               color: selected
                                   ? NoorColors.emeraldDark
                                   : NoorColors.hairline,
-                              width: selected ? 2 : 1)),
-                      child: Column(children: [
-                        Expanded(
-                            child: ClipRRect(
-                                borderRadius: const BorderRadius.vertical(
-                                    top: Radius.circular(15)),
-                                child: child)),
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 6),
-                          decoration: const BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.vertical(
-                                bottom: Radius.circular(15)),
-                          ),
-                          child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(label,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: NoorType.meta.copyWith(
-                                        fontWeight: FontWeight.w700)),
-                                const SizedBox(height: 1),
-                                Text(ref,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: NoorType.meta.copyWith(
-                                        color: NoorColors.muted, fontSize: 11)),
-                              ]),
+                              width: selected ? 2.5 : 1),
+                          boxShadow: selected
+                              ? [
+                                  BoxShadow(
+                                      color: NoorColors.emeraldDark
+                                          .withValues(alpha: 0.18),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 3))
+                                ]
+                              : NoorShadows.card),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(14),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Expanded(child: child),
+                            Container(
+                              width: double.infinity,
+                              color: Colors.white,
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 10, vertical: 7),
+                              child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(label,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: NoorType.meta.copyWith(
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 12)),
+                                    const SizedBox(height: 2),
+                                    Text(ref,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: NoorType.meta.copyWith(
+                                            color: NoorColors.muted,
+                                            fontSize: 11)),
+                                  ]),
+                            ),
+                          ],
                         ),
-                      ])))));
+                      )))));
 
   Widget _btn(BuildContext c, String l, IconData i, VoidCallback f,
           {bool primary = false}) =>

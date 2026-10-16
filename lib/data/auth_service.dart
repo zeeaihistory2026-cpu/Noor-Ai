@@ -145,8 +145,11 @@ class LocalAuthService implements AuthService {
       'isLocalOnly': true,
     };
     await NoorStore.cacheJson(_profileCacheKey, jsonEncode(record));
+    await NoorStore.cacheJson(_sessionActiveKey, 'true');
     return AuthResult.success(profile);
   }
+
+  static const _sessionActiveKey = 'local_auth_session_active_v1';
 
   @override
   Future<AuthResult> login({
@@ -170,6 +173,7 @@ class LocalAuthService implements AuthService {
       return const AuthResult.failure(
           'Incorrect password for this device account.');
     }
+    await NoorStore.cacheJson(_sessionActiveKey, 'true');
     return AuthResult.success(AuthProfile.fromJson(record));
   }
 
@@ -183,14 +187,14 @@ class LocalAuthService implements AuthService {
 
   @override
   Future<bool> hasSession() async {
+    final active = await NoorStore.cachedJson(_sessionActiveKey);
+    if (active == 'false') return false;
     final record = await _readRecord();
     return record != null && (record['email']?.toString().isNotEmpty ?? false);
   }
 
   @override
   Future<void> logout() async {
-    // Local prep keeps the on-device profile (so login can be
-    // exercised again); a real sign-out/token revoke is Phase 10
-    // backend work. Nothing server-side exists to log out of yet.
+    await NoorStore.cacheJson(_sessionActiveKey, 'false');
   }
 }

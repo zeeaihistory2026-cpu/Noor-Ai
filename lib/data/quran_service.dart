@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import 'noor_store.dart';
@@ -90,8 +91,8 @@ class QuranService {
     try {
       final list = await fetchSurahList(forceRefresh: forceRefresh);
       if (list.isNotEmpty) return list;
-    } catch (_) {
-      /* fall through */
+    } catch (e) {
+      debugPrint('QuranService: fetchSurahList failed, falling back to cache: $e');
     }
     final cached = await _cachedSurahList();
     return cached ?? sampleSurahList();
@@ -145,7 +146,8 @@ class QuranService {
     try {
       final list = _parseSurahList(raw);
       return list.isEmpty ? null : list;
-    } catch (_) {
+    } catch (e) {
+      debugPrint('QuranService: Failed to parse cached surah list: $e');
       return null;
     }
   }
@@ -202,7 +204,9 @@ class QuranService {
           );
           _surahCache[cacheKey] = parsed;
           return parsed;
-        } catch (_) {}
+        } catch (e) {
+          debugPrint('QuranService: Failed to parse cached Surah $number ($edition): $e');
+        }
       }
     }
 
@@ -257,7 +261,9 @@ class QuranService {
             _editionsCache[number] = parsed;
             return parsed;
           }
-        } catch (_) {}
+        } catch (e) {
+          debugPrint('QuranService: Failed to parse cached editions for Surah $number: $e');
+        }
       }
     }
 
@@ -332,7 +338,9 @@ class QuranService {
           final parsed = parseSearchResponse(diskCached);
           _searchCache[cacheKey] = parsed;
           return parsed;
-        } catch (_) {}
+        } catch (e) {
+          debugPrint('QuranService: Failed to parse search cache for "$keyword": $e');
+        }
       }
     }
 
@@ -458,7 +466,9 @@ class QuranService {
           final parsed = parseMushaf16PageJson(diskCached, page);
           _mushafPageCache[page] = parsed;
           return parsed;
-        } catch (_) {}
+        } catch (e) {
+          debugPrint('QuranService: Failed to parse cached mushaf page $page: $e');
+        }
       }
     }
 
@@ -481,7 +491,9 @@ class QuranService {
           _mushafPageCache[page] = parsed;
           return parsed;
         }
-      } catch (_) {}
+      } catch (e) {
+        debugPrint('QuranService: Mushaf page $page network fetch error: $e');
+      }
 
       // Fallback for offline safety
       final fallback = sampleMushaf16Page(page);

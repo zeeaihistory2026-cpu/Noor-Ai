@@ -274,7 +274,7 @@ class NoorTheme {
         thumbColor: WidgetStateProperty.resolveWith((states) =>
             states.contains(WidgetState.selected)
                 ? Colors.white
-                : Colors.white),
+                : NoorColors.iconMuted),
         trackColor: WidgetStateProperty.resolveWith((states) =>
             states.contains(WidgetState.selected)
                 ? NoorColors.emerald

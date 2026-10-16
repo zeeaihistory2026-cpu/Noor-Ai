@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'auth_service.dart';
@@ -12,19 +13,19 @@ import 'user_data_service.dart';
 /// Project: noor-ai-916ed
 /// Accounts survive uninstalls — stored in Firebase, not on device.
 class FirebaseRestService implements AuthService {
-  /// Phase 6D: Configurable API Key via compile-time environment variable with secure fallback.
-  static const _apiKey = String.fromEnvironment(
+  /// Compile-time configurable API Key via `--dart-define=FIREBASE_API_KEY=...` with default fallback.
+  static const apiKey = String.fromEnvironment(
     'FIREBASE_API_KEY',
     defaultValue: 'AIzaSyAw_Az1vdkdXANXe22jw1dIO__XM2fTOKc',
   );
-  static const _projectId = String.fromEnvironment(
+  static const projectId = String.fromEnvironment(
     'FIREBASE_PROJECT_ID',
     defaultValue: 'noor-ai-916ed',
   );
 
   static const _authBase = 'https://identitytoolkit.googleapis.com/v1';
   static const _firestoreBase =
-      'https://firestore.googleapis.com/v1/projects/$_projectId/databases/(default)/documents';
+      'https://firestore.googleapis.com/v1/projects/$projectId/databases/(default)/documents';
 
   static const _kIdToken = 'fb.idToken';
   static const _kUid = 'fb.uid';
@@ -117,7 +118,7 @@ class FirebaseRestService implements AuthService {
       final refreshToken = decryptToken(prefs.getString(_kRefreshToken));
       if (refreshToken == null || refreshToken.isEmpty) return false;
       final resp = await http.post(
-        Uri.parse('https://securetoken.googleapis.com/v1/token?key=$_apiKey'),
+        Uri.parse('https://securetoken.googleapis.com/v1/token?key=$apiKey'),
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
         body: 'grant_type=refresh_token&refresh_token=$refreshToken',
       );
@@ -142,7 +143,7 @@ class FirebaseRestService implements AuthService {
     if (error != null) return AuthResult.failure(error);
     try {
       final resp = await http.post(
-        Uri.parse('$_authBase/accounts:signUp?key=$_apiKey'),
+        Uri.parse('$_authBase/accounts:signUp?key=$apiKey'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'email': email.trim(),
@@ -185,7 +186,7 @@ class FirebaseRestService implements AuthService {
     if (error != null) return AuthResult.failure(error);
     try {
       final resp = await http.post(
-        Uri.parse('$_authBase/accounts:signInWithPassword?key=$_apiKey'),
+        Uri.parse('$_authBase/accounts:signInWithPassword?key=$apiKey'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'email': email.trim(),
@@ -243,7 +244,9 @@ class FirebaseRestService implements AuthService {
         if (email.isNotEmpty) await prefs.setString(_kEmail, encryptToken(email));
         return AuthProfile(name: name, email: email);
       }
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('FirebaseRestService: Failed to fetch user profile doc: $e');
+    }
 
     // Fallback: return cached profile if network was slow or failed
     if (cachedEmail.isNotEmpty) {
@@ -265,7 +268,9 @@ class FirebaseRestService implements AuthService {
         if (name.isNotEmpty) await prefs.setString(_kName, encryptToken(name));
         if (email.isNotEmpty) await prefs.setString(_kEmail, encryptToken(email));
       }
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('FirebaseRestService: _syncProfileInBackground error: $e');
+    }
   }
 
   @override

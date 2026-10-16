@@ -159,7 +159,7 @@ class _HadithLibraryScreenState extends State<HadithLibraryScreen> {
                 ))),
         Expanded(
             child: ListView(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 48),
                 children: [
               if (RegExp(r'\d+').hasMatch(_q)) ...[
                 Padding(
@@ -297,23 +297,35 @@ class _HadithLibraryScreenState extends State<HadithLibraryScreen> {
                       child: Semantics(button: true, child: GestureDetector(
                           onTap: () => _openBook(_featured[i]),
                           child: Column(children: [
-                            ClipRRect(
-                                borderRadius: BorderRadius.circular(10),
-                                child: Image.asset(
-                                    _covers[_featured[i]]!,
-                                    width: 76,
-                                    cacheWidth: 228,
-                                    height: 94,
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (_, __, ___) => Container(
-                                        width: 76,
-                                        height: 94,
-                                        color: NoorColors.emeraldDark))),
+                            Container(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(8),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.12),
+                                    blurRadius: 6,
+                                    offset: const Offset(0, 3),
+                                  ),
+                                ],
+                              ),
+                              child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: AspectRatio(
+                                    aspectRatio: 188 / 250,
+                                    child: Image.asset(
+                                        _covers[_featured[i]]!,
+                                        fit: BoxFit.fill,
+                                        errorBuilder: (_, __, ___) => Container(
+                                            color: NoorColors.emeraldDark)),
+                                  )),
+                            ),
                             const SizedBox(height: 8),
                             Text(HadithService.bookName(_featured[i]),
                                 textAlign: TextAlign.center,
                                 maxLines: 2,
-                                style: NoorType.meta),
+                                style: NoorType.meta.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                    color: NoorColors.ink)),
                           ])))),
                 ],
               ]),

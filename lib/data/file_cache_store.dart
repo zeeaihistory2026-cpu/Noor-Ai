@@ -41,7 +41,9 @@ class FileCacheStore {
         final file = File('${dir.path}/$safeKey.bin');
         await file.writeAsBytes(bytes, flush: true);
         return;
-      } catch (_) {}
+      } catch (e) {
+        debugPrint('FileCacheStore: writeBytes failed for $key: $e');
+      }
     }
     // Fallback to NoorStore for web or mocked environments
     await NoorStore.cacheJson('file.$key', base64Encode(bytes));
@@ -57,14 +59,18 @@ class FileCacheStore {
         if (await file.exists()) {
           return await file.readAsBytes();
         }
-      } catch (_) {}
+      } catch (e) {
+        debugPrint('FileCacheStore: readBytes error for $key: $e');
+      }
     }
     // Fallback to NoorStore
     final fallback = await NoorStore.cachedJson('file.$key');
     if (fallback != null && fallback.isNotEmpty) {
       try {
         return base64Decode(fallback);
-      } catch (_) {}
+      } catch (e) {
+        debugPrint('FileCacheStore: fallback base64Decode error for $key: $e');
+      }
     }
     return null;
   }
@@ -79,7 +85,9 @@ class FileCacheStore {
         if (await file.exists()) {
           await file.delete();
         }
-      } catch (_) {}
+      } catch (e) {
+        debugPrint('FileCacheStore: delete error for $key: $e');
+      }
     }
     await NoorStore.cacheJson('file.$key', '');
   }

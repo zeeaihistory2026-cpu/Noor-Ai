@@ -20,7 +20,9 @@ class NoorShareCard extends StatelessWidget {
       this.minimal = false,
       this.emphasis = 0,
       this.item,
-      this.streak});
+      this.streak,
+      this.borderRadius,
+      this.hasShadow});
   final int style; // 0 emerald, 1 cream, 2 dark, 3 emerald-mid
   final double height;
   final double? aspect;
@@ -28,14 +30,11 @@ class NoorShareCard extends StatelessWidget {
   final bool showWordmark;
   final bool minimal;
   final int emphasis; // 0 Arabic, 1 English, 2 Nastaliq typeface
-
-  /// Phase 14: the curated card being shown (Ayah/Hadith/Dua).
-  /// Null keeps the design's original Daily Reminder card.
   final ShareContentItem? item;
-
-  /// Phase 14: a streak milestone card (takes precedence over
-  /// [item]); numbers arrive auto-filled from app state.
   final ShareStreakCard? streak;
+  final BorderRadius? borderRadius;
+  final bool? hasShadow;
+
   @override
   Widget build(BuildContext context) {
     final bg = [
@@ -46,14 +45,19 @@ class NoorShareCard extends StatelessWidget {
     ][style];
     final fg = style == 1 ? NoorColors.emeraldDark : Colors.white;
     final sub = style == 1 ? NoorColors.emeraldDark : NoorColors.gold;
+
+    final effectiveRadius = borderRadius ??
+        (mini ? BorderRadius.zero : BorderRadius.circular(NoorRadius.heroCard));
+    final effectiveShadow = hasShadow ?? (!mini);
+
     final card = Container(
       height: aspect == null ? height : null,
       decoration: BoxDecoration(
           color: bg,
-          borderRadius: BorderRadius.circular(NoorRadius.heroCard),
-          boxShadow: NoorShadows.hero),
+          borderRadius: effectiveRadius,
+          boxShadow: effectiveShadow ? NoorShadows.hero : null),
       padding: EdgeInsets.symmetric(
-          horizontal: mini ? 8 : 24, vertical: mini ? 4 : 22),
+          horizontal: mini ? 8 : 24, vertical: mini ? 8 : 22),
       child: Column(children: [
         if (!minimal && !mini)
           Text(
@@ -97,7 +101,7 @@ class NoorShareCard extends StatelessWidget {
             Text(item?.arabicText ?? SampleData.duaArabic,
                 textDirection: TextDirection.rtl,
                 textAlign: TextAlign.center,
-                maxLines: mini ? 1 : null,
+                maxLines: mini ? 2 : null,
                 overflow: mini ? TextOverflow.ellipsis : null,
                 style: (emphasis == 2
                     ? NoorType.urdu(size: mini ? 11 : 26, color: fg)
@@ -122,16 +126,17 @@ class NoorShareCard extends StatelessWidget {
                 : (item?.reference ?? SampleData.duaSource),
             style: TextStyle(
                 color: sub,
-                fontSize: mini ? 8 : 13,
+                fontSize: mini ? 8.5 : 13,
                 fontWeight: FontWeight.w800)),
-        SizedBox(height: mini ? 2 : 18),
-        if (showWordmark && !mini)
+        if (showWordmark && !mini) ...[
+          const SizedBox(height: 18),
           Text('NOOR',
               style: TextStyle(
                   color: fg,
-                  fontSize: mini ? 8 : 13,
+                  fontSize: 13,
                   fontWeight: FontWeight.w800,
                   letterSpacing: 2)),
+        ],
       ]),
     );
     return aspect == null

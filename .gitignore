@@ -1,6 +1,35 @@
+# Flutter / Dart
 .dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+build/
+
+# Binaries
+*.apk
+*.aab
+*.ipa
+*.app
+
+# IDE / Editor
 .idea/
 *.iml
-build/
+.vscode/
+*.code-workspace
+
+# OS files
 .DS_Store
+Thumbs.db
+*.swp
+*~
+
+# Secrets & Local Environment
+*.env
+*.jks
+*.keystore
+key.properties
+google-services.json
+GoogleService-Info.plist
+
+# Test artifacts
 test/failures/

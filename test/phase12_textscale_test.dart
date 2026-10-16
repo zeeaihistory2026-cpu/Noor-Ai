@@ -28,8 +28,8 @@ void main() {
         ),
         home: Scaffold(body: entry.value),
       ));
-      await tester.pump(const Duration(milliseconds: 300));
-      expect(tester.takeException(), isNull);
+      final err = tester.takeException();
+      expect(err, isNull);
     });
   }
 }

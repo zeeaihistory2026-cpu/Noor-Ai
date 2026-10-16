@@ -8,7 +8,7 @@ import 'sample_data.dart';
 /// (the plan). It deliberately does not schedule anything — real
 /// scheduling needs `flutter_local_notifications` plus Android/iOS
 /// native setup, which cannot be verified in this environment.
-/// See notification_todo.dart for the Phase 7 wiring steps.
+/// Notification scheduling is handled via `NotificationService`.
 /// Nothing here may be described as "reminders are scheduled"
 /// until that wiring exists and is device-tested.
 class PlannedNotification {

@@ -72,21 +72,26 @@ class _HadithChaptersScreenState extends State<HadithChaptersScreen> {
         _cachedOffline = !_svc.hasLive;
       });
       _maybeDeepLink();
-    } on HadithServiceException catch (e) {
+    } catch (e) {
       if (!mounted) return;
       // Graceful: disk cache before giving up.
-      final cached =
-          await _svc.cachedEdition(widget.bookId, language: _language);
-      if (!mounted) return;
-      if (cached != null) {
-        setState(() {
-          _book = cached;
-          _cachedOffline = true;
-        });
-        _maybeDeepLink();
-      } else {
-        setState(() => _error = e.message);
-      }
+      try {
+        final cached =
+            await _svc.cachedEdition(widget.bookId, language: _language);
+        if (!mounted) return;
+        if (cached != null) {
+          setState(() {
+            _book = cached;
+            _cachedOffline = true;
+          });
+          _maybeDeepLink();
+          return;
+        }
+      } catch (_) {}
+      final msg = e is HadithServiceException
+          ? e.message
+          : 'Unable to connect to Hadith databank. Please check your internet connection.';
+      setState(() => _error = msg);
     }
   }
 

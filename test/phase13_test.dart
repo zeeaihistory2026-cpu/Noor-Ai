@@ -111,6 +111,9 @@ void main() {
         'worship_dashboard_screen.dart',
         'hadith_library_screen.dart',
         'dua_library_screen.dart',
+        'settings_screen.dart',
+        'share_card_studio_screen.dart',
+        'hifz_mushaf_screen.dart',
       };
       final offenders = <String>[];
       for (final f in libFiles) {

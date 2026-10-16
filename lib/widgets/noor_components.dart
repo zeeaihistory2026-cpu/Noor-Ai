@@ -139,9 +139,14 @@ class NoorPrimaryButton extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 if (icon != null) ...[icon!, const SizedBox(width: 8)],
-                Text(label,
-                    style:
-                        NoorType.cardTitle.copyWith(color: Colors.white)),
+                Flexible(
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: NoorType.cardTitle.copyWith(color: Colors.white),
+                  ),
+                ),
               ],
             ),
           ),
@@ -181,9 +186,15 @@ class NoorSecondaryButton extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 if (icon != null) ...[icon!, const SizedBox(width: 8)],
-                Text(label,
+                Flexible(
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: NoorType.cardTitle
-                        .copyWith(color: NoorColors.emeraldDark)),
+                        .copyWith(color: NoorColors.emeraldDark),
+                  ),
+                ),
               ],
             ),
           ),

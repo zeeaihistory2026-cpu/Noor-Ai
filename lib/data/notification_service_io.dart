@@ -52,8 +52,8 @@ class NoorNotifications {
       try {
         final info = await FlutterTimezone.getLocalTimezone();
         tz.setLocalLocation(tz.getLocation(info.identifier));
-      } catch (_) {
-        /* keep tz.local default (UTC) if lookup fails */
+      } catch (e) {
+        debugPrint('NoorNotifications: Timezone initialization failed, falling back to UTC: $e');
       }
 
       const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
@@ -87,8 +87,8 @@ class NoorNotifications {
           if (canExact == false) {
             await android?.requestExactAlarmsPermission();
           }
-        } catch (_) {
-          /* inexact fallback covers us */
+        } catch (e) {
+          debugPrint('NoorNotifications: Exact alarm permission request error: $e');
         }
       } else if (defaultTargetPlatform == TargetPlatform.iOS) {
         final ios = _plugin.resolvePlatformSpecificImplementation<
@@ -106,7 +106,8 @@ class NoorNotifications {
 
       _ready = true;
       return true;
-    } catch (_) {
+    } catch (e, st) {
+      debugPrint('NoorNotifications: Initialization failed: $e\n$st');
       return false;
     }
   }
@@ -118,8 +119,8 @@ class NoorNotifications {
     if (!await ensureReady()) return 0;
     try {
       await _plugin.cancelAll();
-    } catch (_) {
-      /* nothing to cancel yet */
+    } catch (e) {
+      debugPrint('NoorNotifications: cancelAll failed: $e');
     }
     var scheduled = 0;
     final now = tz.TZDateTime.now(tz.local);
@@ -138,7 +139,7 @@ class NoorNotifications {
           payload: '${entry.group}|${entry.prayerName}',
         );
         scheduled++;
-      } catch (_) {
+      } catch (e) {
         // Exact alarms denied/revoked between check and schedule:
         // retry inexact rather than dropping the reminder silently.
         try {
@@ -152,8 +153,8 @@ class NoorNotifications {
             payload: '${entry.group}|${entry.prayerName}',
           );
           scheduled++;
-        } catch (_) {
-          /* this entry could not be scheduled; others still were */
+        } catch (err) {
+          debugPrint('NoorNotifications: Failed scheduling notification ${entry.id}: $err');
         }
       }
     }
@@ -193,7 +194,8 @@ class NoorNotifications {
         payload: payload,
       );
       return true;
-    } catch (_) {
+    } catch (e, st) {
+      debugPrint('NoorNotifications: showNotification failed: $e\n$st');
       return false;
     }
   }
@@ -201,8 +203,8 @@ class NoorNotifications {
   static Future<void> cancelAll() async {
     try {
       await _plugin.cancelAll();
-    } catch (_) {
-      /* plugin not ready; nothing scheduled by us in that case */
+    } catch (e) {
+      debugPrint('NoorNotifications: cancelAll failed: $e');
     }
   }
 

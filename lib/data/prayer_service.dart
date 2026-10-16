@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import 'noor_store.dart';
@@ -100,7 +101,8 @@ class PrayerService {
       _memoryCacheMap[key] = day;
       _memoryCache = day;
       return day;
-    } catch (_) {
+    } catch (e) {
+      debugPrint('PrayerService: fetchTodayByCity error for $city, $country: $e');
       return _memoryCacheMap[key] ?? _memoryCache ?? await _persistedCache() ?? PrayerDay.sample();
     }
   }
@@ -257,8 +259,8 @@ class PrayerService {
           );
           return formatted;
         }
-      } catch (_) {
-        /* fall through */
+      } catch (e) {
+        debugPrint('PrayerService: Hijri conversion request error for $key: $e');
       } finally {
         _inFlightHijri.remove(key);
       }
@@ -308,8 +310,8 @@ class PrayerService {
             return direction;
           }
         }
-      } catch (_) {
-        /* fall through to local computation */
+      } catch (e) {
+        debugPrint('PrayerService: Qibla network request error ($latitude, $longitude): $e');
       } finally {
         _inFlightQibla.remove(key);
       }
@@ -347,7 +349,8 @@ class PrayerService {
         jsonDecode(raw) as Map<String, dynamic>,
         source: PrayerSource.cache,
       );
-    } catch (_) {
+    } catch (e) {
+      debugPrint('PrayerService: Failed to decode persisted city cache ($key): $e');
       return null;
     }
   }
@@ -360,7 +363,8 @@ class PrayerService {
         jsonDecode(raw) as Map<String, dynamic>,
         source: PrayerSource.cache,
       );
-    } catch (_) {
+    } catch (e) {
+      debugPrint('PrayerService: Failed to decode persisted coord cache ($key): $e');
       return null;
     }
   }
@@ -373,7 +377,8 @@ class PrayerService {
         jsonDecode(raw) as Map<String, dynamic>,
         source: PrayerSource.cache,
       );
-    } catch (_) {
+    } catch (e) {
+      debugPrint('PrayerService: Failed to decode persisted last cache: $e');
       return null;
     }
   }

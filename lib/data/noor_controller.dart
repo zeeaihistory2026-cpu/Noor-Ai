@@ -28,9 +28,18 @@ enum NoorThemePreference {
 /// a streak updating — propagates to all tabs without any screen
 /// fetching its own copy.
 class NoorController extends ChangeNotifier {
-  NoorController() {
-    loadThemePreference();
-    unawaited(UserDataService.instance.flushOutbox());
+  NoorController({bool autoInit = true}) {
+    if (autoInit) {
+      loadThemePreference().catchError((e, st) {
+        // Ignored or logged in test / headless environments
+      });
+      unawaited(
+        UserDataService.instance.flushOutbox().catchError((e, st) {
+          // Ignored or logged in test / headless environments
+          return 0;
+        }),
+      );
+    }
   }
 
   PrayerDay? _liveDay;
@@ -102,27 +111,37 @@ class NoorController extends ChangeNotifier {
 
   void setStreak(String label, int days) {
     if (_streaks[label] == days) return;
-    _streaks = {..._streaks, label: days};
+    final updated = Map<String, int>.from(_streaks);
+    updated[label] = days;
+    _streaks = updated;
     notifyListeners();
   }
 
   Future<void> setThemePreference(NoorThemePreference pref) async {
     if (_themePreference == pref) return;
     _themePreference = pref;
-    await NoorStore.setThemePreference(pref.name);
+    try {
+      await NoorStore.setThemePreference(pref.name);
+    } catch (e) {
+      debugPrint('NoorController: Failed to persist theme preference: $e');
+    }
     notifyListeners();
   }
 
   Future<void> loadThemePreference() async {
-    final raw = await NoorStore.getThemePreference();
-    for (final p in NoorThemePreference.values) {
-      if (p.name == raw) {
-        if (_themePreference != p) {
-          _themePreference = p;
-          notifyListeners();
+    try {
+      final raw = await NoorStore.getThemePreference();
+      for (final p in NoorThemePreference.values) {
+        if (p.name == raw) {
+          if (_themePreference != p) {
+            _themePreference = p;
+            notifyListeners();
+          }
+          return;
         }
-        return;
       }
+    } catch (e) {
+      debugPrint('NoorController: Failed to load theme preference: $e');
     }
   }
 }

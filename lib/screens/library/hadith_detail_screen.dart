@@ -44,7 +44,16 @@ class _HadithDetailScreenState extends State<HadithDetailScreen> {
   String? _arabic; // Arabic line (rtl), loaded when primary isn't Arabic
   String? _translation; // English line, loaded when primary IS Arabic
 
-  HadithEntry get _entry => _inSection[_index];
+  HadithEntry get _entry => _inSection.isEmpty
+      ? const HadithEntry(
+          hadithnumber: 0,
+          arabicnumber: 0,
+          text: 'No narration text found.',
+          grades: [],
+          sectionNumber: 0,
+          hadithInSection: 0,
+        )
+      : _inSection[_index];
   HadithSection get _section => widget.book.sectionOf(_entry);
   bool get _isArabic => widget.book.language == HadithLanguage.ara;
 
@@ -56,7 +65,7 @@ class _HadithDetailScreenState extends State<HadithDetailScreen> {
     super.initState();
     _svc = HadithService();
     _inSection = widget.book.hadithsInSection(widget.sectionNumber);
-    _index = widget.entryIndex.clamp(0, _inSection.length - 1);
+    _index = _inSection.isEmpty ? 0 : widget.entryIndex.clamp(0, _inSection.length - 1);
     NoorStore.isBookmarked(_bookmarkId).then((v) {
       if (mounted) setState(() => _saved = v);
     });

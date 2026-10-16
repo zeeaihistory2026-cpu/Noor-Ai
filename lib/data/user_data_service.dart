@@ -19,8 +19,8 @@ class UserDataService {
   UserDataService._();
   static final UserDataService instance = UserDataService._();
 
-  static const _apiKey = 'AIzaSyAw_Az1vdkdXANXe22jw1dIO__XM2fTOKc';
-  static const _projectId = 'noor-ai-916ed';
+  static const _apiKey = FirebaseRestService.apiKey;
+  static const _projectId = FirebaseRestService.projectId;
   static const _base =
       'https://firestore.googleapis.com/v1/projects/$_projectId/databases/(default)/documents';
 
@@ -33,18 +33,30 @@ class UserDataService {
   final Map<String, int> _pendingTasbih = {};
 
   Future<String?> _token() async {
-    final prefs = await SharedPreferences.getInstance();
-    return FirebaseRestService.decryptToken(prefs.getString('fb.idToken'));
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return FirebaseRestService.decryptToken(prefs.getString('fb.idToken'));
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<String?> _refreshToken() async {
-    final prefs = await SharedPreferences.getInstance();
-    return FirebaseRestService.decryptToken(prefs.getString('fb.refreshToken'));
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return FirebaseRestService.decryptToken(prefs.getString('fb.refreshToken'));
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<String?> _uid() async {
-    final prefs = await SharedPreferences.getInstance();
-    return FirebaseRestService.decryptToken(prefs.getString('fb.uid'));
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return FirebaseRestService.decryptToken(prefs.getString('fb.uid'));
+    } catch (_) {
+      return null;
+    }
   }
 
   /// Optional HTTP client for dependency injection and testing.
@@ -325,78 +337,83 @@ class UserDataService {
   /// Phase 6D: Flushes pending offline operations to Firestore with exponential backoff.
   /// If [forceRetry] is true, ignores backoff windows and attempts all pending items immediately.
   Future<int> flushOutbox({bool forceRetry = false}) async {
-    final uid = await _uid();
-    final outbox = await NoorStore.getSyncOutbox();
-    if (outbox.isEmpty) {
-      syncState.value = SyncState.synced;
-      return 0;
-    }
-
-    if (uid == null) {
-      syncState.value = SyncState.offlinePending;
-      return 0;
-    }
-
-    syncState.value = SyncState.syncing;
-    final List<String> successfullySynced = [];
-    final List<String> deadLetterIds = [];
-    final now = DateTime.now().millisecondsSinceEpoch;
-
-    for (final op in outbox) {
-      final opId = op['id']?.toString() ?? '';
-      final attempts = (op['attempts'] as num?)?.toInt() ?? 0;
-      final nextRetryAt = (op['nextRetryAt'] as num?)?.toInt() ?? 0;
-
-      // Exponential backoff check
-      if (!forceRetry && attempts > 0 && now < nextRetryAt) {
-        continue;
+    try {
+      final uid = await _uid();
+      final outbox = await NoorStore.getSyncOutbox();
+      if (outbox.isEmpty) {
+        syncState.value = SyncState.synced;
+        return 0;
       }
 
-      var path = op['path']?.toString() ?? '';
-      if (path.contains('/local/')) {
-        path = path.replaceFirst('/local/', '/$uid/');
-      }
-      final rawData = op['data'];
-      final Map<String, dynamic> payload =
-          rawData is Map ? Map<String, dynamic>.from(rawData) : {};
-
-      final resp = await _authenticatedPatch(path, payload);
-      if (resp != null && resp.statusCode >= 200 && resp.statusCode < 300) {
-        if (opId.isNotEmpty) successfullySynced.add(opId);
-      } else {
-        final newAttempts = attempts + 1;
-        if (resp != null && resp.statusCode == 400) {
-          // Non-retryable Bad Request; drop from queue
-          if (opId.isNotEmpty) deadLetterIds.add(opId);
-        } else if (newAttempts >= maxRetryAttempts) {
-          // Exceeded max retry threshold; drop to avoid queue wedging
-          if (opId.isNotEmpty) deadLetterIds.add(opId);
-        } else {
-          // Exponential backoff: initialBackoff * 2^(attempts-1) up to maxBackoff
-          final backoff = math.min(
-            initialBackoffMs * math.pow(2, newAttempts - 1).toInt(),
-            maxBackoffMs,
-          );
-          op['attempts'] = newAttempts;
-          op['lastAttemptAt'] = now;
-          op['nextRetryAt'] = now + backoff;
-          await NoorStore.enqueueSyncOperation(op);
-        }
+      if (uid == null) {
         syncState.value = SyncState.offlinePending;
-        break;
+        return 0;
       }
-    }
 
-    if (successfullySynced.isNotEmpty) {
-      await NoorStore.removeSyncOperations(successfullySynced);
-    }
-    if (deadLetterIds.isNotEmpty) {
-      await NoorStore.removeSyncOperations(deadLetterIds);
-    }
+      syncState.value = SyncState.syncing;
+      final List<String> successfullySynced = [];
+      final List<String> deadLetterIds = [];
+      final now = DateTime.now().millisecondsSinceEpoch;
 
-    final remaining = await NoorStore.getSyncOutbox();
-    syncState.value = remaining.isEmpty ? SyncState.synced : SyncState.offlinePending;
-    return successfullySynced.length;
+      for (final op in outbox) {
+        final opId = op['id']?.toString() ?? '';
+        final attempts = (op['attempts'] as num?)?.toInt() ?? 0;
+        final nextRetryAt = (op['nextRetryAt'] as num?)?.toInt() ?? 0;
+
+        // Exponential backoff check
+        if (!forceRetry && attempts > 0 && now < nextRetryAt) {
+          continue;
+        }
+
+        var path = op['path']?.toString() ?? '';
+        if (path.contains('/local/')) {
+          path = path.replaceFirst('/local/', '/$uid/');
+        }
+        final rawData = op['data'];
+        final Map<String, dynamic> payload =
+            rawData is Map ? Map<String, dynamic>.from(rawData) : {};
+
+        final resp = await _authenticatedPatch(path, payload);
+        if (resp != null && resp.statusCode >= 200 && resp.statusCode < 300) {
+          if (opId.isNotEmpty) successfullySynced.add(opId);
+        } else {
+          final newAttempts = attempts + 1;
+          if (resp != null && resp.statusCode == 400) {
+            // Non-retryable Bad Request; drop from queue
+            if (opId.isNotEmpty) deadLetterIds.add(opId);
+          } else if (newAttempts >= maxRetryAttempts) {
+            // Exceeded max retry threshold; drop to avoid queue wedging
+            if (opId.isNotEmpty) deadLetterIds.add(opId);
+          } else {
+            // Exponential backoff: initialBackoff * 2^(attempts-1) up to maxBackoff
+            final backoff = math.min(
+              initialBackoffMs * math.pow(2, newAttempts - 1).toInt(),
+              maxBackoffMs,
+            );
+            op['attempts'] = newAttempts;
+            op['lastAttemptAt'] = now;
+            op['nextRetryAt'] = now + backoff;
+            await NoorStore.enqueueSyncOperation(op);
+          }
+          syncState.value = SyncState.offlinePending;
+          break;
+        }
+      }
+
+      if (successfullySynced.isNotEmpty) {
+        await NoorStore.removeSyncOperations(successfullySynced);
+      }
+      if (deadLetterIds.isNotEmpty) {
+        await NoorStore.removeSyncOperations(deadLetterIds);
+      }
+
+      final remaining = await NoorStore.getSyncOutbox();
+      syncState.value = remaining.isEmpty ? SyncState.synced : SyncState.offlinePending;
+      return successfullySynced.length;
+    } catch (e) {
+      debugPrint('UserDataService.flushOutbox error: $e');
+      return 0;
+    }
   }
 
   // --- Helpers for Firestore REST API ---
