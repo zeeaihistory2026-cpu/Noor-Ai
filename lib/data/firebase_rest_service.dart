@@ -29,6 +29,8 @@ class FirebaseRestService implements AuthService {
   static const _kIdToken = 'fb.idToken';
   static const _kUid = 'fb.uid';
   static const _kRefreshToken = 'fb.refreshToken';
+  static const _kName = 'fb.name';
+  static const _kEmail = 'fb.email';
   static const _secSeed = 'NoorAi.SecureStorage.Seed.2026';
 
   /// Phase 6D: Cryptographically obfuscates tokens before storing in SharedPreferences.
@@ -72,13 +74,19 @@ class FirebaseRestService implements AuthService {
     _uid = decryptToken(prefs.getString(_kUid));
   }
 
-  Future<void> _saveSession(String idToken, String uid, String refreshToken) async {
+  Future<void> _saveSession(String idToken, String uid, String refreshToken, {String? name, String? email}) async {
     _idToken = idToken;
     _uid = uid;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_kIdToken, encryptToken(idToken));
     await prefs.setString(_kUid, encryptToken(uid));
     await prefs.setString(_kRefreshToken, encryptToken(refreshToken));
+    if (name != null && name.isNotEmpty) {
+      await prefs.setString(_kName, encryptToken(name));
+    }
+    if (email != null && email.isNotEmpty) {
+      await prefs.setString(_kEmail, encryptToken(email));
+    }
   }
 
   Future<void> _clearSession() async {
@@ -88,6 +96,18 @@ class FirebaseRestService implements AuthService {
     await prefs.remove(_kIdToken);
     await prefs.remove(_kUid);
     await prefs.remove(_kRefreshToken);
+    await prefs.remove(_kName);
+    await prefs.remove(_kEmail);
+  }
+
+  @override
+  Future<bool> hasSession() async {
+    final prefs = await SharedPreferences.getInstance();
+    final uid = decryptToken(prefs.getString(_kUid));
+    final token = decryptToken(prefs.getString(_kIdToken));
+    final refresh = decryptToken(prefs.getString(_kRefreshToken));
+    return (uid != null && uid.isNotEmpty) &&
+        ((token != null && token.isNotEmpty) || (refresh != null && refresh.isNotEmpty));
   }
 
   /// Refresh the ID token using the refresh token.
@@ -135,7 +155,13 @@ class FirebaseRestService implements AuthService {
         return AuthResult.failure(
             _friendlyError(data['error']?['message'] ?? 'UNKNOWN'));
       }
-      await _saveSession(data['idToken'], data['localId'], data['refreshToken'] ?? '');
+      await _saveSession(
+        data['idToken'],
+        data['localId'],
+        data['refreshToken'] ?? '',
+        name: name.trim(),
+        email: email.trim(),
+      );
       // Store profile in Firestore
       await _setDoc('users/${data['localId']}', {
         'name': name.trim(),
@@ -172,10 +198,19 @@ class FirebaseRestService implements AuthService {
         return AuthResult.failure(
             _friendlyError(data['error']?['message'] ?? 'UNKNOWN'));
       }
-      await _saveSession(data['idToken'], data['localId'], data['refreshToken'] ?? '');
+      await _saveSession(
+        data['idToken'],
+        data['localId'],
+        data['refreshToken'] ?? '',
+        email: email.trim(),
+      );
       // Load profile from Firestore
       final profile = await _getDoc('users/${data['localId']}');
       final name = profile?['name']?.toString() ?? '';
+      if (name.isNotEmpty) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(_kName, encryptToken(name));
+      }
       unawaited(UserDataService.instance.flushOutbox());
       return AuthResult.success(
           AuthProfile(name: name, email: email.trim()));
@@ -185,19 +220,52 @@ class FirebaseRestService implements AuthService {
   }
 
   @override
-  Future<AuthProfile?> currentProfile() async {
+  Future<AuthProfile?> currentProfile({bool forceRefresh = false}) async {
     await _loadSession();
     if (_idToken == null || _uid == null) return null;
+
+    final prefs = await SharedPreferences.getInstance();
+    final cachedName = decryptToken(prefs.getString(_kName)) ?? '';
+    final cachedEmail = decryptToken(prefs.getString(_kEmail)) ?? '';
+
+    // Fast path: if cached profile exists locally and refresh isn't forced, return instantly!
+    if (!forceRefresh && cachedEmail.isNotEmpty) {
+      unawaited(_syncProfileInBackground());
+      return AuthProfile(name: cachedName, email: cachedEmail);
+    }
+
     try {
       final profile = await _getDoc('users/$_uid');
-      if (profile == null) return null;
-      return AuthProfile(
-        name: (profile['name'] ?? '').toString(),
-        email: (profile['email'] ?? '').toString(),
-      );
-    } catch (_) {
-      return null;
+      if (profile != null) {
+        final name = (profile['name'] ?? '').toString();
+        final email = (profile['email'] ?? cachedEmail).toString();
+        if (name.isNotEmpty) await prefs.setString(_kName, encryptToken(name));
+        if (email.isNotEmpty) await prefs.setString(_kEmail, encryptToken(email));
+        return AuthProfile(name: name, email: email);
+      }
+    } catch (_) {}
+
+    // Fallback: return cached profile if network was slow or failed
+    if (cachedEmail.isNotEmpty) {
+      return AuthProfile(name: cachedName, email: cachedEmail);
     }
+    if (_uid != null && _uid!.isNotEmpty) {
+      return AuthProfile(name: cachedName, email: cachedEmail);
+    }
+    return null;
+  }
+
+  Future<void> _syncProfileInBackground() async {
+    try {
+      final profile = await _getDoc('users/$_uid');
+      if (profile != null) {
+        final prefs = await SharedPreferences.getInstance();
+        final name = (profile['name'] ?? '').toString();
+        final email = (profile['email'] ?? '').toString();
+        if (name.isNotEmpty) await prefs.setString(_kName, encryptToken(name));
+        if (email.isNotEmpty) await prefs.setString(_kEmail, encryptToken(email));
+      }
+    } catch (_) {}
   }
 
   @override
@@ -211,22 +279,26 @@ class FirebaseRestService implements AuthService {
   Future<Map<String, dynamic>?> _getDoc(String path) async {
     await _loadSession();
     if (_idToken == null) return null;
-    var resp = await http.get(
-      Uri.parse('$_firestoreBase/$path'),
-      headers: {'Authorization': 'Bearer $_idToken'},
-    );
-    // Token expired? Try refreshing once.
-    if (resp.statusCode == 401) {
-      final refreshed = await _refreshToken();
-      if (!refreshed) return null;
-      resp = await http.get(
+    try {
+      var resp = await http.get(
         Uri.parse('$_firestoreBase/$path'),
         headers: {'Authorization': 'Bearer $_idToken'},
-      );
+      ).timeout(const Duration(seconds: 4));
+      // Token expired? Try refreshing once.
+      if (resp.statusCode == 401) {
+        final refreshed = await _refreshToken();
+        if (!refreshed) return null;
+        resp = await http.get(
+          Uri.parse('$_firestoreBase/$path'),
+          headers: {'Authorization': 'Bearer $_idToken'},
+        ).timeout(const Duration(seconds: 4));
+      }
+      if (resp.statusCode != 200) return null;
+      final data = jsonDecode(resp.body);
+      return _fromFirestore(data['fields'] ?? {});
+    } catch (_) {
+      return null;
     }
-    if (resp.statusCode != 200) return null;
-    final data = jsonDecode(resp.body);
-    return _fromFirestore(data['fields'] ?? {});
   }
 
   Future<void> _setDoc(String path, Map<String, dynamic> data) async {

@@ -96,6 +96,11 @@ class FirebaseAuthService implements AuthService {
   }
 
   @override
+  Future<bool> hasSession() async {
+    return _auth.currentUser != null;
+  }
+
+  @override
   Future<void> logout() async {
     await _auth.signOut();
   }

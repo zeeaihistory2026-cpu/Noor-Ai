@@ -20,40 +20,56 @@ class SplashScreen extends StatefulWidget {
 
 class _SplashScreenState extends State<SplashScreen> {
   bool _advanced = false;
-  Timer? _timer;
 
   @override
   void initState() {
     super.initState();
-    // Auto-advance is the primary behaviour; Enter NOOR remains as
-    // the immediate / fallback tap target. "Loading..." copy was
-    // removed — it contradicted the button (SENIOR_REVIEW P0-6).
-    _timer = Timer(const Duration(seconds: 3), _advance);
+    _checkAndAdvance();
   }
 
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
+  Future<Widget> _resolveNextScreen() async {
+    try {
+      final auth = FirebaseRestService();
+      // Fast check: do we have a stored session token on device? (Takes ~2ms)
+      final hasSession = await auth.hasSession();
+      if (hasSession) {
+        return const NoorTabShell();
+      }
+      final profile = await auth.currentProfile().timeout(
+        const Duration(seconds: 2),
+        onTimeout: () => null,
+      );
+      if (profile != null) {
+        return const NoorTabShell();
+      }
+    } catch (_) {
+      // Fall through to onboarding on error.
+    }
+    return const OnboardingScreen();
+  }
+
+  Future<void> _checkAndAdvance() async {
+    // Start session verification and a brief 1-second branded splash in parallel
+    final sessionFuture = _resolveNextScreen();
+    final minSplashFuture = Future.delayed(const Duration(milliseconds: 1000));
+
+    final results = await Future.wait([sessionFuture, minSplashFuture]);
+    final nextScreen = results[0] as Widget;
+
+    if (!mounted || _advanced) return;
+    _advanced = true;
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(builder: (_) => nextScreen),
+    );
   }
 
   void _advance() async {
     if (!mounted || _advanced) return;
     _advanced = true;
-    // If the user is already logged in, skip onboarding/login and go
-    // straight to the main app (with bottom navigation). Otherwise show onboarding.
-    Widget next = const OnboardingScreen();
-    try {
-      final profile = await FirebaseRestService().currentProfile();
-      if (profile != null && mounted) {
-        next = const NoorTabShell();
-      }
-    } catch (_) {
-      // Fall through to onboarding on error.
-    }
+    final nextScreen = await _resolveNextScreen();
     if (!mounted) return;
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => next),
+      MaterialPageRoute(builder: (_) => nextScreen),
     );
   }
 

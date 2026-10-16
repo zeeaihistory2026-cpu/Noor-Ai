@@ -67,6 +67,9 @@ abstract interface class AuthService {
 
   Future<AuthProfile?> currentProfile();
 
+  /// Check whether an authenticated session exists locally without network latency.
+  Future<bool> hasSession();
+
   Future<void> logout();
 }
 
@@ -176,6 +179,12 @@ class LocalAuthService implements AuthService {
     if (record == null) return null;
     final profile = AuthProfile.fromJson(record);
     return profile.email.isEmpty ? null : profile;
+  }
+
+  @override
+  Future<bool> hasSession() async {
+    final record = await _readRecord();
+    return record != null && (record['email']?.toString().isNotEmpty ?? false);
   }
 
   @override
