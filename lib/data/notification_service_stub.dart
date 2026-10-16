@@ -17,5 +17,14 @@ class NoorNotifications {
   /// Returns 0 (nothing scheduled) on web.
   static Future<int> schedulePlan(List<PlannedNotification> plan) async => 0;
 
+  /// Always false on web: local notifications unsupported.
+  static Future<bool> showNotification({
+    required int id,
+    required String title,
+    required String body,
+    String? payload,
+    bool isSalah = false,
+  }) async => false;
+
   static Future<void> cancelAll() async {}
 }

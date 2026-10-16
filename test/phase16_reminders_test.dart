@@ -142,12 +142,19 @@ void main() {
       expect(evening.single.scheduledAt, DateTime(2026, 10, 14, 18, 20));
     });
 
-    test('Dua of the Day, Hadith of the Day and Quran fire daily', () {
+    test('Dua of the Day, Hadith of the Day, Ayat of the Day, Quote of the Day, Daily Zikr and Quran fire daily', () {
       final plan = NotificationPlan.buildFixedPlan(
         toggles: _allOn,
         now: DateTime(2026, 10, 13, 20, 0),
       );
-      for (final label in ['Dua of the Day', 'Hadith of the Day', 'Quran']) {
+      for (final label in [
+        'Dua of the Day',
+        'Hadith of the Day',
+        'Ayat of the Day',
+        'Quote of the Day',
+        'Daily Zikr & Tasbih',
+        'Quran',
+      ]) {
         final entries = plan.where((p) => p.prayerName == label).toList();
         expect(entries, hasLength(1), reason: label);
         expect(entries.single.scheduledAt.isAfter(DateTime(2026, 10, 13, 20, 0)),
@@ -158,11 +165,13 @@ void main() {
 
     test('a switched-off daily reminder is never planned', () {
       final plan = NotificationPlan.buildFixedPlan(
-        toggles: const {'Morning Adhkar': false},
+        toggles: const {'Morning Adhkar': false, 'Ayat of the Day': false},
         now: DateTime(2026, 10, 13, 6, 0),
       );
       expect(plan.where((p) => p.prayerName == 'Morning Adhkar'), isEmpty);
+      expect(plan.where((p) => p.prayerName == 'Ayat of the Day'), isEmpty);
       expect(plan.where((p) => p.prayerName == 'Evening Adhkar'), isNotEmpty);
+      expect(plan.where((p) => p.prayerName == 'Quote of the Day'), isNotEmpty);
     });
   });
 

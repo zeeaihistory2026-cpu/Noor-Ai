@@ -99,9 +99,15 @@ class NotificationPlan {
           id: _stableId(group, r.$1, when),
           group: group,
           title: r.$1,
-          body: group == 'Worship'
-              ? 'Time for ${r.$1}.'
-              : 'Your ${r.$1} is ready.',
+          body: switch (r.$1) {
+            'Ayat of the Day' => 'Reflect upon today’s Quranic verse and guidance.',
+            'Hadith of the Day' => 'Wisdom and teachings of the Prophet (ﷺ) for your day.',
+            'Quote of the Day' => 'Daily Islamic reflection and spiritual motivation.',
+            'Daily Zikr & Tasbih' => 'Take a mindful pause for dhikr and remembrance of Allah.',
+            'Morning Adhkar' => 'Start your morning with peace through remembrance of Allah.',
+            'Evening Adhkar' => 'Evening supplications and adhkar for tranquility.',
+            _ => group == 'Worship' ? 'Time for ${r.$1}.' : 'Your ${r.$1} is ready.',
+          },
           scheduledAt: when,
           prayerName: r.$1,
         ));

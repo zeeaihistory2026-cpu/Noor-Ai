@@ -160,6 +160,44 @@ class NoorNotifications {
     return scheduled;
   }
 
+  /// Shows an immediate local notification (used for testing and instant alerts).
+  static Future<bool> showNotification({
+    required int id,
+    required String title,
+    required String body,
+    String? payload,
+    bool isSalah = false,
+  }) async {
+    if (!await ensureReady()) return false;
+    try {
+      final android = AndroidNotificationDetails(
+        isSalah ? prayerChannelId : dailyChannelId,
+        isSalah ? 'Prayer reminders' : 'Daily NOOR reminders',
+        channelDescription: isSalah
+            ? 'A short reminder before each prayer time'
+            : 'Adhkar, Dua, Hadith, Ayah and Quote reminders',
+        importance: isSalah ? Importance.high : Importance.defaultImportance,
+        priority: isSalah ? Priority.high : Priority.defaultPriority,
+      );
+      const ios = DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+      );
+      final details = NotificationDetails(android: android, iOS: ios, macOS: ios);
+      await _plugin.show(
+        id: id,
+        title: title,
+        body: body,
+        notificationDetails: details,
+        payload: payload,
+      );
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   static Future<void> cancelAll() async {
     try {
       await _plugin.cancelAll();

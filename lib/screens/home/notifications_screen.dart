@@ -32,20 +32,43 @@ class NotificationsScreen extends StatelessWidget {
                         NoorType.cardTitle),
                 const SizedBox(height: 12),
                 for (var i = 0; i < SampleData.notifToday.length; i++)
-                  _row(SampleData.notifToday[i],
-                      time: const ['5:21 AM', '6:00 AM', '8:15 AM'][i],
-                      unread: i == 0),
+                  _row(
+                    SampleData.notifToday[i],
+                    time: _timeForIndex(i),
+                    unread: i < 2,
+                  ),
                 const SizedBox(height: 20),
                 const Text('Earlier',
                     style:
                         NoorType.cardTitle),
                 const SizedBox(height: 12),
                 for (var i = 0; i < SampleData.notifEarlier.length; i++)
-                  _row(SampleData.notifEarlier[i],
-                      time: const ['Yesterday', 'Yesterday', '2 days ago'][i]),
+                  _row(
+                    SampleData.notifEarlier[i],
+                    time: _earlierTimeForIndex(i),
+                  ),
               ])),
         ])),
       );
+
+  static String _timeForIndex(int i) {
+    const times = [
+      '5:21 AM',
+      '6:00 AM',
+      '7:15 AM',
+      '8:00 AM',
+      '12:00 PM',
+      '4:00 PM',
+      '6:30 PM',
+    ];
+    return i < times.length ? times[i] : 'Today';
+  }
+
+  static String _earlierTimeForIndex(int i) {
+    const times = ['Yesterday', 'Yesterday', '2 days ago', '3 days ago'];
+    return i < times.length ? times[i] : 'Earlier';
+  }
+
   Widget _row((String, String, String) n,
           {String time = '', bool unread = false}) =>
       Padding(
@@ -89,10 +112,18 @@ class NotificationsScreen extends StatelessWidget {
 }
 
 IconData _iconFor(String title) => switch (title) {
-      'Fajr reminder' => Icons.alarm_outlined,
-      'Daily Dua' => Icons.pan_tool_outlined,
+      'Fajr reminder' ||
+      'Dhuhr reminder' ||
+      'Asr reminder' ||
+      'Maghrib reminder' ||
+      'Isha reminder' =>
+        Icons.alarm_outlined,
+      'Ayat of the Day' => Icons.auto_stories_outlined,
+      'Daily Zikr' || 'Daily Zikr & Tasbih' => Icons.fingerprint_rounded,
+      'Daily Dua' || 'Dua of the Day' => Icons.pan_tool_outlined,
       'Quran' => Icons.menu_book_outlined,
       'Hifz plan' => Icons.school_outlined,
-      'Hadith' => Icons.auto_stories_outlined,
+      'Hadith' || 'Hadith of the Day' => Icons.bookmark_border_outlined,
+      'Quote of the Day' => Icons.format_quote_rounded,
       _ => Icons.lightbulb_outline,
     };

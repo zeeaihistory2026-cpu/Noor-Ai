@@ -201,11 +201,14 @@ class SampleData {
   static const reminderWorship = [
     ('Morning Adhkar', '7:00 AM'),
     ('Evening Adhkar', '6:20 PM'),
+    ('Daily Zikr & Tasbih', '9:00 PM'),
     ('Quran', '6:30 AM'),
   ];
   static const reminderDaily = [
+    ('Ayat of the Day', '6:00 AM'),
     ('Dua of the Day', '8:00 AM'),
     ('Hadith of the Day', '12:00 PM'),
+    ('Quote of the Day', '4:00 PM'),
   ];
 
   // Page 27 — Hifz AI Test. Brief cue fragment only, as drawn.
@@ -334,8 +337,12 @@ class SampleData {
   ];
   // Page 35 — Notifications (title, body, initial) grouped as drawn.
   static const notifToday = [
-    ('Fajr reminder', 'Fajr begins in 15 minutes.', 'F'),
-    ('Daily Dua', 'Your Dua of the Day is ready.', 'D'),
+    ('Fajr reminder', 'Fajr begins in 15 minutes. Prepare for prayer.', 'F'),
+    ('Ayat of the Day', '“Verily, in the remembrance of Allah do hearts find rest.” (13:28)', 'A'),
+    ('Daily Zikr', 'Take a peaceful moment for SubhanAllah, Alhamdulillah & Allahu Akbar.', 'Z'),
+    ('Daily Dua', 'Your Dua of the Day is ready: “Rabbana atina fid-dunya hasanah...”', 'D'),
+    ('Hadith of the Day', '“The best among you are those who have the best manners.”', 'H'),
+    ('Quote of the Day', '“Patience is not the ability to wait, but how you act while waiting.”', 'Q'),
     ('Quran', 'Continue Surah Al-Kahf from Ayah 18.', 'Q'),
   ];
   static const notifEarlier = [

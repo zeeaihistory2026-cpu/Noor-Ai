@@ -227,6 +227,142 @@ class _ReminderCenterScreenState extends State<ReminderCenterScreen> {
     await _reschedule();
   }
 
+  void _showTestNotificationSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                child: Text('Test Reminder Notification', style: NoorType.cardTitle),
+              ),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+                child: Text('Trigger a live notification preview on your device:', style: NoorType.secondary),
+              ),
+              const SizedBox(height: 8),
+              ListTile(
+                leading: const CircleAvatar(
+                  backgroundColor: NoorColors.emeraldSoft,
+                  child: Icon(Icons.alarm_outlined, color: NoorColors.emeraldDark),
+                ),
+                title: const Text('Namaz (Salah) Reminder', style: NoorType.body),
+                subtitle: const Text('Fajr begins in 15 minutes. Prepare for prayer.', style: NoorType.meta),
+                onTap: () async {
+                  Navigator.pop(ctx);
+                  await NoorNotifications.showNotification(
+                    id: 101,
+                    title: 'Fajr Reminder',
+                    body: 'Fajr begins in 15 minutes. Prepare for prayer.',
+                    isSalah: true,
+                  );
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Namaz reminder sent! Check your notification shade.')),
+                    );
+                  }
+                },
+              ),
+              ListTile(
+                leading: const CircleAvatar(
+                  backgroundColor: NoorColors.emeraldSoft,
+                  child: Icon(Icons.fingerprint_rounded, color: NoorColors.emeraldDark),
+                ),
+                title: const Text('Zikr & Tasbih Reminder', style: NoorType.body),
+                subtitle: const Text('Time for your daily dhikr and mindful remembrance of Allah.', style: NoorType.meta),
+                onTap: () async {
+                  Navigator.pop(ctx);
+                  await NoorNotifications.showNotification(
+                    id: 102,
+                    title: 'Daily Zikr & Tasbih',
+                    body: 'Time for your daily tasbih and remembrance of Allah.',
+                  );
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Zikr reminder sent!')),
+                    );
+                  }
+                },
+              ),
+              ListTile(
+                leading: const CircleAvatar(
+                  backgroundColor: NoorColors.emeraldSoft,
+                  child: Icon(Icons.auto_stories_outlined, color: NoorColors.emeraldDark),
+                ),
+                title: const Text('Ayat of the Day', style: NoorType.body),
+                subtitle: const Text('“Verily, in the remembrance of Allah do hearts find rest.” (13:28)', style: NoorType.meta),
+                onTap: () async {
+                  Navigator.pop(ctx);
+                  await NoorNotifications.showNotification(
+                    id: 103,
+                    title: 'Ayat of the Day',
+                    body: '“Verily, in the remembrance of Allah do hearts find rest.” (Surah Ar-Ra’d 13:28)',
+                  );
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Ayat of the Day notification sent!')),
+                    );
+                  }
+                },
+              ),
+              ListTile(
+                leading: const CircleAvatar(
+                  backgroundColor: NoorColors.emeraldSoft,
+                  child: Icon(Icons.bookmark_border_outlined, color: NoorColors.emeraldDark),
+                ),
+                title: const Text('Hadith of the Day', style: NoorType.body),
+                subtitle: const Text('“The best among you are those who have the best manners.”', style: NoorType.meta),
+                onTap: () async {
+                  Navigator.pop(ctx);
+                  await NoorNotifications.showNotification(
+                    id: 104,
+                    title: 'Hadith of the Day',
+                    body: '“The best among you are those who have the best manners.” (Sahih al-Bukhari)',
+                  );
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Hadith notification sent!')),
+                    );
+                  }
+                },
+              ),
+              ListTile(
+                leading: const CircleAvatar(
+                  backgroundColor: NoorColors.emeraldSoft,
+                  child: Icon(Icons.format_quote_rounded, color: NoorColors.emeraldDark),
+                ),
+                title: const Text('Quote of the Day', style: NoorType.body),
+                subtitle: const Text('“Patience is not the ability to wait, but how you act while waiting.”', style: NoorType.meta),
+                onTap: () async {
+                  Navigator.pop(ctx);
+                  await NoorNotifications.showNotification(
+                    id: 105,
+                    title: 'Quote of the Day',
+                    body: '“Patience is not the ability to wait, but how you act while waiting.” - Islamic Wisdom',
+                  );
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Quote of the Day notification sent!')),
+                    );
+                  }
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) => Scaffold(
         backgroundColor: NoorColors.cream,
@@ -253,6 +389,11 @@ class _ReminderCenterScreenState extends State<ReminderCenterScreen> {
                           Icons.notifications_off_outlined,
                           'Turn all off',
                           () => _setAll(false)
+                        ),
+                        (
+                          Icons.send_outlined,
+                          'Send test reminder notification',
+                          () => _showTestNotificationSheet()
                         ),
                       ])),
             ],
