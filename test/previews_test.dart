@@ -278,6 +278,15 @@ void main() {
       }
     });
   }
+
+  testWidgets('preview settings13_bottom', (tester) async {
+    await _capturePreview(
+      tester,
+      const MapEntry('settings13_bottom', SettingsScreen()),
+      size,
+      scrollToBottom: true,
+    );
+  });
 }
 
 /// The shared preview-capture body (extracted so the hadith goldens
@@ -285,8 +294,9 @@ void main() {
 Future<void> _capturePreview(
   WidgetTester tester,
   MapEntry<String, Widget> entry,
-  Size size,
-) async {
+  Size size, {
+  bool scrollToBottom = false,
+}) async {
   tester.view.physicalSize = Size(size.width * 2, size.height * 2);
   tester.view.devicePixelRatio = 2.0;
   addTearDown(tester.view.reset);
@@ -369,6 +379,13 @@ Future<void> _capturePreview(
   });
   for (var i = 0; i < 5; i++) {
     await tester.pump(const Duration(milliseconds: 100));
+  }
+
+  if (scrollToBottom) {
+    await tester.drag(find.byType(ListView), const Offset(0, -500));
+    for (var i = 0; i < 5; i++) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
   }
 
   await expectLater(
