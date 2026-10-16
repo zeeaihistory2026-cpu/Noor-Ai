@@ -93,6 +93,16 @@ void main() {
       expect(HadithLanguage.values.map((l) => l.prefix).toSet(),
           {'ara', 'eng', 'urd'});
     });
+
+    test('bookMaxHadiths defines valid upper bounds for all six canonical books', () {
+      for (final book in HadithService.books) {
+        final maxH = HadithService.bookMaxHadiths[book.id];
+        expect(maxH, isNotNull, reason: 'Book ${book.id} must have a max Hadith count');
+        expect(maxH!, greaterThan(1000));
+      }
+      expect(HadithService.bookMaxHadiths['bukhari'], 7563);
+      expect(HadithService.bookMaxHadiths['muslim'], 4301);
+    });
   });
 
   group('parseEditionJson (verified .min.json shape)', () {
@@ -179,6 +189,24 @@ void main() {
       expect(svc.hasLive, isTrue);
       expect(book.hadiths.length, 3);
       expect(book.edition, 'eng-bukhari');
+    });
+
+    test('findByNumber locates hadith accurately in cached edition', () async {
+      final client = MockClient((_) async => http.Response(
+          _minJsonSample, 200,
+          headers: {'content-type': 'application/json'}));
+      final svc = HadithService(client: client);
+
+      // Locate hadith 2
+      final match = await svc.findByNumber('bukhari', 2);
+      expect(match, isNotNull);
+      expect(match!.entry.hadithnumber, 2);
+      expect(match.entry.text, contains('Sample translation text two'));
+      expect(match.book.id, 'bukhari');
+
+      // Out of bounds hadith returns null
+      final missing = await svc.findByNumber('bukhari', 9999);
+      expect(missing, isNull);
     });
   });
 

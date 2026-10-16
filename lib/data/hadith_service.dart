@@ -84,6 +84,30 @@ class HadithService {
           orElse: () => HadithBookMeta(id: bookId, name: bookId, author: ''))
       .name;
 
+  /// Approximate maximum sequential Hadith numbers for each canonical book.
+  static const Map<String, int> bookMaxHadiths = {
+    'bukhari': 7563,
+    'muslim': 4301,
+    'abudawud': 4803,
+    'tirmidhi': 3956,
+    'nasai': 5578,
+    'ibnmajah': 4341,
+  };
+
+  /// Find a hadith entry by its exact number in a canonical book.
+  Future<({HadithBook book, HadithEntry entry})?> findByNumber(
+    String bookId,
+    int hadithNumber, {
+    HadithLanguage language = HadithLanguage.eng,
+  }) async {
+    final book = await fetchEdition(bookId, language: language);
+    final entry = book.entryByNumber(hadithNumber);
+    if (entry != null) {
+      return (book: book, entry: entry);
+    }
+    return null;
+  }
+
   /// True once a network fetch succeeded in this session, false
   /// after a network failure. Screens show "Live databank" vs an
   /// honest offline banner based on this.

@@ -4,6 +4,7 @@ import '../../data/sample_data.dart';
 import '../../theme/noor_theme.dart';
 import '../../widgets/noor_components.dart';
 import 'hadith_chapters_screen.dart';
+import 'hadith_detail_screen.dart';
 
 /// Page 15 — Hadith Library. Deep-green header with the real
 /// mosque/lantern skyline crop, overlapping search pill, Featured
@@ -62,6 +63,22 @@ class _HadithLibraryScreenState extends State<HadithLibraryScreen> {
   void _openBook(String bookId) => Navigator.of(context).push(MaterialPageRoute(
       builder: (_) => HadithChaptersScreen(bookId: bookId, initialLanguage: _lang)));
 
+  void _openNumberSearchDialog({String? initialQuery, String? initialBookId}) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => _HadithNumberSearchModal(
+        initialQuery: initialQuery,
+        initialBookId: initialBookId ?? 'bukhari',
+        initialLanguage: _lang,
+      ),
+    );
+  }
+
   static const _catIcons = [
     Icons.star_outline,
     Icons.mosque_outlined,
@@ -86,6 +103,10 @@ class _HadithLibraryScreenState extends State<HadithLibraryScreen> {
           title: 'Hadith Library',
           padding: const EdgeInsets.fromLTRB(6, 10, 6, 8),
           actions: [
+            IconButton(
+                tooltip: 'Search by Hadith Number',
+                icon: const Icon(Icons.tag, color: Colors.white),
+                onPressed: () => _openNumberSearchDialog()),
             IconButton(
                 tooltip: 'About the databank',
                 icon: const Icon(Icons.menu_book_outlined,
@@ -118,20 +139,125 @@ class _HadithLibraryScreenState extends State<HadithLibraryScreen> {
                       boxShadow: NoorShadows.card),
                   child: TextField(
                       onChanged: (v) => setState(() => _q = v),
+                      onSubmitted: (v) {
+                        if (RegExp(r'\d+').hasMatch(v)) {
+                          _openNumberSearchDialog(initialQuery: v);
+                        }
+                      },
                       decoration: InputDecoration(
                           border: InputBorder.none,
                           icon: const Icon(Icons.search,
                               color: NoorColors.mutedDark, size: 20),
                           hintText:
-                              'Search Hadith books, topics or keywords...',
+                              'Search by Hadith # (e.g. 1) or topic...',
                           hintStyle: NoorType.meta.copyWith(color: NoorColors.muted),
-                          suffixIcon: const Icon(Icons.tune,
-                              size: 19, color: NoorColors.emeraldDark))),
+                          suffixIcon: IconButton(
+                              icon: const Icon(Icons.tag,
+                                  size: 20, color: NoorColors.emeraldDark),
+                              tooltip: 'Hadith Number Search',
+                              onPressed: () => _openNumberSearchDialog(initialQuery: _q)))),
                 ))),
         Expanded(
             child: ListView(
                 padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
                 children: [
+              if (RegExp(r'\d+').hasMatch(_q)) ...[
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 14),
+                  child: Material(
+                    color: NoorColors.emeraldDark,
+                    borderRadius: BorderRadius.circular(16),
+                    elevation: 2,
+                    child: InkWell(
+                      onTap: () => _openNumberSearchDialog(initialQuery: _q),
+                      borderRadius: BorderRadius.circular(16),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.15),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.search, color: NoorColors.gold, size: 18),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Lookup Hadith #${RegExp(r'\d+').firstMatch(_q)?.group(0)} in Databank',
+                                    style: NoorType.body.copyWith(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    'Tap to search in Bukhari, Muslim, Abu Dawud, etc.',
+                                    style: NoorType.meta.copyWith(color: Colors.white70),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const Icon(Icons.arrow_forward_ios, color: Colors.white, size: 14),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ] else ...[
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 14),
+                  child: Material(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    child: InkWell(
+                      onTap: () => _openNumberSearchDialog(),
+                      borderRadius: BorderRadius.circular(16),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: NoorColors.emeraldSoft,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: NoorColors.emeraldMid.withValues(alpha: 0.25)),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: NoorColors.emeraldDark,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: const Icon(Icons.numbers, color: Colors.white, size: 18),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text('Hadith Database Number Search',
+                                      style: NoorType.secondary.copyWith(
+                                          fontWeight: FontWeight.w700, color: NoorColors.emeraldDark)),
+                                  const SizedBox(height: 2),
+                                  Text('Directly lookup any Hadith by its number (1 to 7,563)',
+                                      style: NoorType.meta.copyWith(color: NoorColors.mutedDark, fontSize: 11.5)),
+                                ],
+                              ),
+                            ),
+                            const Icon(Icons.arrow_forward_ios, size: 14, color: NoorColors.emeraldDark),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
               _rowHead('Featured Collections', _livePill()),
               const SizedBox(height: 10),
               // Language selector: English / Urdu / Arabic
@@ -365,4 +491,450 @@ class _HadithLibraryScreenState extends State<HadithLibraryScreen> {
         trailing ?? Text('View All',
             style: NoorType.meta.copyWith(color: NoorColors.emerald))
       ]);
+}
+
+/// Modal bottom sheet for interactive Hadith number lookup across the 6 canonical books.
+class _HadithNumberSearchModal extends StatefulWidget {
+  final String? initialQuery;
+  final String initialBookId;
+  final HadithLanguage initialLanguage;
+
+  const _HadithNumberSearchModal({
+    this.initialQuery,
+    this.initialBookId = 'bukhari',
+    this.initialLanguage = HadithLanguage.eng,
+  });
+
+  @override
+  State<_HadithNumberSearchModal> createState() => _HadithNumberSearchModalState();
+}
+
+class _HadithNumberSearchModalState extends State<_HadithNumberSearchModal> {
+  late String _selectedBookId;
+  late HadithLanguage _selectedLanguage;
+  late TextEditingController _numberCtrl;
+  final HadithService _svc = HadithService();
+
+  bool _isSearching = false;
+  String? _errorMessage;
+  ({HadithBook book, HadithEntry entry})? _result;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedBookId = widget.initialBookId;
+    _selectedLanguage = widget.initialLanguage;
+
+    final q = widget.initialQuery?.trim() ?? '';
+    final digits = RegExp(r'\d+').firstMatch(q)?.group(0) ?? '';
+    _numberCtrl = TextEditingController(text: digits);
+
+    // Auto-search if a valid number was prefilled
+    if (digits.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _doSearch());
+    }
+  }
+
+  @override
+  void dispose() {
+    _numberCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _doSearch() async {
+    final text = _numberCtrl.text.replaceAll(RegExp(r'[^0-9]'), '').trim();
+    final number = int.tryParse(text);
+    if (number == null || number <= 0) {
+      setState(() {
+        _errorMessage = 'Please enter a valid Hadith number (e.g. 1, 42).';
+        _result = null;
+      });
+      return;
+    }
+
+    final maxKnown = HadithService.bookMaxHadiths[_selectedBookId];
+    if (maxKnown != null && number > maxKnown + 500) {
+      setState(() {
+        _errorMessage =
+            'Hadith #$number exceeds known range for ${HadithService.bookName(_selectedBookId)} (up to ~$maxKnown).';
+        _result = null;
+      });
+      return;
+    }
+
+    setState(() {
+      _isSearching = true;
+      _errorMessage = null;
+      _result = null;
+    });
+
+    try {
+      final res = await _svc.findByNumber(
+        _selectedBookId,
+        number,
+        language: _selectedLanguage,
+      );
+      if (!mounted) return;
+      if (res != null) {
+        setState(() {
+          _result = res;
+          _isSearching = false;
+        });
+      } else {
+        setState(() {
+          _errorMessage =
+              'Hadith #$number not found in ${HadithService.bookName(_selectedBookId)}.';
+          _isSearching = false;
+        });
+      }
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage =
+            'Unable to fetch Hadith from databank. Please verify your connection.';
+        _isSearching = false;
+      });
+    }
+  }
+
+  void _openDetail() {
+    final res = _result;
+    if (res == null) return;
+    final inSection = res.book.hadithsInSection(res.entry.sectionNumber);
+    final idx = inSection.indexOf(res.entry);
+    Navigator.of(context).pop();
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => HadithDetailScreen(
+          book: res.book,
+          sectionNumber: res.entry.sectionNumber,
+          entryIndex: idx >= 0 ? idx : 0,
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bookName = HadithService.bookName(_selectedBookId);
+    final maxHadiths = HadithService.bookMaxHadiths[_selectedBookId];
+
+    return SafeArea(
+      child: SingleChildScrollView(
+        padding: EdgeInsets.fromLTRB(
+          20,
+          16,
+          20,
+          MediaQuery.of(context).viewInsets.bottom + 24,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Top Handle
+            Center(
+              child: Container(
+                width: 44,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: NoorColors.hairline,
+                  borderRadius: BorderRadius.circular(99),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Header Row
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: NoorColors.emeraldDark,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.numbers, color: NoorColors.gold, size: 20),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Hadith Database Number Search',
+                        style: NoorType.section.copyWith(color: NoorColors.emeraldDark),
+                      ),
+                      Text(
+                        'Look up any Hadith by its sequential databank number',
+                        style: NoorType.meta.copyWith(color: NoorColors.mutedDark),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 18),
+
+            // Select Book Label
+            Text('1. Select Hadith Collection:',
+                style: NoorType.meta.copyWith(
+                    fontWeight: FontWeight.w700, color: NoorColors.ink)),
+            const SizedBox(height: 8),
+
+            // Book Chips Wrap
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: HadithService.books.map((b) {
+                final isSelected = b.id == _selectedBookId;
+                final count = HadithService.bookMaxHadiths[b.id];
+                return ChoiceChip(
+                  label: Text('${b.name} ${count != null ? "(1–$count)" : ""}'),
+                  selected: isSelected,
+                  selectedColor: NoorColors.emeraldDark,
+                  backgroundColor: NoorColors.emeraldSoft,
+                  labelStyle: NoorType.meta.copyWith(
+                    color: isSelected ? Colors.white : NoorColors.ink,
+                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                  ),
+                  onSelected: (selected) {
+                    if (selected) {
+                      setState(() {
+                        _selectedBookId = b.id;
+                        _result = null;
+                        _errorMessage = null;
+                      });
+                      if (_numberCtrl.text.trim().isNotEmpty) {
+                        _doSearch();
+                      }
+                    }
+                  },
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 16),
+
+            // Language Selector
+            Text('2. Translation Language:',
+                style: NoorType.meta.copyWith(
+                    fontWeight: FontWeight.w700, color: NoorColors.ink)),
+            const SizedBox(height: 8),
+            Row(
+              children: HadithLanguage.values.map((l) {
+                final isSelected = l == _selectedLanguage;
+                return Expanded(
+                  child: GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _selectedLanguage = l;
+                        _result = null;
+                      });
+                      if (_numberCtrl.text.trim().isNotEmpty) {
+                        _doSearch();
+                      }
+                    },
+                    child: Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 4),
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      decoration: BoxDecoration(
+                        color: isSelected ? NoorColors.emeraldDark : Colors.white,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: isSelected ? NoorColors.emeraldDark : NoorColors.hairline,
+                        ),
+                      ),
+                      child: Text(
+                        l.label,
+                        textAlign: TextAlign.center,
+                        style: NoorType.meta.copyWith(
+                          color: isSelected ? Colors.white : NoorColors.ink,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 16),
+
+            // Number Input
+            Text(
+              '3. Enter Hadith Number ${maxHadiths != null ? "(1 to $maxHadiths)" : ""}:',
+              style: NoorType.meta.copyWith(
+                  fontWeight: FontWeight.w700, color: NoorColors.ink),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _numberCtrl,
+                    keyboardType: TextInputType.number,
+                    style: NoorType.section.copyWith(color: NoorColors.emeraldDark),
+                    onSubmitted: (_) => _doSearch(),
+                    decoration: InputDecoration(
+                      contentPadding:
+                          const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: NoorColors.emeraldMid),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: NoorColors.emeraldDark, width: 2),
+                      ),
+                      hintText: 'e.g. 1, 42, 100...',
+                      prefixIcon: const Icon(Icons.numbers, color: NoorColors.emeraldDark),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: NoorColors.emeraldDark,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  onPressed: _isSearching ? null : _doSearch,
+                  child: _isSearching
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          ),
+                        )
+                      : const Row(
+                          children: [
+                            Icon(Icons.search, size: 18),
+                            SizedBox(width: 6),
+                            Text('Search'),
+                          ],
+                        ),
+                ),
+              ],
+            ),
+
+            // Error Banner
+            if (_errorMessage != null) ...[
+              const SizedBox(height: 14),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade50,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.red.shade200),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.info_outline, color: Colors.red.shade700, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        _errorMessage!,
+                        style: NoorType.meta.copyWith(color: Colors.red.shade900),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+
+            // Result Preview Card
+            if (_result != null) ...[
+              const SizedBox(height: 18),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: NoorColors.emeraldSoft,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: NoorColors.emeraldMid.withValues(alpha: 0.3)),
+                  boxShadow: NoorShadows.card,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: NoorColors.emeraldDark,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            'Hadith #${_result!.entry.hadithnumber}',
+                            style: NoorType.meta.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            '$bookName · ${_result!.book.sectionOf(_result!.entry).title}',
+                            style: NoorType.meta.copyWith(
+                              color: NoorColors.emeraldDark,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      _result!.entry.text,
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                      textDirection: _selectedLanguage == HadithLanguage.ara ||
+                              _selectedLanguage == HadithLanguage.urd
+                          ? TextDirection.rtl
+                          : TextDirection.ltr,
+                      style: NoorType.body.copyWith(
+                        color: NoorColors.ink,
+                        height: 1.4,
+                      ),
+                    ),
+                    if (_result!.entry.grades.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        _result!.entry.grades.first,
+                        style: NoorType.meta.copyWith(
+                          color: NoorColors.gold,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 14),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        icon: const Icon(Icons.menu_book, size: 18),
+                        label: const Text('Open Full Hadith & Explanation'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: NoorColors.emeraldDark,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 13),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        onPressed: _openDetail,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
 }

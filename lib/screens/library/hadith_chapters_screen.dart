@@ -108,11 +108,34 @@ class _HadithChaptersScreenState extends State<HadithChaptersScreen> {
     });
   }
 
+  bool _isNumberSearch(String q) =>
+      RegExp(r'^(?:hadith\s*#?|#)?\s*(\d+)$', caseSensitive: false)
+          .hasMatch(q.trim());
+
   void _onSearchChanged(String v) {
     setState(() => _q = v);
     final book = _book;
     final q = v.trim();
-    if (book == null || q.length < 3) {
+    if (book == null || q.isEmpty) {
+      setState(() => _scanHits = const []);
+      return;
+    }
+
+    // 1. Direct Hadith Number Search (e.g. "1", "42", "#42", "hadith 42")
+    final numMatch = RegExp(r'^(?:hadith\s*#?|#)?\s*(\d+)$', caseSensitive: false)
+        .firstMatch(q);
+    if (numMatch != null) {
+      final numVal = int.tryParse(numMatch.group(1)!);
+      if (numVal != null) {
+        final hit = book.entryByNumber(numVal);
+        if (hit != null) {
+          setState(() => _scanHits = [hit]);
+          return;
+        }
+      }
+    }
+
+    if (q.length < 3) {
       setState(() => _scanHits = const []);
       return;
     }
@@ -227,7 +250,7 @@ class _HadithChaptersScreenState extends State<HadithChaptersScreen> {
                   onSubmitted: _onSearchChanged,
                   decoration: InputDecoration(
                       border: InputBorder.none,
-                      hintText: 'Search chapters or hadith text...',
+                      hintText: 'Search by Hadith # (e.g. 1) or chapter...',
                       hintStyle:
                           NoorType.secondary.copyWith(color: NoorColors.muted),
                       suffixIcon: const Icon(Icons.search,
@@ -260,8 +283,17 @@ class _HadithChaptersScreenState extends State<HadithChaptersScreen> {
             if (_scanHits.isNotEmpty) ...[
               Padding(
                   padding: const EdgeInsets.only(bottom: 8),
-                  child: Text('Text matches (live scan) — ${_scanHits.length}',
-                      style: NoorType.meta.copyWith(color: NoorColors.muted))),
+                  child: Text(
+                      _isNumberSearch(_q)
+                          ? 'Hadith #${_scanHits.first.hadithnumber} (Exact match)'
+                          : 'Text matches (live scan) — ${_scanHits.length}',
+                      style: NoorType.meta.copyWith(
+                          color: _isNumberSearch(_q)
+                              ? NoorColors.emeraldDark
+                              : NoorColors.muted,
+                          fontWeight: _isNumberSearch(_q)
+                              ? FontWeight.w700
+                              : FontWeight.normal))),
               for (final h in _scanHits) _hitRow(book, h),
             ] else
               for (final s in rows) _chapterRow(book, s),
@@ -269,9 +301,13 @@ class _HadithChaptersScreenState extends State<HadithChaptersScreen> {
               Padding(
                   padding: const EdgeInsets.symmetric(vertical: 20),
                   child: Center(
-                      child: Text('No chapter or text matched.',
-                          style:
-                              NoorType.secondary.copyWith(color: NoorColors.muted)))),
+                      child: Text(
+                          _isNumberSearch(_q)
+                              ? 'Hadith #$_q not found in ${book.name}.\n(Valid range: 1 – ${book.hadiths.length})'
+                              : 'No chapter or text matched.',
+                          textAlign: TextAlign.center,
+                          style: NoorType.secondary
+                              .copyWith(color: NoorColors.muted)))),
           ] else if (_chip == 1)
             _bookmarksTab(book)
           else
