@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../data/app_state.dart';
-import '../../data/sample_data.dart';
+import '../../data/daily_content_service.dart';
 import '../../theme/noor_theme.dart';
 import '../../widgets/noor_components.dart';
 import '../library/hadith_library_screen.dart';
@@ -22,7 +22,10 @@ class HadithOfTheDayScreen extends StatefulWidget {
 class _HadithOfTheDayScreenState extends State<HadithOfTheDayScreen> {
   bool _saved = false;
   @override
-  Widget build(BuildContext context) => Scaffold(
+  Widget build(BuildContext context) {
+    final hadith = DailyContentService.getHadithOfDay();
+
+    return Scaffold(
         backgroundColor: NoorColors.cream,
         body: SafeArea(
             child: ListView(padding: EdgeInsets.zero, children: [
@@ -131,7 +134,7 @@ class _HadithOfTheDayScreenState extends State<HadithOfTheDayScreen> {
                           textAlign: TextAlign.center,
                           style: NoorType.secondary),
                       const SizedBox(height: 14),
-                      Text(SampleData.hadithArabic,
+                      Text(hadith.arabic,
                           textDirection: TextDirection.rtl,
                           textAlign: TextAlign.center,
                           style: NoorType.arabic(
@@ -141,11 +144,11 @@ class _HadithOfTheDayScreenState extends State<HadithOfTheDayScreen> {
                           width: 110, height: 1.4, color: NoorColors.goldSoft),
                       const SizedBox(height: 12),
                       Text(
-                          '"Actions are but by intentions, and every person will have only what they intended."',
+                          '"${hadith.translation}"',
                           textAlign: TextAlign.center,
                           style: NoorType.body.copyWith(height: 1.55)),
                       const SizedBox(height: 10),
-                      Text(SampleData.hadithSource,
+                      Text(hadith.source,
                           style: NoorType.secondary.copyWith(color: NoorColors.emerald)),
                       const SizedBox(height: 20),
                       Row(
@@ -171,7 +174,7 @@ class _HadithOfTheDayScreenState extends State<HadithOfTheDayScreen> {
                         style: NoorType.cardTitle),
                     const SizedBox(height: 7),
                     Text(
-                        'Sincerity of intention is presented as the foundation of action.',
+                        hadith.about,
                         style: NoorType.secondary.copyWith(color: NoorColors.mutedDark,
                             height: 1.55)),
                     const SizedBox(height: 16),
@@ -193,7 +196,7 @@ class _HadithOfTheDayScreenState extends State<HadithOfTheDayScreen> {
                                     style: NoorType.body),
                                 const SizedBox(height: 4),
                                 Text(
-                                    'Let’s purify our intentions in everything we do — am I doing this for the sake of Allah alone?',
+                                    hadith.reflection,
                                     style: NoorType.meta.copyWith(color: NoorColors.muted,
                                         height: 1.5)),
                               ])),
@@ -291,9 +294,12 @@ class _HadithOfTheDayScreenState extends State<HadithOfTheDayScreen> {
                   ])),
         ])),
       );
+  }
+
   Future<void> _copyHadith() async {
-    await Clipboard.setData(const ClipboardData(
-        text: 'Sahih al-Bukhari - Hadith 1: Actions are but by intentions.'));
+    final hadith = DailyContentService.getHadithOfDay();
+    await Clipboard.setData(ClipboardData(
+        text: '${hadith.source}: "${hadith.translation}"'));
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Copied - paste anywhere to share')));

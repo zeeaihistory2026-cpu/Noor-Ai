@@ -1,8 +1,12 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 
 import 'app_state.dart';
+import 'location_service.dart';
 import 'noor_store.dart';
+import 'notification_plan.dart';
+import 'notification_service.dart';
 import 'prayer_service.dart';
 import 'user_data_service.dart';
 
@@ -18,15 +22,8 @@ enum NoorThemePreference {
 
 /// Phase 13 — one app-wide reactive store.
 ///
-/// Phase 12 gave every screen the same canonical demo values via
-/// [NoorAppState], so screens could not contradict each other, but
-/// the values were compile-time constants. This controller is the
-/// live version: it holds today's prayer day (demo snapshot first,
-/// replaced by the live AlAdhan result when it lands), the user's
-/// profile and progress, and notifies every listening screen through
-/// [NoorScope]. A change made once — live prayer times arriving,
-/// a streak updating — propagates to all tabs without any screen
-/// fetching its own copy.
+/// Holds today's prayer day, user's location, profile, streaks, and
+/// notifies every listening screen through [NoorScope].
 class NoorController extends ChangeNotifier {
   NoorController({bool autoInit = true}) {
     if (autoInit) {
@@ -39,12 +36,43 @@ class NoorController extends ChangeNotifier {
           return 0;
         }),
       );
+      if (!_isInTestEnvironment) {
+        loadLocation().catchError((e, st) {
+          // Ignored or logged in test / headless environments
+        });
+        _startTickTimer();
+      }
+    }
+  }
+
+  static bool get _isInTestEnvironment {
+    try {
+      return Platform.environment.containsKey('FLUTTER_TEST');
+    } catch (_) {
+      return false;
     }
   }
 
   PrayerDay? _liveDay;
   PrayerDay? get liveDay => _liveDay;
+  PrayerDay? get prayerDay => _liveDay;
+  PrayerDay get activeDay => _liveDay ?? PrayerDay.sample();
   bool get isLive => _liveDay != null && _liveDay!.isLive;
+
+  LocationModel _currentLocation = LocationModel.defaultLocation;
+  LocationModel get currentLocation => _currentLocation;
+  String get locationLabel => _currentLocation.label;
+  double get latitude => _currentLocation.latitude;
+  double get longitude => _currentLocation.longitude;
+
+  Timer? _tickTimer;
+
+  void _startTickTimer() {
+    _tickTimer?.cancel();
+    _tickTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      notifyListeners();
+    });
+  }
 
   String _userName = NoorAppState.userName;
   String get userName => _userName;
@@ -80,27 +108,40 @@ class NoorController extends ChangeNotifier {
           isNightTime() ? ThemeMode.dark : ThemeMode.light,
       };
 
-  /// Next-prayer label every screen should show right now: the live
-  /// day's next prayer when we have one, otherwise the canonical
-  /// demo snapshot (which matches the live fallback by construction).
+  /// Current next prayer accurately evaluated for this exact second:
+  NextPrayer get nextPrayer => activeDay.nextPrayer();
+
+  /// Next-prayer label every screen should show right now:
   String get nextPrayerLabel {
     final day = _liveDay;
     if (day != null) {
       final next = day.nextPrayer();
-      return '${next.name.toUpperCase()} ${next.timeLabel}';
+      return '${next.displayName.toUpperCase()} ${next.timeLabel}';
     }
     return '${NoorAppState.nextPrayerName} ${NoorAppState.nextPrayerTime}';
   }
 
   String get sourceLabel => isLive ? 'Live' : NoorAppState.sourceLabel;
 
-  /// Replace today's prayer day (called by Home after its live
-  /// fetch, and by any future background refresh). All listening
-  /// screens rebuild with the same times.
+  /// Replace today's prayer day. All listening screens rebuild with the same times.
   void setLiveDay(PrayerDay day) {
     if (identical(_liveDay, day)) return;
     _liveDay = day;
     notifyListeners();
+    unawaited(_autoScheduleNotifications(day));
+  }
+
+  Future<void> _autoScheduleNotifications(PrayerDay day) async {
+    try {
+      final toggles = await NoorStore.getAllReminderToggles();
+      final plan = NotificationPlan.buildFullPlan(
+        day: day,
+        toggles: toggles,
+      );
+      await NoorNotifications.schedulePlan(plan);
+    } catch (e) {
+      debugPrint('NoorController: auto-schedule notification error: $e');
+    }
   }
 
   void setUserName(String name) {
@@ -115,6 +156,31 @@ class NoorController extends ChangeNotifier {
     updated[label] = days;
     _streaks = updated;
     notifyListeners();
+  }
+
+  Future<void> loadLocation() async {
+    try {
+      final loc = await LocationService().getSavedLocation();
+      _currentLocation = loc;
+      notifyListeners();
+      // Fetch today's prayer times for this location
+      final day = await PrayerService().fetchTodayAuto();
+      setLiveDay(day);
+    } catch (e) {
+      debugPrint('NoorController: Failed to load location: $e');
+    }
+  }
+
+  Future<void> updateLocation(LocationModel loc) async {
+    _currentLocation = loc;
+    await LocationService().saveLocation(loc);
+    notifyListeners();
+    try {
+      final day = await PrayerService().fetchTodayAuto(forceRefresh: true);
+      setLiveDay(day);
+    } catch (e) {
+      debugPrint('NoorController: Failed to refresh prayer times for new location: $e');
+    }
   }
 
   Future<void> setThemePreference(NoorThemePreference pref) async {
@@ -143,6 +209,12 @@ class NoorController extends ChangeNotifier {
     } catch (e) {
       debugPrint('NoorController: Failed to load theme preference: $e');
     }
+  }
+
+  @override
+  void dispose() {
+    _tickTimer?.cancel();
+    super.dispose();
   }
 }
 

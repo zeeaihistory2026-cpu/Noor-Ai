@@ -1,3 +1,4 @@
+import 'daily_content_service.dart';
 import 'prayer_service.dart';
 import 'sample_data.dart';
 
@@ -55,15 +56,16 @@ class NotificationPlan {
     const obligatory = <String>['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'];
     for (final name in obligatory) {
       if (toggles[name] == false) continue;
-      final at = day.timings[name];
+      final at = day.timings[name] ?? (name == 'Dhuhr' ? day.timings['Zuhr'] : null);
       if (at == null) continue;
+      final displayName = (name == 'Dhuhr') ? 'Zuhr' : name;
       final when = at.subtract(const Duration(minutes: salahLeadMinutes));
       if (!includePast && when.isBefore(n)) continue;
       out.add(PlannedNotification(
         id: _stableId('salah', name, at),
         group: 'Salah',
-        title: '$name reminder',
-        body: '$name begins in $salahLeadMinutes minutes.',
+        title: '$displayName reminder',
+        body: '$displayName begins in $salahLeadMinutes minutes.',
         scheduledAt: when,
         prayerName: name,
       ));
@@ -100,12 +102,18 @@ class NotificationPlan {
           group: group,
           title: r.$1,
           body: switch (r.$1) {
-            'Ayat of the Day' => 'Reflect upon today’s Quranic verse and guidance.',
-            'Hadith of the Day' => 'Wisdom and teachings of the Prophet (ﷺ) for your day.',
-            'Quote of the Day' => 'Daily Islamic reflection and spiritual motivation.',
-            'Daily Zikr & Tasbih' => 'Take a mindful pause for dhikr and remembrance of Allah.',
-            'Morning Adhkar' => 'Start your morning with peace through remembrance of Allah.',
-            'Evening Adhkar' => 'Evening supplications and adhkar for tranquility.',
+            'Ayat of the Day' =>
+              '${DailyContentService.getAyahOfDay(when).title}: ${DailyContentService.getAyahOfDay(when).translation}',
+            'Hadith of the Day' =>
+              '${DailyContentService.getHadithOfDay(when).title}: ${DailyContentService.getHadithOfDay(when).translation}',
+            'Dua of the Day' =>
+              '${DailyContentService.getDuaOfDay(when).title}: ${DailyContentService.getDuaOfDay(when).translation}',
+            'Daily Zikr & Tasbih' =>
+              'Take a mindful pause for dhikr and remembrance of Allah.',
+            'Morning Adhkar' =>
+              'Start your morning with peace through remembrance of Allah.',
+            'Evening Adhkar' =>
+              'Evening supplications and adhkar for tranquility.',
             _ => group == 'Worship' ? 'Time for ${r.$1}.' : 'Your ${r.$1} is ready.',
           },
           scheduledAt: when,

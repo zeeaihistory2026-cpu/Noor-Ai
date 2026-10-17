@@ -4,6 +4,8 @@ import '../../data/noor_store.dart';
 import '../../data/user_data_service.dart';
 import '../../theme/noor_theme.dart';
 import '../../widgets/noor_components.dart';
+import '../../data/noor_controller.dart';
+import '../../data/prayer_service.dart';
 import '../home/my_journey_screen.dart';
 import 'qibla_finder_screen.dart';
 import 'reminder_center_screen.dart';
@@ -191,98 +193,133 @@ class _SalahTrackerScreenState extends State<SalahTrackerScreen> {
                             const Text("Today's Prayers",
                                 style: NoorType.cardTitle),
                             const SizedBox(height: 14),
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: List.generate(5, (i) {
-                                final next = i == 2;
-                                return Expanded(
-                                  child: InkWell(
-                                    onTap: () => _togglePrayer(i),
-                                    borderRadius: BorderRadius.circular(14),
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(
-                                          vertical: 8),
-                                      decoration: next
-                                          ? BoxDecoration(
-                                              color: NoorColors.emeraldSoft,
-                                              borderRadius:
-                                                  BorderRadius.circular(14))
-                                          : null,
-                                      child: Column(children: [
-                                        // Solid mosque glyphs as drawn
-                                        // (Phase 11 fix; was outline).
-                                        Icon(_prayerIcons[i],
-                                            size: 24,
-                                            color: _done[i] || next
-                                                ? NoorColors.emeraldDark
-                                                : NoorColors.greyDisabled),
-                                        const SizedBox(height: 6),
-                                        Padding(
-                                          padding: const EdgeInsets.symmetric(horizontal: 2),
-                                          child: FittedBox(
-                                            fit: BoxFit.scaleDown,
-                                            child: Text(NoorAppState.prayerTimes[i].$1,
-                                                textAlign: TextAlign.center,
-                                                maxLines: 1,
-                                                style: NoorType.meta),
+                            Builder(builder: (context) {
+                              final controller = NoorScope.of(context);
+                              final nextPrayer = controller?.nextPrayer;
+                              final prayerDay = controller?.prayerDay;
+
+                              int nextIndex = 1; // default to Dhuhr/Zuhr if not known
+                              if (nextPrayer != null) {
+                                final nameLower = nextPrayer.name.toLowerCase();
+                                if (nameLower.contains('fajr')) {
+                                  nextIndex = 0;
+                                } else if (nameLower.contains('dhuhr') || nameLower.contains('zuhr')) {
+                                  nextIndex = 1;
+                                } else if (nameLower.contains('asr')) {
+                                  nextIndex = 2;
+                                } else if (nameLower.contains('maghrib')) {
+                                  nextIndex = 3;
+                                } else if (nameLower.contains('isha')) {
+                                  nextIndex = 4;
+                                }
+                              }
+
+                              final prayerNames = ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'];
+                              final prayerDisplayTimes = List.generate(5, (i) {
+                                final name = prayerNames[i];
+                                if (prayerDay?.timings[name] != null) {
+                                  return PrayerService.formatTime(prayerDay!.timings[name]!);
+                                }
+                                return NoorAppState.prayerTimes[i].$2;
+                              });
+
+                              final countdownText = nextPrayer != null
+                                  ? '${nextPrayer.remainingLabel.replaceAll(" remaining", "")}\nremaining'
+                                  : '${NoorAppState.nextPrayerCountdown}\nremaining';
+
+                              return Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: List.generate(5, (i) {
+                                  final next = i == nextIndex;
+                                  return Expanded(
+                                    child: InkWell(
+                                      onTap: () => _togglePrayer(i),
+                                      borderRadius: BorderRadius.circular(14),
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                            vertical: 8),
+                                        decoration: next
+                                            ? BoxDecoration(
+                                                color: NoorColors.emeraldSoft,
+                                                borderRadius:
+                                                    BorderRadius.circular(14))
+                                            : null,
+                                        child: Column(children: [
+                                          // Solid mosque glyphs as drawn
+                                          // (Phase 11 fix; was outline).
+                                          Icon(_prayerIcons[i],
+                                              size: 24,
+                                              color: _done[i] || next
+                                                  ? NoorColors.emeraldDark
+                                                  : NoorColors.greyDisabled),
+                                          const SizedBox(height: 6),
+                                          Padding(
+                                            padding: const EdgeInsets.symmetric(horizontal: 2),
+                                            child: FittedBox(
+                                              fit: BoxFit.scaleDown,
+                                              child: Text(NoorAppState.prayerTimes[i].$1,
+                                                  textAlign: TextAlign.center,
+                                                  maxLines: 1,
+                                                  style: NoorType.meta),
+                                            ),
                                           ),
-                                        ),
-                                        const SizedBox(height: 6),
-                                        Semantics(
-                                          button: true,
-                                          checked: _done[i],
-                                          label:
-                                              '${NoorAppState.prayerTimes[i].$1} prayer, ${_done[i] ? "prayed" : "not prayed"}. Tap to toggle.',
-                                          child: SizedBox(
-                                            width: 48,
-                                            height: 48,
-                                            child: Center(
-                                              child: Icon(
-                                                _done[i]
-                                                    ? Icons.check_circle
-                                                    : Icons
-                                                        .radio_button_unchecked,
-                                                color: _done[i]
-                                                    ? NoorColors.emerald
-                                                    : NoorColors.greyDisabled,
-                                                size: 24,
+                                          const SizedBox(height: 6),
+                                          Semantics(
+                                            button: true,
+                                            checked: _done[i],
+                                            label:
+                                                '${NoorAppState.prayerTimes[i].$1} prayer, ${_done[i] ? "prayed" : "not prayed"}. Tap to toggle.',
+                                            child: SizedBox(
+                                              width: 48,
+                                              height: 48,
+                                              child: Center(
+                                                child: Icon(
+                                                  _done[i]
+                                                      ? Icons.check_circle
+                                                      : Icons
+                                                          .radio_button_unchecked,
+                                                  color: _done[i]
+                                                      ? NoorColors.emerald
+                                                      : NoorColors.greyDisabled,
+                                                  size: 24,
+                                                ),
                                               ),
                                             ),
                                           ),
-                                        ),
-                                      const SizedBox(height: 6),
-                                      Padding(
-                                        padding: const EdgeInsets.symmetric(horizontal: 2),
-                                        child: FittedBox(
-                                          fit: BoxFit.scaleDown,
-                                          child: Text(NoorAppState.prayerTimes[i].$2,
-                                              textAlign: TextAlign.center,
-                                              maxLines: 1,
-                                              style: NoorType.meta.copyWith(color: NoorColors.mutedDark)),
-                                        ),
+                                          const SizedBox(height: 6),
+                                          Padding(
+                                            padding: const EdgeInsets.symmetric(horizontal: 2),
+                                            child: FittedBox(
+                                              fit: BoxFit.scaleDown,
+                                              child: Text(prayerDisplayTimes[i],
+                                                  textAlign: TextAlign.center,
+                                                  maxLines: 1,
+                                                  style: NoorType.meta.copyWith(color: NoorColors.mutedDark)),
+                                            ),
+                                          ),
+                                          const SizedBox(height: 6),
+                                          SizedBox(
+                                            height: 32,
+                                            child: next
+                                                ? Padding(
+                                                    padding: const EdgeInsets.symmetric(horizontal: 2),
+                                                    child: FittedBox(
+                                                      fit: BoxFit.scaleDown,
+                                                      child: Text(
+                                                          countdownText,
+                                                          textAlign: TextAlign.center,
+                                                          style: NoorType.meta),
+                                                    ),
+                                                  )
+                                                : null,
+                                          ),
+                                        ]),
                                       ),
-                                      const SizedBox(height: 6),
-                                      SizedBox(
-                                        height: 32,
-                                        child: next
-                                            ? const Padding(
-                                                padding: EdgeInsets.symmetric(horizontal: 2),
-                                                child: FittedBox(
-                                                  fit: BoxFit.scaleDown,
-                                                  child: Text(
-                                                      '${NoorAppState.nextPrayerCountdown}\nremaining',
-                                                      textAlign: TextAlign.center,
-                                                      style: NoorType.meta),
-                                                ),
-                                              )
-                                            : null,
-                                      ),
-                                    ]),
-                                  ),
-                                ),
+                                    ),
+                                  );
+                                }),
                               );
                             }),
-                            ),
                             // The design card ends at the prayer
                             // times; the tappable checks themselves
                             // show today's progress (Phase 11 fix).

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../data/app_state.dart';
+import '../../data/daily_content_service.dart';
 import '../../data/sample_data.dart';
 import '../../theme/noor_theme.dart';
 import '../../widgets/noor_components.dart';
@@ -22,7 +23,10 @@ class DuaOfTheDayScreen extends StatefulWidget {
 class _DuaOfTheDayScreenState extends State<DuaOfTheDayScreen> {
   bool _saved = false;
   @override
-  Widget build(BuildContext context) => Scaffold(
+  Widget build(BuildContext context) {
+    final dua = DailyContentService.getDuaOfDay();
+
+    return Scaffold(
         backgroundColor: NoorColors.cream,
         body: SafeArea(
             child: Column(children: [
@@ -109,7 +113,7 @@ class _DuaOfTheDayScreenState extends State<DuaOfTheDayScreen> {
                               child: const Icon(Icons.mosque,
                                   color: NoorColors.gold, size: 34)))),
                   const SizedBox(height: 18),
-                  Text(SampleData.duaArabic,
+                  Text(dua.arabic,
                       textDirection: TextDirection.rtl,
                       textAlign: TextAlign.center,
                       style: NoorType.arabic(
@@ -118,15 +122,16 @@ class _DuaOfTheDayScreenState extends State<DuaOfTheDayScreen> {
                   Container(
                       width: 110, height: 1.4, color: NoorColors.goldSoft),
                   const SizedBox(height: 12),
-                  const Text(SampleData.duaTransliteration,
+                  Text(dua.transliteration ?? '',
+                      textAlign: TextAlign.center,
                       style:
                           NoorType.cardTitle),
                   const SizedBox(height: 8),
-                  const Text(SampleData.duaTranslation,
+                  Text(dua.translation,
                       textAlign: TextAlign.center,
                       style: NoorType.body),
                   const SizedBox(height: 8),
-                  Text(SampleData.duaSource,
+                  Text(dua.source,
                       style: NoorType.secondary.copyWith(color: NoorColors.emerald)),
                   const SizedBox(height: 20),
                   Row(
@@ -155,7 +160,9 @@ class _DuaOfTheDayScreenState extends State<DuaOfTheDayScreen> {
                     children: [
                       Expanded(
                           child: Text(
-                              'A short Qur\'anic prayer asking Allah for increase in knowledge (${SampleData.duaSource}).',
+                              dua.about.isNotEmpty
+                                  ? dua.about
+                                  : 'A sacred supplication asking Allah (${dua.source}).',
                               style: NoorType.secondary.copyWith(color: NoorColors.mutedDark,
                                   height: 1.55))),
                       const Icon(Icons.chevron_right,
@@ -299,10 +306,16 @@ class _DuaOfTheDayScreenState extends State<DuaOfTheDayScreen> {
               ])),
         ])),
       );
+  }
+
   Future<void> _copyDua() async {
-    await Clipboard.setData(const ClipboardData(
+    final dua = DailyContentService.getDuaOfDay();
+    final trans = dua.transliteration != null && dua.transliteration!.isNotEmpty
+        ? '${dua.transliteration}\n'
+        : '';
+    await Clipboard.setData(ClipboardData(
         text:
-            'Rabbi zidni \'ilma - "My Lord, increase me in knowledge." (Quran 20:114)'));
+            '${dua.arabic}\n$trans"${dua.translation}" (${dua.source})'));
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Copied - paste anywhere to share')));

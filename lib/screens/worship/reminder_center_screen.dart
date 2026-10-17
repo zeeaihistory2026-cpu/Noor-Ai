@@ -1,6 +1,7 @@
 import 'package:app_settings/app_settings.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import '../../data/daily_content_service.dart';
 import '../../data/noor_store.dart';
 import '../../data/notification_plan.dart';
 import '../../data/notification_service.dart';
@@ -299,13 +300,15 @@ class _ReminderCenterScreenState extends State<ReminderCenterScreen> {
                   child: Icon(Icons.auto_stories_outlined, color: NoorColors.emeraldDark),
                 ),
                 title: const Text('Ayat of the Day', style: NoorType.body),
-                subtitle: const Text('“Verily, in the remembrance of Allah do hearts find rest.” (13:28)', style: NoorType.meta),
+                subtitle: Text('"${DailyContentService.getAyahOfDay().translation}" (${DailyContentService.getAyahOfDay().surahReference})',
+                    maxLines: 1, overflow: TextOverflow.ellipsis, style: NoorType.meta),
                 onTap: () async {
                   Navigator.pop(ctx);
+                  final ayah = DailyContentService.getAyahOfDay();
                   await NoorNotifications.showNotification(
                     id: 103,
                     title: 'Ayat of the Day',
-                    body: '“Verily, in the remembrance of Allah do hearts find rest.” (Surah Ar-Ra’d 13:28)',
+                    body: '“${ayah.translation}” (${ayah.surahReference})',
                   );
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -320,13 +323,15 @@ class _ReminderCenterScreenState extends State<ReminderCenterScreen> {
                   child: Icon(Icons.bookmark_border_outlined, color: NoorColors.emeraldDark),
                 ),
                 title: const Text('Hadith of the Day', style: NoorType.body),
-                subtitle: const Text('“The best among you are those who have the best manners.”', style: NoorType.meta),
+                subtitle: Text('"${DailyContentService.getHadithOfDay().translation}"',
+                    maxLines: 1, overflow: TextOverflow.ellipsis, style: NoorType.meta),
                 onTap: () async {
                   Navigator.pop(ctx);
+                  final hadith = DailyContentService.getHadithOfDay();
                   await NoorNotifications.showNotification(
                     id: 104,
                     title: 'Hadith of the Day',
-                    body: '“The best among you are those who have the best manners.” (Sahih al-Bukhari)',
+                    body: '“${hadith.translation}” (${hadith.source})',
                   );
                   if (mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(

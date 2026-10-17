@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../data/app_state.dart';
+import '../../data/daily_content_service.dart';
 import '../../data/firebase_rest_service.dart';
 import '../worship/salah_tracker_screen.dart';
 import '../../data/noor_controller.dart';
@@ -7,7 +8,6 @@ import '../../data/prayer_service.dart';
 import '../../data/sample_data.dart';
 import '../../theme/noor_theme.dart';
 import '../../widgets/noor_components.dart';
-import '../ai/ai_assistant_home_screen.dart';
 import '../quran/quran_reader_screen.dart';
 import 'dua_of_the_day_screen.dart';
 import 'hadith_of_the_day_screen.dart';
@@ -18,7 +18,7 @@ import 'profile_screen.dart';
 /// Page 01 — Home Dashboard. Greeting + Hijri date, Next Prayer
 /// ASR card with the mosque artwork cropped from the design,
 /// Salah/Dhikr/Quran streak cards, Dua of the Day, Hadith of the
-/// Day, Continue Quran (Al-Kahf 76%) and Ask AI input.
+/// Day, and Continue Quran (Al-Kahf 76%).
 class HomeDashboardScreen extends StatefulWidget {
   const HomeDashboardScreen({super.key});
 
@@ -51,21 +51,17 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
     } catch (_) {}
   }
 
-  /// Phase 6: live next-prayer + Hijri from AlAdhan, with the
-  /// service's cache/sample fallback. UI layout is unchanged —
-  /// only the four strings below are swapped when live data lands.
+  /// Live next-prayer + Hijri from AlAdhan (using saved location / city).
   Future<void> _loadLive() async {
     try {
       final service = PrayerService();
-      final day = await service.fetchTodayByCity();
-      if (!mounted || !day.isLive) return;
+      final day = await service.fetchTodayAuto();
+      if (!mounted) return;
       final next = day.nextPrayer();
-      // Phase 13: publish the live day to the app-wide store so
-      // every other screen shows the same times (one truth, live).
       NoorScope.read(context)?.setLiveDay(day);
       setState(() {
         _hijriDate = day.hijriDisplay;
-        _nextPrayer = next.name.toUpperCase();
+        _nextPrayer = next.displayName.toUpperCase();
         _nextPrayerTime = next.timeLabel;
         _nextPrayerIn = next.remainingLabel;
       });
@@ -77,6 +73,17 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final controller = NoorScope.of(context);
+    final activeNext = controller?.nextPrayer;
+    final currentNextPrayer = activeNext != null ? activeNext.displayName.toUpperCase() : _nextPrayer;
+    final currentNextTime = activeNext != null ? activeNext.timeLabel : _nextPrayerTime;
+    final currentNextIn = activeNext != null ? activeNext.remainingLabel : _nextPrayerIn;
+    final currentHijri = controller?.activeDay.hijriDisplay ?? _hijriDate;
+
+    final todayAyah = DailyContentService.getAyahOfDay();
+    final todayHadith = DailyContentService.getHadithOfDay();
+    final todayDua = DailyContentService.getDuaOfDay();
+
     void push(Widget page) =>
         Navigator.of(context).push(MaterialPageRoute(builder: (_) => page));
     return SafeArea(
@@ -97,7 +104,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                         style: NoorType.display.copyWith(
                             color: isDark ? NoorColors.darkGold : NoorColors.emeraldDark)),
                     const SizedBox(height: 3),
-                    Text(_hijriDate,
+                    Text(currentHijri,
                         style: NoorType.secondary.copyWith(
                             color: isDark ? NoorColors.darkTextSecondary : NoorColors.emerald)),
                   ]),
@@ -134,7 +141,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
           // Next Prayer hero — mosque art cropped from Page 01 (tappable to Salah Tracker).
           Semantics(
             button: true,
-            label: 'Next prayer: $_nextPrayer at $_nextPrayerTime, tap to open Salah Tracker',
+            label: 'Next prayer: $currentNextPrayer at $currentNextTime, tap to open Salah Tracker',
             child: Container(
               constraints: const BoxConstraints(
                   minHeight: NoorSizes.nextPrayerCardMinHeight),
@@ -211,14 +218,14 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                               FittedBox(
                                 fit: BoxFit.scaleDown,
                                 alignment: Alignment.centerLeft,
-                                child: Text(_nextPrayer,
+                                child: Text(currentNextPrayer,
                                     style: NoorType.display.copyWith(color: Colors.white)),
                               ),
                               const SizedBox(height: 2),
                               FittedBox(
                                 fit: BoxFit.scaleDown,
                                 alignment: Alignment.centerLeft,
-                                child: Text(_nextPrayerTime,
+                                child: Text(currentNextTime,
                                     style: NoorType.screenTitle.copyWith(color: NoorColors.gold)),
                               ),
                               const SizedBox(height: 8),
@@ -229,7 +236,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                                   const Icon(Icons.schedule,
                                       color: Colors.white70, size: 15),
                                   const SizedBox(width: 5),
-                                  Text(_nextPrayerIn,
+                                  Text(currentNextIn,
                                       maxLines: 1,
                                       style: const TextStyle(color: Colors.white70)),
                                 ]),
@@ -291,22 +298,31 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
           const SizedBox(height: 16),
           _contentCard(
             context,
-            title: 'DUA OF THE DAY',
-            arabic: SampleData.duaArabic,
-            body:
-                '${SampleData.duaTransliteration}\n${SampleData.duaTranslation}\n${SampleData.duaSource}',
-            art: NoorAssets.duaHands,
+            title: 'AYAT OF THE DAY',
+            arabic: todayAyah.arabic,
+            body: '${todayAyah.translation}\n${todayAyah.reference}',
+            art: NoorAssets.quranRehal,
             action: 'Share',
             onTap: () => push(const DuaOfTheDayScreen()),
           ),
           _contentCard(
             context,
             title: 'HADITH OF THE DAY',
-            arabic: SampleData.hadithArabic,
-            body: '${SampleData.hadithTranslation}\n${SampleData.hadithSource}',
+            arabic: todayHadith.arabic,
+            body: '${todayHadith.translation}\n${todayHadith.reference}',
             art: NoorAssets.quranRehal,
             action: 'Share',
             onTap: () => push(const HadithOfTheDayScreen()),
+          ),
+          _contentCard(
+            context,
+            title: 'DUA OF THE DAY',
+            arabic: todayDua.arabic,
+            body:
+                '${todayDua.transliteration ?? ""}\n${todayDua.translation}\n${todayDua.reference}',
+            art: NoorAssets.duaHands,
+            action: 'Share',
+            onTap: () => push(const DuaOfTheDayScreen()),
           ),
           NoorCard(
             child: Column(
@@ -370,49 +386,6 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                 ),
               ],
             ),
-          ),
-          const SizedBox(height: 16),
-          Container(
-            decoration: BoxDecoration(
-                color: NoorColors.emeraldSoft,
-                borderRadius: BorderRadius.circular(NoorRadius.heroCard)),
-            padding: const EdgeInsets.all(18),
-            child:
-                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Row(children: [
-                const Icon(Icons.auto_awesome, color: NoorColors.emerald, size: 17),
-                const SizedBox(width: 7),
-                Text('ASK YOUR AI COMPANION',
-                    style: NoorType.meta.copyWith(letterSpacing: 0.6,
-                        color: NoorColors.emeraldDark)),
-              ]),
-              const SizedBox(height: 6),
-              Text("I'm here to help you in your journey.",
-                  style: NoorType.secondary.copyWith(color: NoorColors.muted)),
-              const SizedBox(height: 12),
-              TextField(
-                readOnly: true,
-                onTap: () => push(const AiAssistantHomeScreen()),
-                decoration: InputDecoration(
-                  hintText: 'Ask anything about Islam...',
-                  hintStyle:
-                      NoorType.secondary.copyWith(color: NoorColors.muted),
-                  filled: true,
-                  fillColor: Colors.white,
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                  suffixIcon: Container(
-                    margin: const EdgeInsets.all(5),
-                    decoration: const BoxDecoration(
-                        color: NoorColors.emeraldDark, shape: BoxShape.circle),
-                    child: const Icon(Icons.mic, color: Colors.white, size: 19),
-                  ),
-                  border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(NoorRadius.input),
-                      borderSide: BorderSide.none),
-                ),
-              ),
-            ]),
           ),
         ],
       ),

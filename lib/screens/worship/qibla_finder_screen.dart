@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import '../../data/app_state.dart';
+import '../../data/location_service.dart';
+import '../../data/noor_controller.dart';
 import '../../data/prayer_service.dart';
 import '../../data/sample_data.dart';
 import '../../theme/noor_theme.dart';
@@ -16,11 +18,10 @@ import '../../widgets/noor_components.dart';
 ///
 /// The needle is wired to PrayerService.fetchQiblaBearing
 /// (AlAdhan qibla endpoint, great-circle fallback to Makkah) using
-/// the canonical Karachi coordinates from NoorAppState. Until the
+/// the live or selected coordinates. Until the
 /// live bearing arrives, the demo bearing from that same source of
 /// truth is shown and labelled as demo — never as measured, and
-/// never the design's printed 295° sample. Device compass/heading
-/// is not claimed anywhere on this screen.
+/// never the design's printed 295° sample.
 class QiblaFinderScreen extends StatefulWidget {
   const QiblaFinderScreen({super.key});
   @override
@@ -28,10 +29,10 @@ class QiblaFinderScreen extends StatefulWidget {
 }
 
 class _QiblaFinderScreenState extends State<QiblaFinderScreen> {
-  // Canonical Karachi coordinates from NoorAppState (device GPS,
-  // when it exists, replaces these in the same fields).
-  static const double _lat = 24.8607;
-  static const double _lng = 67.0011;
+  // Live / selected coordinates from LocationService or NoorAppState.
+  double _lat = NoorAppState.latitude;
+  double _lng = NoorAppState.longitude;
+  String _locationLabel = NoorAppState.locationLabel;
   // Makkah coordinates (from the location row as drawn).
   static const double _makkahLat = 21.4225;
   static const double _makkahLng = 39.8262;
@@ -69,7 +70,35 @@ class _QiblaFinderScreenState extends State<QiblaFinderScreen> {
   @override
   void initState() {
     super.initState();
-    _loadBearing();
+    _initLocation();
+  }
+
+  Future<void> _initLocation() async {
+    final cached = await LocationService.getCachedLocation();
+    if (mounted) {
+      setState(() {
+        _lat = cached.latitude;
+        _lng = cached.longitude;
+        _locationLabel = '${cached.city}, ${cached.country}';
+      });
+    }
+    await _loadBearing();
+  }
+
+  Future<void> _pickLocation() async {
+    final picked = await LocationService.showLocationPicker(context: context);
+    if (picked != null && mounted) {
+      setState(() {
+        _lat = picked.latitude;
+        _lng = picked.longitude;
+        _locationLabel = '${picked.city}, ${picked.country}';
+      });
+      final controller = NoorScope.read(context);
+      if (controller != null) {
+        await controller.updateLocation(picked);
+      }
+      await _loadBearing();
+    }
   }
 
   Future<void> _loadBearing() async {
@@ -181,18 +210,18 @@ class _QiblaFinderScreenState extends State<QiblaFinderScreen> {
                           child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                            const FittedBox(
+                            FittedBox(
                               fit: BoxFit.scaleDown,
                               alignment: Alignment.centerLeft,
-                              child: Text(NoorAppState.locationLabel,
+                              child: Text(_locationLabel,
                                   style: NoorType.secondary),
                             ),
                             FittedBox(
                               fit: BoxFit.scaleDown,
                               alignment: Alignment.centerLeft,
                               child: Text(
-                                  '${NoorAppState.latitude.toStringAsFixed(4)}° N, '
-                                  '${NoorAppState.longitude.toStringAsFixed(4)}° E · Your location',
+                                  '${_lat.toStringAsFixed(4)}° N, '
+                                  '${_lng.toStringAsFixed(4)}° E · Your location',
                                   style: NoorType.meta),
                             ),
                           ])),
@@ -201,7 +230,7 @@ class _QiblaFinderScreenState extends State<QiblaFinderScreen> {
                         child: FittedBox(
                           fit: BoxFit.scaleDown,
                           child: FilledButton.icon(
-                              onPressed: _loadBearing,
+                              onPressed: _pickLocation,
                               icon: const Icon(Icons.my_location, size: 16, color: Colors.white),
                               label: const Text('Update Location',
                                   style: TextStyle(color: Colors.white)),
@@ -387,8 +416,8 @@ class _QiblaFinderScreenState extends State<QiblaFinderScreen> {
                 const SizedBox(height: 4),
                 Text(
                   _live
-                      ? 'Live bearing for ${NoorAppState.locationLabel}'
-                      : 'Demo bearing for ${NoorAppState.locationLabel}',
+                      ? 'Live bearing for $_locationLabel'
+                      : 'Demo bearing for $_locationLabel',
                   textAlign: TextAlign.center,
                   style: NoorType.meta.copyWith(color: NoorColors.muted),
                 ),

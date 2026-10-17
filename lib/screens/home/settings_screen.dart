@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../data/firebase_rest_service.dart';
+import '../../data/location_service.dart';
 import '../../data/noor_controller.dart';
 import '../../data/sample_data.dart';
 import '../../widgets/noor_components.dart';
@@ -52,6 +53,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     Icons.language,
   ];
   static const _iconsP = [
+    Icons.location_on_outlined,
     Icons.dark_mode_outlined,
     Icons.format_size, // Replaced by custom 'Aa' widget in builder
     Icons.headphones_outlined,
@@ -568,6 +570,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
         'Language' => () => Navigator.of(c).push(
               MaterialPageRoute(builder: (_) => const LanguageSelectionScreen()),
             ),
+        'Location' => () async {
+              final controller = NoorScope.read(c);
+              final picked = await LocationService.showLocationPicker(context: c);
+              if (picked != null) {
+                await controller?.updateLocation(picked);
+              }
+            },
         'Theme' => () => _showThemeSheet(c),
         'Text Size' => () => _showTextSizeSheet(c),
         'Audio Settings' => () => _showSimpleSheet(
@@ -682,7 +691,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     final subtitle = rows[i].$2;
                     String? rowValue;
 
-                    if (label == 'Language') {
+                    if (label == 'Location') {
+                      rowValue = controller?.locationLabel ?? 'Karachi, Pakistan';
+                    } else if (label == 'Language') {
                       rowValue = rows[i].$3.isNotEmpty ? rows[i].$3 : 'English';
                     } else if (label == 'Theme') {
                       rowValue = controller?.themePreferenceLabel ?? 'System';
@@ -733,12 +744,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 ),
                               ),
                               if (rowValue != null) ...[
-                                Text(
-                                  rowValue,
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                    color: isDark ? NoorColors.darkGold : NoorColors.emeraldMid,
+                                const SizedBox(width: 8),
+                                Flexible(
+                                  child: Text(
+                                    rowValue,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    textAlign: TextAlign.end,
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                      color: isDark ? NoorColors.darkGold : NoorColors.emeraldMid,
+                                    ),
                                   ),
                                 ),
                                 const SizedBox(width: 4),

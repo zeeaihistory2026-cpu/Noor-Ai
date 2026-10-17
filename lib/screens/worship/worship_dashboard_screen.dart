@@ -4,6 +4,9 @@ import '../../data/sample_data.dart';
 import '../library/dua_library_screen.dart';
 import '../../theme/noor_theme.dart';
 import '../../widgets/noor_components.dart';
+import '../../data/location_service.dart';
+import '../../data/noor_controller.dart';
+import '../../data/prayer_service.dart';
 import 'qibla_finder_screen.dart';
 import 'reminder_center_screen.dart';
 import 'salah_tracker_screen.dart';
@@ -23,14 +26,6 @@ class WorshipDashboardScreen extends StatefulWidget {
 
 class _WorshipDashboardScreenState extends State<WorshipDashboardScreen> {
   final List<bool> _notify = [false, false, true, false, false, false];
-  static const _prayerRows = [
-    ('Fajr', '5:32 AM'),
-    ('Sunrise', NoorAppState.sunriseTime),
-    ('Dhuhr', '12:45 PM'),
-    ('Asr', '3:58 PM'),
-    ('Maghrib', '5:56 PM'),
-    ('Isha', '7:23 PM'),
-  ];
   static const _prayerIcons = [
     Icons.wb_twilight,
     Icons.wb_sunny_outlined,
@@ -51,7 +46,26 @@ class _WorshipDashboardScreenState extends State<WorshipDashboardScreen> {
   ];
 
   @override
-  Widget build(BuildContext context) => Scaffold(
+  Widget build(BuildContext context) {
+    final controller = NoorScope.of(context);
+    final nextPrayer = controller?.nextPrayer;
+    final locationLabel = controller?.locationLabel ?? NoorAppState.locationLabel;
+    final prayerDay = controller?.prayerDay;
+
+    final nextName = nextPrayer?.displayName ?? 'Zuhr';
+    final nextRemaining = nextPrayer?.remainingLabel ?? NoorAppState.nextPrayerCountdownLabel;
+    final nextTime = nextPrayer?.timeLabel ?? NoorAppState.nextPrayerTime;
+
+    final effectivePrayerRows = [
+      ('Fajr', prayerDay?.timings['Fajr'] != null ? PrayerService.formatTime(prayerDay!.timings['Fajr']!) : '5:32 AM'),
+      ('Sunrise', prayerDay?.timings['Sunrise'] != null ? PrayerService.formatTime(prayerDay!.timings['Sunrise']!) : NoorAppState.sunriseTime),
+      ('Dhuhr', prayerDay?.timings['Dhuhr'] != null ? PrayerService.formatTime(prayerDay!.timings['Dhuhr']!) : '12:45 PM'),
+      ('Asr', prayerDay?.timings['Asr'] != null ? PrayerService.formatTime(prayerDay!.timings['Asr']!) : '3:58 PM'),
+      ('Maghrib', prayerDay?.timings['Maghrib'] != null ? PrayerService.formatTime(prayerDay!.timings['Maghrib']!) : '5:56 PM'),
+      ('Isha', prayerDay?.timings['Isha'] != null ? PrayerService.formatTime(prayerDay!.timings['Isha']!) : '7:23 PM'),
+    ];
+
+    return Scaffold(
         backgroundColor: NoorColors.cream,
         body: SafeArea(
             child: ListView(padding: EdgeInsets.zero, children: [
@@ -129,18 +143,38 @@ class _WorshipDashboardScreenState extends State<WorshipDashboardScreen> {
                           size: 20, color: NoorColors.muted),
                     ]),
                     const SizedBox(height: 6),
-                    Row(children: [
-                      const Icon(Icons.location_on_outlined,
-                          size: 15, color: NoorColors.muted),
-                      const SizedBox(width: 4),
-                      Text(NoorAppState.locationLabel,
-                          style: NoorType.meta.copyWith(color: NoorColors.mutedDark))
-                    ]),
+                    InkWell(
+                      onTap: () async {
+                        final picked = await LocationService.showLocationPicker(context: context);
+                        if (picked != null) {
+                          await controller?.updateLocation(picked);
+                        }
+                      },
+                      borderRadius: BorderRadius.circular(8),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 2),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.location_on_outlined,
+                                size: 15, color: NoorColors.emeraldDark),
+                            const SizedBox(width: 4),
+                            Text(locationLabel,
+                                style: NoorType.meta.copyWith(
+                                    color: NoorColors.emeraldDark,
+                                    fontWeight: FontWeight.w600)),
+                            const SizedBox(width: 4),
+                            const Icon(Icons.arrow_drop_down,
+                                size: 16, color: NoorColors.emeraldDark),
+                          ],
+                        ),
+                      ),
+                    ),
                     const SizedBox(height: 12),
                     // Next Prayer hero — tappable directly to Salah Tracker
                     Semantics(
                       button: true,
-                      label: 'Next prayer: Asr at ${NoorAppState.nextPrayerTime}, tap to open Salah Tracker',
+                      label: 'Next prayer: $nextName at $nextTime, tap to open Salah Tracker',
                       child: Container(
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(NoorRadius.heroCard),
@@ -209,13 +243,13 @@ class _WorshipDashboardScreenState extends State<WorshipDashboardScreen> {
                                             ),
                                           ],
                                         ),
-                                        Text('Asr',
+                                        Text(nextName,
                                             style: NoorType.screenTitle
                                                 .copyWith(color: Colors.white)),
-                                        Text(NoorAppState.nextPrayerCountdownLabel,
+                                        Text(nextRemaining,
                                             style: NoorType.secondary
                                                 .copyWith(color: Colors.white)),
-                                        Text(NoorAppState.nextPrayerTime,
+                                        Text(nextTime,
                                             style: NoorType.meta
                                                 .copyWith(color: Colors.white70)),
                                       ])),
@@ -247,7 +281,7 @@ class _WorshipDashboardScreenState extends State<WorshipDashboardScreen> {
                         Padding(
                           padding: const EdgeInsets.fromLTRB(14, 8, 14, 6),
                           child: Column(children: [
-                            for (var i = 0; i < _prayerRows.length; i++)
+                            for (var i = 0; i < effectivePrayerRows.length; i++)
                               Padding(
                                   padding:
                                       const EdgeInsets.symmetric(vertical: 4),
@@ -256,16 +290,16 @@ class _WorshipDashboardScreenState extends State<WorshipDashboardScreen> {
                                         size: 19, color: NoorColors.amber),
                                     const SizedBox(width: 12),
                                     Expanded(
-                                        child: Text(_prayerRows[i].$1,
+                                        child: Text(effectivePrayerRows[i].$1,
                                             style: NoorType.body)),
-                                    Text(_prayerRows[i].$2,
+                                    Text(effectivePrayerRows[i].$2,
                                         style: NoorType.tabular(
                                             NoorType.secondary)),
                                     Semantics(
                                       button: true,
                                       toggled: _notify[i],
                                       label:
-                                          '${_prayerRows[i].$1} prayer reminder ${_notify[i] ? "enabled" : "disabled"}. Tap to toggle.',
+                                          '${effectivePrayerRows[i].$1} prayer reminder ${_notify[i] ? "enabled" : "disabled"}. Tap to toggle.',
                                       child: IconButton(
                                           tooltip: _notify[i]
                                               ? 'Reminder on'
@@ -518,6 +552,7 @@ class _WorshipDashboardScreenState extends State<WorshipDashboardScreen> {
                   ])),
         ])),
       );
+  }
 
   void _openIslamicCalendar(BuildContext context) {
     showModalBottomSheet<void>(

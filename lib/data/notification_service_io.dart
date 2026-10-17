@@ -5,6 +5,7 @@ import 'package:timezone/data/latest_all.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
 
 import 'notification_plan.dart';
+import 'prayer_service.dart';
 
 /// Phase 8 — REAL local notifications (native/desktop only).
 ///
@@ -159,6 +160,61 @@ class NoorNotifications {
       }
     }
     return scheduled;
+  }
+
+  /// Specifically schedules alerts for the upcoming next namaz (both lead-time and prayer time).
+  static Future<bool> scheduleNextPrayerReminder(NextPrayer next) async {
+    if (!await ensureReady()) return false;
+    try {
+      final name = next.displayName;
+      final when = tz.TZDateTime.from(next.time, tz.local);
+      final now = tz.TZDateTime.now(tz.local);
+      if (when.isBefore(now)) return false;
+
+      const details = NotificationDetails(
+        android: AndroidNotificationDetails(
+          prayerChannelId,
+          'Prayer reminders',
+          channelDescription: 'A short reminder before each prayer time',
+          importance: Importance.high,
+          priority: Priority.high,
+        ),
+        iOS: DarwinNotificationDetails(
+          presentAlert: true,
+          presentBadge: true,
+          presentSound: true,
+        ),
+      );
+
+      // 1. Alert at prayer time
+      await _plugin.zonedSchedule(
+        id: 9991,
+        title: 'Time for $name',
+        body: 'It is now time for $name (${next.timeLabel}). Hayya ‘ala-s-Salah.',
+        scheduledDate: when,
+        notificationDetails: details,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        payload: 'Salah|$name',
+      );
+
+      // 2. Alert 15 minutes before if still in future
+      final leadWhen = when.subtract(const Duration(minutes: 15));
+      if (leadWhen.isAfter(now)) {
+        await _plugin.zonedSchedule(
+          id: 9992,
+          title: '$name reminder',
+          body: '$name begins in 15 minutes (${next.timeLabel}). Prepare for prayer.',
+          scheduledDate: leadWhen,
+          notificationDetails: details,
+          androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+          payload: 'Salah|$name',
+        );
+      }
+      return true;
+    } catch (e) {
+      debugPrint('NoorNotifications: scheduleNextPrayerReminder failed: $e');
+      return false;
+    }
   }
 
   /// Shows an immediate local notification (used for testing and instant alerts).

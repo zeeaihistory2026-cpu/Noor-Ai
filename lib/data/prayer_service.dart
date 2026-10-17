@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
+import 'location_service.dart';
 import 'noor_store.dart';
 import 'sample_data.dart';
 
@@ -66,6 +67,30 @@ class PrayerService {
   }
 
   // ---- Public API -----------------------------------------------------
+
+  /// Fetches prayer times automatically using the user's saved location (coordinates or city)
+  /// with network -> persistent cache -> sample fallback.
+  Future<PrayerDay> fetchTodayAuto({bool forceRefresh = false}) async {
+    final loc = await LocationService().getSavedLocation();
+    if (loc.latitude != 0 && loc.longitude != 0) {
+      try {
+        final day = await fetchTimingsByCoordinates(
+          latitude: loc.latitude,
+          longitude: loc.longitude,
+          forceRefresh: forceRefresh,
+        );
+        return day;
+      } catch (e) {
+        debugPrint('PrayerService: fetchTodayAuto by coordinates failed: $e');
+      }
+    }
+
+    return await fetchTodayByCity(
+      city: loc.city,
+      country: loc.country,
+      forceRefresh: forceRefresh,
+    );
+  }
 
   /// Today's prayer times for a city, with cache + sample fallback.
   Future<PrayerDay> fetchTodayByCity({
@@ -496,34 +521,50 @@ class PrayerDay {
   }
 
   /// Next obligatory prayer after [now] (Sunrise excluded).
-  /// Returns (name, time, remaining). After Isha, the next prayer
-  /// is tomorrow's Fajr (time shown +1 day; exact tomorrow times
-  /// need tomorrow's API call — marked by [NextPrayer.isTomorrow]).
+  /// Normalizes prayer times to today's date so cached/stale days
+  /// always compare accurately with the current time of day.
+  /// After Isha, the next prayer is tomorrow's Fajr (isTomorrow: true).
   NextPrayer nextPrayer({DateTime? now}) {
     final n = now ?? DateTime.now();
     const obligatory = <String>['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'];
+
+    // Map each prayer's hour and minute to today's calendar date:
+    final todayTimings = <String, DateTime>{};
     for (final name in obligatory) {
-      final t = timings[name];
+      final t = timings[name] ?? (name == 'Dhuhr' ? timings['Zuhr'] : null);
+      if (t != null) {
+        todayTimings[name] = DateTime(n.year, n.month, n.day, t.hour, t.minute);
+      }
+    }
+
+    // Check for the next prayer today
+    for (final name in obligatory) {
+      final t = todayTimings[name];
       if (t != null && t.isAfter(n)) {
         return NextPrayer(name: name, time: t, remaining: t.difference(n));
       }
     }
-    final fajr = timings['Fajr'];
+
+    // All prayers for today have passed -> Tomorrow's Fajr
+    final fajr = todayTimings['Fajr'] ?? timings['Fajr'];
     if (fajr != null) {
-      final tomorrow = fajr.add(const Duration(days: 1));
+      final tomorrowFajr = DateTime(n.year, n.month, n.day + 1, fajr.hour, fajr.minute);
       return NextPrayer(
         name: 'Fajr',
-        time: tomorrow,
-        remaining: tomorrow.difference(n),
+        time: tomorrowFajr,
+        remaining: tomorrowFajr.difference(n),
         isTomorrow: true,
       );
     }
-    // Extremely defensive: should never happen with sample fallback.
-    final fallback = n.add(const Duration(hours: 1));
+
+    // Defensive fallback: tomorrow Fajr at 5:00 AM
+    final fallbackTime = DateTime(n.year, n.month, n.day + 1, 5, 0);
     return NextPrayer(
-        name: SampleData.nextPrayer,
-        time: fallback,
-        remaining: const Duration(hours: 1));
+      name: 'Fajr',
+      time: fallbackTime,
+      remaining: fallbackTime.difference(n),
+      isTomorrow: true,
+    );
   }
 
   /// True if [now] is between Maghrib (sunset) and tomorrow's Fajr (dawn).
@@ -569,6 +610,8 @@ class NextPrayer {
   final Duration remaining;
   final bool isTomorrow;
 
+  /// User-friendly display name (maps 'Dhuhr' -> 'Zuhr')
+  String get displayName => (name.toUpperCase() == 'DHUHR') ? 'Zuhr' : name;
   String get timeLabel => PrayerService.formatTime(time);
   String get remainingLabel => PrayerService.formatRemaining(remaining);
 }

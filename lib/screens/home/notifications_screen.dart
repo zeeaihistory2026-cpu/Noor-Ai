@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../data/daily_content_service.dart';
 import '../../data/sample_data.dart';
 import '../../theme/noor_theme.dart';
 import '../../widgets/noor_share_card.dart';
@@ -11,7 +12,22 @@ import '../worship/reminder_center_screen.dart';
 class NotificationsScreen extends StatelessWidget {
   const NotificationsScreen({super.key});
   @override
-  Widget build(BuildContext context) => Scaffold(
+  Widget build(BuildContext context) {
+    final todayAyah = DailyContentService.getAyahOfDay();
+    final todayHadith = DailyContentService.getHadithOfDay();
+    final todayDua = DailyContentService.getDuaOfDay();
+
+    final notifToday = [
+      ('Fajr reminder', 'Fajr begins in 15 minutes. Prepare for prayer.', 'F'),
+      ('Ayat of the Day', '“${todayAyah.translation}” (${todayAyah.surahReference})', 'A'),
+      ('Daily Zikr', 'Take a peaceful moment for SubhanAllah, Alhamdulillah & Allahu Akbar.', 'Z'),
+      ('Daily Dua', '“${todayDua.transliteration}” - ${todayDua.translation}', 'D'),
+      ('Hadith of the Day', '“${todayHadith.translation}” (${todayHadith.source})', 'H'),
+      ('Quote of the Day', '“Patience is not the ability to wait, but how you act while waiting.”', 'Q'),
+      ('Quran', 'Continue Surah Al-Kahf from Ayah 18.', 'Q'),
+    ];
+
+    return Scaffold(
         backgroundColor: NoorColors.cream,
         body: SafeArea(
             child: Column(children: [
@@ -31,9 +47,9 @@ class NotificationsScreen extends StatelessWidget {
                     style:
                         NoorType.cardTitle),
                 const SizedBox(height: 12),
-                for (var i = 0; i < SampleData.notifToday.length; i++)
+                for (var i = 0; i < notifToday.length; i++)
                   _row(
-                    SampleData.notifToday[i],
+                    notifToday[i],
                     time: _timeForIndex(i),
                     unread: i < 2,
                   ),
@@ -50,6 +66,7 @@ class NotificationsScreen extends StatelessWidget {
               ])),
         ])),
       );
+  }
 
   static String _timeForIndex(int i) {
     const times = [

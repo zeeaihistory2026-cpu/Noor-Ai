@@ -358,6 +358,7 @@ class SampleData {
     ('Language', 'Choose your preferred language', 'English'),
   ];
   static const settingsPrefs = [
+    ('Location', 'Change your city & prayer calculation location', ''),
     ('Theme', 'Choose your app theme', 'System'),
     ('Text Size', 'Adjust text size for better reading', 'Medium'),
     ('Audio Settings', 'Manage audio playback preferences', ''),
