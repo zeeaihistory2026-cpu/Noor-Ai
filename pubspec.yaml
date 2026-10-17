@@ -1,7 +1,7 @@
 name: noor_ai_companion
 description: NOOR AI Companion — Faith • Guidance • Growth. Flutter scaffold from the 42-page NOOR design.
 publish_to: 'none'
-version: 0.1.0+10
+version: 1.0.0+15
 
 environment:
   sdk: ^3.5.0
