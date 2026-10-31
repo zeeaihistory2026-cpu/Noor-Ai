@@ -3,7 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../theme/noor_theme.dart';
 
-/// Shared NOOR building blocks, drawn to the 42-page design:
+/// Shared MuslimGo building blocks, drawn to the 42-page design:
 /// cream page, 28px headings, white 20px-radius cards with soft
 /// shadows, emerald pill primary buttons, outlined pill option rows.
 

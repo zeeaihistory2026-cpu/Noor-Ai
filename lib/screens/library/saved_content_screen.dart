@@ -118,7 +118,7 @@ class _SavedContentScreenState extends State<SavedContentScreen> {
             const NoorPlainHeader(
               title: 'Saved & Notes',
               moreInfo: [
-                'Bookmarks you save across NOOR — ayahs, hadiths, duas — collect here.',
+                'Bookmarks you save across MuslimGo — ayahs, hadiths, duas — collect here.',
                 'Everything is kept on this device only.',
               ],
             ),

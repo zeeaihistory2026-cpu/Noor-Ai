@@ -11,6 +11,8 @@ import 'noor_store.dart';
 /// Phase 16 (Job 4) — FULL hadith databank: all six canonical books,
 /// complete, not half. One-fetch-per-edition over the free
 /// fawazahmed0 hadith-api CDN (jsdelivr mirror, no API key):
+/// MuslimGo addition: a seventh book, Nahjul Balagha, loads from
+/// its own dataset — see [HadithService.nahjulMirrors].
 ///
 ///   GET https://cdn.jsdelivr.net/gh/fawazahmed0/hadith-api@1/editions/{edition}.min.json
 ///
@@ -85,6 +87,39 @@ class HadithService {
         id: 'ibnmajah',
         name: 'Sunan Ibn Majah',
         author: 'Imam Ibn Majah'),
+    // MuslimGo addition (user request, 2026-10-31): Nahjul Balagha —
+    // sermons, letters and sayings of Imam Ali ibn Abi Talib,
+    // compiled by Sharif al-Radi. It is NOT part of the hadith-api
+    // CDN; its full Arabic text loads at runtime from the public
+    // WWGTX/NahjulBalaghah dataset (see _fetchNahjulBalagha).
+    HadithBookMeta(
+        id: 'nahjulbalagha',
+        name: 'Nahjul Balagha',
+        author: 'Imam Ali ibn Abi Talib · compiled by Sharif al-Radi'),
+  ];
+
+  /// Book id of the Nahjul Balagha addition (special-cased fetch).
+  static const String nahjulBookId = 'nahjulbalagha';
+
+  /// Runtime source for Nahjul Balagha (Arabic full text). Mirrors
+  /// serve the same three dataset files: nahj_khutab.json (241
+  /// sermons), nahj_kutub.json (79 letters), nahj_hikam.json (470
+  /// sayings) — counts verified live 2026-10-31. Like the hadith
+  /// databank, text is runtime-only: fetched, memory/disk cached,
+  /// never embedded in code.
+  static const List<String> nahjulMirrors = [
+    'https://cdn.jsdelivr.net/gh/WWGTX/NahjulBalaghah@main',
+    'https://raw.githubusercontent.com/WWGTX/NahjulBalaghah/main',
+    'https://gcore.jsdelivr.net/gh/WWGTX/NahjulBalaghah@main',
+  ];
+
+  /// The book's three parts: (section number, display title, file).
+  /// Entry numbers stay WITHIN their part — Sermon 27, Letter 31,
+  /// Saying 131 are the canonical references for this book.
+  static const List<(int, String, String)> nahjulParts = [
+    (1, 'Sermons (Khutab)', 'nahj_khutab.json'),
+    (2, 'Letters (Rasail)', 'nahj_kutub.json'),
+    (3, 'Sayings (Hikam)', 'nahj_hikam.json'),
   ];
 
   static String bookName(String bookId) => books
@@ -163,6 +198,10 @@ class HadithService {
     HadithLanguage language = HadithLanguage.eng,
     bool forceRefresh = false,
   }) async {
+    // Nahjul Balagha ships Arabic-only in its dataset; every
+    // language request resolves to the same Arabic book so the
+    // reader renders it RTL and honestly (no fake translation).
+    if (bookId == nahjulBookId) return _fetchNahjulBalagha();
     final edition = editionId(bookId, language);
     if (!forceRefresh) {
       final mem = _memory[edition];
@@ -232,12 +271,139 @@ class HadithService {
     return future;
   }
 
+  /// Nahjul Balagha fetch: memory -> compressed disk cache ->
+  /// network (three dataset files from the first mirror that
+  /// answers all three). Cached payload is one JSON object holding
+  /// the three raw part arrays, so the parse stays identical
+  /// online and offline.
+  Future<HadithBook> _fetchNahjulBalagha() async {
+    const edition = 'ara-nahjulbalagha';
+    final mem = _memory[edition];
+    if (mem != null) return mem;
+
+    final disk = await _readNahjulCache();
+    if (disk != null) {
+      _memory[edition] = disk;
+      return disk;
+    }
+
+    Object? lastError;
+    for (final base in nahjulMirrors) {
+      try {
+        final parts = <String, dynamic>{};
+        for (final (_, _, file) in nahjulParts) {
+          final res = await _client.get(
+            Uri.parse('$base/$file'),
+            headers: const {
+              'Accept': 'application/json',
+              'User-Agent': 'MuslimGo/1.0',
+            },
+          ).timeout(const Duration(seconds: 25));
+          if (res.statusCode != 200 || res.body.isEmpty) {
+            throw HadithServiceException(
+                'Nahjul Balagha source HTTP ${res.statusCode}');
+          }
+          parts[file] = jsonDecode(utf8.decode(res.bodyBytes));
+        }
+        _hasLive = true;
+        final book = parseNahjulBalaghaJson(parts);
+        _memory[edition] = book;
+        unawaited(_writeNahjulCache(parts));
+        return book;
+      } catch (e) {
+        lastError = e;
+      }
+    }
+    _hasLive = false;
+    if (lastError is HadithServiceException) throw lastError;
+    throw HadithServiceException(
+        'Unable to load Nahjul Balagha. Please check connection.');
+  }
+
+  static const String _nahjulCacheKey = 'hadith.nahjulbalagha.v1';
+
+  Future<void> _writeNahjulCache(Map<String, dynamic> parts) async {
+    try {
+      final zipped =
+          const GZipEncoder().encode(utf8.encode(jsonEncode(parts)));
+      await FileCacheStore.writeBytes(_nahjulCacheKey, zipped);
+    } catch (e) {
+      debugPrint('HadithService: Failed to cache Nahjul Balagha: $e');
+    }
+  }
+
+  Future<HadithBook?> _readNahjulCache() async {
+    try {
+      final zipped = await FileCacheStore.readBytes(_nahjulCacheKey);
+      if (zipped == null || zipped.isEmpty) return null;
+      final bytes = const GZipDecoder().decodeBytes(zipped);
+      final parts = jsonDecode(utf8.decode(bytes)) as Map<String, dynamic>;
+      return parseNahjulBalaghaJson(parts);
+    } catch (e) {
+      debugPrint('HadithService: Failed to read Nahjul cache: $e');
+      return null;
+    }
+  }
+
+  /// Parses the Nahjul Balagha dataset shape (pure, unit-testable):
+  /// each part file is a JSON array of {"number": "1", "title":
+  /// "...", "text": "..."} (sayings have no title). The part title
+  /// (a sermon's subject / a letter's addressee line) is prepended
+  /// to the text when the text does not already start with it —
+  /// both are the source's own words, nothing is added.
+  static HadithBook parseNahjulBalaghaJson(Map<String, dynamic> parts) {
+    final entries = <HadithEntry>[];
+    final sections = <HadithSection>[];
+    for (final (sectionNumber, sectionTitle, file) in nahjulParts) {
+      final raw = (parts[file] as List<dynamic>?) ?? const [];
+      var count = 0;
+      for (final e in raw) {
+        if (e is! Map) continue;
+        final m = Map<String, dynamic>.from(e);
+        final text = (m['text'] as String?)?.trim() ?? '';
+        if (text.isEmpty) continue;
+        final number = _parseInt(m['number']);
+        if (number <= 0) continue; // canonical within-part number
+        final title = (m['title'] as String?)?.trim() ?? '';
+        final fullText = (title.isNotEmpty && !text.startsWith(title))
+            ? '$title\n\n$text'
+            : text;
+        entries.add(HadithEntry(
+          hadithnumber: number,
+          arabicnumber: number,
+          text: fullText,
+          grades: const [],
+          sectionNumber: sectionNumber,
+          hadithInSection: number,
+        ));
+        count++;
+      }
+      sections.add(HadithSection(
+          number: sectionNumber, title: sectionTitle, count: count));
+    }
+    return HadithBook(
+      id: nahjulBookId,
+      name: bookName(nahjulBookId),
+      edition: 'ara-nahjulbalagha',
+      language: HadithLanguage.ara,
+      sections: sections,
+      hadiths: entries,
+    );
+  }
+
   /// Memory- or disk-cached edition only; null when never fetched.
   /// Never throws.
   Future<HadithBook?> cachedEdition(
     String bookId, {
     HadithLanguage language = HadithLanguage.eng,
   }) async {
+    if (bookId == nahjulBookId) {
+      final mem = _memory['ara-nahjulbalagha'];
+      if (mem != null) return mem;
+      final disk = await _readNahjulCache();
+      if (disk != null) _memory['ara-nahjulbalagha'] = disk;
+      return disk;
+    }
     final edition = editionId(bookId, language);
     final mem = _memory[edition];
     if (mem != null) return mem;
@@ -254,6 +420,7 @@ class HadithService {
   Future<void> clearCache() async {
     _memory.clear();
     _inFlightEditions.clear();
+    await FileCacheStore.delete(_nahjulCacheKey);
     for (final b in books) {
       for (final l in HadithLanguage.values) {
         final key = _cacheKey(editionId(b.id, l));

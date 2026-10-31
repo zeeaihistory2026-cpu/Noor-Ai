@@ -203,12 +203,12 @@ class _CardEditorScreenState extends State<CardEditorScreen> {
                         borderRadius: BorderRadius.circular(16)),
                     child: Row(children: [
                       const Expanded(
-                          child: Text('NOOR watermark', style: NoorType.body)),
+                          child: Text('MuslimGo watermark', style: NoorType.body)),
                       Text(_brand ? 'On' : 'Off',
                           style: NoorType.secondary
                               .copyWith(color: NoorColors.muted)),
                       Semantics(
-                          label: 'Show NOOR branding',
+                          label: 'Show MuslimGo branding',
                           toggled: _brand,
                           child: Switch(
                               value: _brand,

@@ -59,7 +59,7 @@ class ShareExportService {
     }
     final result = await SharePlus.instance.share(ShareParams(
       files: [xfile],
-      text: text ?? 'Shared with NOOR AI Companion',
+      text: text ?? 'Shared with MuslimGo',
     ));
     return result.status != ShareResultStatus.unavailable;
   }

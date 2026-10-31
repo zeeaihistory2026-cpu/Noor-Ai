@@ -1,7 +1,7 @@
 name: noor_ai_companion
-description: NOOR AI Companion — Faith • Guidance • Growth. Flutter scaffold from the 42-page NOOR design.
+description: MuslimGo — Faith • Guidance • Growth. Flutter app.
 publish_to: 'none'
-version: 1.0.0+15
+version: 1.0.1+16
 
 environment:
   sdk: ^3.5.0

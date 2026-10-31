@@ -4,7 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'sample_data.dart';
 
-/// Phase 6 — local storage for NOOR.
+/// Phase 6 — local storage for MuslimGo.
 ///
 /// Wraps `shared_preferences` for settings, streaks, the Salah log,
 /// bookmarks and reminder toggles. Every read/write is defensive:

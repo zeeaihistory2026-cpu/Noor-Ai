@@ -11,7 +11,7 @@
     <!-- Required for Quran, Hadith, and audio content from network APIs -->
     <uses-permission android:name="android.permission.INTERNET"/>
     <application
-        android:label="noor_ai_companion"
+        android:label="MuslimGo"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:forceDarkAllowed="false">

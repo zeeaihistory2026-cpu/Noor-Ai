@@ -2,7 +2,7 @@ import 'sample_data.dart';
 
 /// Phase 9 — AI Companion service layer (PREP ONLY, no live backend).
 ///
-/// There is NO AI backend for NOOR yet, so nothing in this file may
+/// There is NO AI backend for MuslimGo yet, so nothing in this file may
 /// claim a live AI answer. Two implementations exist:
 ///
 /// * [LocalAiService] — returns the brief sample answers/sources

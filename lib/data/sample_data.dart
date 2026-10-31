@@ -367,8 +367,8 @@ class SampleData {
   static const settingsSupport = [
     ('Help Center', 'Get help and FAQ', ''),
     ('Send Feedback', 'Share your thoughts with us', ''),
-    ('About NOOR', 'App info, version and updates', 'v1.2.0'),
-    ('Rate NOOR', 'Rate us on the app store', ''),
+    ('About MuslimGo', 'App info, version and updates', 'v1.2.0'),
+    ('Rate MuslimGo', 'Rate us on the app store', ''),
   ];
   static const settingsEmail = 'abdullah.khan@email.com';
 

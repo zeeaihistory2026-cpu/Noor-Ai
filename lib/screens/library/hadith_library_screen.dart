@@ -50,6 +50,9 @@ class _HadithLibraryScreenState extends State<HadithLibraryScreen> {
     'abudawud': '4,803 Hadith',
     'nasai': '5,578 Hadith',
     'ibnmajah': '4,341 Hadith',
+    // Verified live from the dataset 2026-10-31: 241 sermons +
+    // 79 letters + 470 sayings.
+    'nahjulbalagha': '790 Texts',
   };
 
   @override
@@ -117,6 +120,7 @@ class _HadithLibraryScreenState extends State<HadithLibraryScreen> {
                     title: 'Hadith databank',
                     info: const [
                       'The complete text of all six books loads live from the free hadith-api CDN (fawazahmed0), in English, Arabic and Urdu.',
+                      'Nahjul Balagha (sermons, letters and sayings of Imam Ali, compiled by Sharif al-Radi) loads its full Arabic text live from the public NahjulBalaghah dataset.',
                       'Sunnah.com grades are a future upgrade and need an API key — grades show only where the databank ships them.',
                     ])),
           ],

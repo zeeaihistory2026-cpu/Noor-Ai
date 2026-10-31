@@ -77,11 +77,22 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('HadithService book list', () {
-    test('six complete books with display names and edition ids', () {
-      expect(HadithService.books.length, 6);
+    test('six canonical books plus Nahjul Balagha, with display names and edition ids', () {
+      // MuslimGo: a seventh book (Nahjul Balagha) was added to the
+      // catalogue at the user's request — the six canonical books
+      // keep their order and ids.
+      expect(HadithService.books.length, 7);
       final ids = HadithService.books.map((b) => b.id).toList();
-      expect(ids,
-          ['bukhari', 'muslim', 'abudawud', 'tirmidhi', 'nasai', 'ibnmajah']);
+      expect(ids, [
+        'bukhari',
+        'muslim',
+        'abudawud',
+        'tirmidhi',
+        'nasai',
+        'ibnmajah',
+        'nahjulbalagha'
+      ]);
+      expect(HadithService.bookName('nahjulbalagha'), 'Nahjul Balagha');
       expect(HadithService.bookName('bukhari'), 'Sahih al-Bukhari');
       expect(HadithService.bookName('tirmidhi'), "Jami' At Tirmidhi");
       expect(HadithService.editionId('bukhari', HadithLanguage.eng),
@@ -95,9 +106,19 @@ void main() {
     });
 
     test('bookMaxHadiths defines valid upper bounds for all six canonical books', () {
-      for (final book in HadithService.books) {
-        final maxH = HadithService.bookMaxHadiths[book.id];
-        expect(maxH, isNotNull, reason: 'Book ${book.id} must have a max Hadith count');
+      // Nahjul Balagha numbers restart per part (Sermons / Letters /
+      // Sayings), so it has no single global max and is excluded.
+      const canonical = [
+        'bukhari',
+        'muslim',
+        'abudawud',
+        'tirmidhi',
+        'nasai',
+        'ibnmajah'
+      ];
+      for (final id in canonical) {
+        final maxH = HadithService.bookMaxHadiths[id];
+        expect(maxH, isNotNull, reason: 'Book $id must have a max Hadith count');
         expect(maxH!, greaterThan(1000));
       }
       expect(HadithService.bookMaxHadiths['bukhari'], 7563);

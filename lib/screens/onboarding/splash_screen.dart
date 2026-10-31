@@ -6,7 +6,7 @@ import '../../theme/noor_theme.dart';
 
 /// Page 36 — Animated Splash Screen.
 /// Clean, elegant opening: cream page, glowing emerald Islamic tile with
-/// gold NOOR typography and star emblem, brand titles, and animated
+/// gold MuslimGo typography and star emblem, brand titles, and animated
 /// loading pulse. Automatically transitions directly into the app shell.
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -189,7 +189,7 @@ class _SplashScreenState extends State<SplashScreen>
                               ),
                               const SizedBox(height: 6),
                               Text(
-                                'NOOR',
+                                'MuslimGo',
                                 style: NoorType.display.copyWith(
                                   fontSize: 24,
                                   fontWeight: FontWeight.w900,
@@ -211,7 +211,7 @@ class _SplashScreenState extends State<SplashScreen>
                     ),
                     const SizedBox(height: 32),
                     Text(
-                      'NOOR',
+                      'MuslimGo',
                       style: NoorType.display.copyWith(
                         fontSize: 32,
                         fontWeight: FontWeight.w800,

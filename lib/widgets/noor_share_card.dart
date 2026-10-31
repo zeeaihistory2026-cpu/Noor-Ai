@@ -6,7 +6,7 @@ import 'noor_components.dart';
 
 /// Emerald share-card preview used on Pages 19-22, exactly as drawn:
 /// DAILY REMINDER (gold), brief Arabic excerpt, short translation,
-/// Quran 20:114 (gold), NOOR wordmark. Brief attributed excerpt
+/// Quran 20:114 (gold), MuslimGo wordmark. Brief attributed excerpt
 /// only — the verified source text stays locked (see Card Editor).
 /// [dark] swaps to the near-black template; [cream] to sand/cream.
 class NoorShareCard extends StatelessWidget {
@@ -130,7 +130,7 @@ class NoorShareCard extends StatelessWidget {
                 fontWeight: FontWeight.w800)),
         if (showWordmark && !mini) ...[
           const SizedBox(height: 18),
-          Text('NOOR',
+          Text('MuslimGo',
               style: TextStyle(
                   color: fg,
                   fontSize: 13,

@@ -232,16 +232,21 @@ class _HadithChaptersScreenState extends State<HadithChaptersScreen> {
                     ]),
                     const SizedBox(height: 6),
                     Text(
-                        '${_fmt(book.hadiths.length)} hadiths · ${book.sections.length} chapters',
+                        book.id == HadithService.nahjulBookId
+                            ? '${_fmt(book.hadiths.length)} texts · ${book.sections.length} parts (Arabic)'
+                            : '${_fmt(book.hadiths.length)} hadiths · ${book.sections.length} chapters',
                         style: NoorType.meta.copyWith(color: NoorColors.muted)),
                     const SizedBox(height: 12),
                     // Language chooser: Arabic + English + Urdu.
-                    Row(children: [
-                      for (final l in HadithLanguage.values) ...[
-                        _langChip(l),
-                        const SizedBox(width: 8),
-                      ]
-                    ]),
+                    // Nahjul Balagha's dataset is Arabic-only, so the
+                    // chooser is hidden for it (header says Arabic).
+                    if (book.id != HadithService.nahjulBookId)
+                      Row(children: [
+                        for (final l in HadithLanguage.values) ...[
+                          _langChip(l),
+                          const SizedBox(width: 8),
+                        ]
+                      ]),
                   ])),
           const SizedBox(height: 14),
           Container(
@@ -405,7 +410,10 @@ class _HadithChaptersScreenState extends State<HadithChaptersScreen> {
                             children: [
                           Text(s.title, style: NoorType.body),
                           const SizedBox(height: 3),
-                          Text('${s.count} narrations',
+                          Text(
+                              book.id == HadithService.nahjulBookId
+                                  ? '${s.count} texts'
+                                  : '${s.count} narrations',
                               style: NoorType.meta
                                   .copyWith(color: NoorColors.muted))
                         ])),

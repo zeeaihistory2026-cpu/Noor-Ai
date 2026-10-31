@@ -189,7 +189,7 @@ class _ReminderCenterScreenState extends State<ReminderCenterScreen> {
       } else if (count > 0) {
         _status = '$count reminders scheduled on this device.';
       } else if (NoorNotifications.permissionDenied) {
-        _status = 'Notifications are turned off for NOOR — your reminders '
+        _status = 'Notifications are turned off for MuslimGo — your reminders '
             'are saved but can\'t ring until you allow them.';
         _showSettingsButton = true;
       } else {

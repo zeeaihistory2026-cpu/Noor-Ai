@@ -1,4 +1,4 @@
-// NOOR smoke test: app boots to the Splash screen with logo branding
+// MuslimGo smoke test: app boots to the Splash screen with logo branding
 // and automatically advances to the main app without requiring Enter button.
 import 'package:flutter_test/flutter_test.dart';
 

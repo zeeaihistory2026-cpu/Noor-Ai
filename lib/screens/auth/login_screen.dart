@@ -8,7 +8,7 @@ import 'create_account_screen.dart';
 
 /// Page 42 — Login. "Welcome back / Continue your Quran and worship
 /// journey." Email + Password pill inputs, a right-aligned "Forgot
-/// password?" link, the emerald Login pill, and a "New to NOOR?
+/// password?" link, the emerald Login pill, and a "New to MuslimGo?
 /// Create account" link that swaps back to Page 41.
 /// Phase 9: wired to AuthService (LocalAuthService) — real
 /// validation against the local on-device account only. No backend
@@ -137,7 +137,7 @@ class _LoginScreenState extends State<LoginScreen> {
               alignment: WrapAlignment.center,
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
-            Text('New to NOOR?  ',
+            Text('New to MuslimGo?  ',
                 style: NoorType.secondary.copyWith(color: NoorColors.iconMuted)),
             TextButton(
               onPressed: () => Navigator.of(context).pushReplacement(

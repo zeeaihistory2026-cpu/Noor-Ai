@@ -100,7 +100,7 @@ class ShareStreakCard {
 /// Social export geometry. Aspect ratios are the platforms'
 /// published canvas shapes; pixel sizes are the standard export
 /// sizes used by [ShareExportService]. The system share sheet is
-/// how the PNG reaches Instagram/TikTok/Facebook — NOOR does not
+/// how the PNG reaches Instagram/TikTok/Facebook — MuslimGo does not
 /// post directly to any platform.
 class ShareFormatOption {
   const ShareFormatOption({

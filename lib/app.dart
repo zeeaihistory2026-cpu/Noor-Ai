@@ -47,7 +47,7 @@ class _NoorAppState extends State<NoorApp> {
     return NoorScope(
       controller: _controller,
       child: MaterialApp(
-        title: 'NOOR AI Companion',
+        title: 'MuslimGo',
         debugShowCheckedModeBanner: false,
         theme: NoorTheme.light(),
         darkTheme: NoorTheme.dark(),

@@ -83,7 +83,7 @@ class OnboardingScreen extends StatelessWidget {
                         color: NoorColors.gold, size: 36),
                   ),
                   const SizedBox(height: 16),
-                  Text('NOOR AI',
+                  Text('MuslimGo AI',
                       style: NoorType.display.copyWith(
                           fontSize: 24,
                           color: NoorColors.emeraldDark,

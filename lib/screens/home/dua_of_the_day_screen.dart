@@ -277,7 +277,7 @@ class _DuaOfTheDayScreenState extends State<DuaOfTheDayScreen> {
                       Text(SampleData.duaSource,
                           style: NoorType.meta.copyWith(color: NoorColors.gold)),
                       const SizedBox(height: 10),
-                      Text('NOOR',
+                      Text('MuslimGo',
                           style: NoorType.meta.copyWith(color: Colors.white70,
                               letterSpacing: 2)),
                     ])),

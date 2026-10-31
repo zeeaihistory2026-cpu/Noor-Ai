@@ -57,6 +57,15 @@ class _HadithDetailScreenState extends State<HadithDetailScreen> {
   HadithSection get _section => widget.book.sectionOf(_entry);
   bool get _isArabic => widget.book.language == HadithLanguage.ara;
 
+  /// Nahjul Balagha entries are sermons / letters / sayings, not
+  /// hadiths — labels use the entry's own kind (its part).
+  bool get _isNahjul => widget.book.id == HadithService.nahjulBookId;
+  String get _kind => !_isNahjul
+      ? 'Hadith'
+      : const {1: 'Sermon', 2: 'Letter', 3: 'Saying'}[_entry.sectionNumber] ??
+          'Text';
+  String get _kindLower => _kind.toLowerCase();
+
   String get _bookmarkId =>
       HadithService.bookmarkId(widget.book.edition, _entry.hadithnumber);
 
@@ -76,6 +85,10 @@ class _HadithDetailScreenState extends State<HadithDetailScreen> {
   /// (or the English line when it is). Companion edition only;
   /// failure is silent — the primary text always stands alone.
   Future<void> _loadCompanionText() async {
+    // Nahjul Balagha is Arabic-only in its dataset — there is no
+    // companion edition to load, and its within-part numbers would
+    // false-match across parts.
+    if (_isNahjul) return;
     final want =
         _isArabic ? HadithLanguage.eng : HadithLanguage.ara;
     try {
@@ -103,7 +116,7 @@ class _HadithDetailScreenState extends State<HadithDetailScreen> {
         id: _bookmarkId,
         title: '${widget.book.name} #${_entry.hadithnumber}',
         subtitle: snippet,
-        tag: 'Hadith',
+        tag: _isNahjul ? 'Nahjul Balagha' : 'Hadith',
       );
     } else {
       await NoorStore.removeRichItem(_bookmarkId);
@@ -116,7 +129,7 @@ class _HadithDetailScreenState extends State<HadithDetailScreen> {
   }
 
   String get _shareText =>
-      '"${_entry.text}"\n— ${widget.book.name} • Hadith ${_entry.hadithnumber}';
+      '"${_entry.text}"\n— ${widget.book.name} • $_kind ${_entry.hadithnumber}';
 
   Future<void> _copyHadith() async {
     await Clipboard.setData(ClipboardData(text: _shareText));
@@ -129,7 +142,7 @@ class _HadithDetailScreenState extends State<HadithDetailScreen> {
   Future<void> _shareHadith() async {
     await SharePlus.instance.share(ShareParams(
         text: _shareText,
-        subject: '${widget.book.name} • Hadith ${_entry.hadithnumber}'));
+        subject: '${widget.book.name} • $_kind ${_entry.hadithnumber}'));
   }
 
   void _step(int delta) {
@@ -200,7 +213,7 @@ class _HadithDetailScreenState extends State<HadithDetailScreen> {
                     Align(
                         alignment: Alignment.centerLeft,
                         child: Text(
-                            '${widget.book.name} • Hadith ${_entry.hadithnumber}',
+                            '${widget.book.name} • $_kind ${_entry.hadithnumber}',
                             style: NoorType.meta
                                 .copyWith(color: NoorColors.emeraldDark))),
                     Align(
@@ -232,7 +245,7 @@ class _HadithDetailScreenState extends State<HadithDetailScreen> {
               const SizedBox(height: 12),
               _card('Context',
                   'Chapter ${_section.number}: ${_section.title}. This is '
-                      'hadith ${_index + 1} of ${_inSection.length} in this '
+                      '$_kindLower ${_index + 1} of ${_inSection.length} in this '
                       'chapter (${widget.book.name}, no. ${_entry.hadithnumber}).'),
               const SizedBox(height: 12),
               _card('Related Sources',
@@ -244,7 +257,7 @@ class _HadithDetailScreenState extends State<HadithDetailScreen> {
                   onPressed: () => Navigator.of(context).push(
                       MaterialPageRoute(builder: (_) => const AiChatScreen())),
                   icon: const Icon(Icons.auto_awesome_outlined, size: 18),
-                  label: const Text('Ask AI About This Hadith')),
+                  label: Text('Ask AI About This $_kind')),
             ])),
       ])));
 
@@ -255,7 +268,7 @@ class _HadithDetailScreenState extends State<HadithDetailScreen> {
                 onPressed: _index > 0 ? () => _step(-1) : null,
                 icon: const Icon(Icons.chevron_left, size: 18),
                 label: const Text('Previous')),
-            Text('Hadith ${_index + 1} of ${_inSection.length}',
+            Text('$_kind ${_index + 1} of ${_inSection.length}',
                 style: NoorType.meta.copyWith(color: NoorColors.muted)),
             TextButton.icon(
                 onPressed:
@@ -317,7 +330,7 @@ class _HadithDetailScreenState extends State<HadithDetailScreen> {
                 textAlign: TextAlign.center,
                 style: NoorType.screenTitle.copyWith(color: Colors.white)),
             const SizedBox(height: 2),
-            Text('${widget.book.name} • Hadith ${_entry.hadithnumber}',
+            Text('${widget.book.name} • $_kind ${_entry.hadithnumber}',
                 style: NoorType.meta.copyWith(color: Colors.white70)),
           ])),
           IconButton(
@@ -326,16 +339,16 @@ class _HadithDetailScreenState extends State<HadithDetailScreen> {
               // Phase 16 audit: real actions — copy reuses the same
               // text the Copy button copies; Ask AI opens the chat.
               onPressed: () => showNoorOverflowSheet(context,
-                  title: 'Hadith ${_entry.hadithnumber}',
+                  title: '$_kind ${_entry.hadithnumber}',
                   actions: [
                     (
                       Icons.copy_outlined,
-                      'Copy hadith text',
+                      'Copy text',
                       _copyHadith
                     ),
                     (
                       Icons.chat_outlined,
-                      'Ask AI about this hadith',
+                      'Ask AI about this $_kindLower',
                       () => Navigator.of(context).push(MaterialPageRoute(
                           builder: (_) => const AiChatScreen()))
                     ),

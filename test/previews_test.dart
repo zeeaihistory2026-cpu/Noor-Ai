@@ -2,7 +2,7 @@
 // Noto Nastaliq Urdu fonts loaded (see _loadCaptureFonts).
 // Phase 10 — VISUAL PREVIEW CAPTURES (separate from the normal suite;
 // run explicitly: flutter test test/previews_test.dart --update-goldens)
-// Pumps key NOOR screens at 390x844@2x and writes PNGs to ../previews/
+// Pumps key MuslimGo screens at 390x844@2x and writes PNGs to ../previews/
 // for side-by-side comparison with the user's design PNGs.
 //
 // Important capture setup (learned in Phase 10): flutter_test replaces

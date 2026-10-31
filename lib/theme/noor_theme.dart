@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-/// NOOR design tokens — taken from the 42-page design palette.
+/// MuslimGo design tokens — taken from the 42-page design palette.
 class NoorColors {
   static const emerald = Color(0xFF0F5132);
   static const emeraldDark = Color(0xFF0B3D2E);
@@ -52,7 +52,7 @@ class NoorColors {
   static const darkGold = Color(0xFFE5C158); // Accessible gold on emerald (>9:1 contrast)
 }
 
-/// The NOOR type scale (Phase 12, from SENIOR_REVIEW §3.6). Every
+/// The MuslimGo type scale (Phase 12, from SENIOR_REVIEW §3.6). Every
 /// text role in the app maps to exactly one of these styles — no
 /// per-screen sizes, no half-point sizes. Latin styles inherit the
 /// app font (Manrope via [NoorTheme]); sacred-text styles name the

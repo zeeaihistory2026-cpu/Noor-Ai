@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../theme/noor_theme.dart';
 
 /// Placeholder screen for a design page not yet implemented.
-/// [page] is the NOOR design page number (01–42); [purpose] is a
+/// [page] is the MuslimGo design page number (01–42); [purpose] is a
 /// one-line description taken from that page's "Screen Purpose".
 class NoorStubScreen extends StatelessWidget {
   const NoorStubScreen({

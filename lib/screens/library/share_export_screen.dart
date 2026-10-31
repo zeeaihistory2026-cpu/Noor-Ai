@@ -12,7 +12,7 @@ import '../../widgets/noor_share_card.dart';
 /// Phase 13 made PNG export real; Phase 14 exports at the chosen
 /// platform pixel size (e.g. Instagram Post 1080×1350, Story/Reel
 /// 1080×1920, Facebook 1200×628). Platform tiles open the system
-/// share sheet — the device's sheet reaches those apps; NOOR does
+/// share sheet — the device's sheet reaches those apps; MuslimGo does
 /// not post to any platform directly.
 class ShareExportScreen extends StatefulWidget {
   const ShareExportScreen({
@@ -43,8 +43,8 @@ class _ShareExportScreenState extends State<ShareExportScreen> {
 
   String get _shareText {
     final s = widget.streak;
-    if (s != null) return '${s.label}: ${s.days} days — shared with NOOR';
-    return '${_item.text} (${_item.reference}) — shared with NOOR';
+    if (s != null) return '${s.label}: ${s.days} days — shared with MuslimGo';
+    return '${_item.text} (${_item.reference}) — shared with MuslimGo';
   }
 
   Future<void> _share() async {

@@ -357,7 +357,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Choose how NOOR adjusts its display. Automatic Solar switches to Midnight Emerald between Maghrib and Fajr.',
+                  'Choose how MuslimGo adjusts its display. Automatic Solar switches to Midnight Emerald between Maghrib and Fajr.',
                   style: NoorType.secondary.copyWith(
                     color: isDark ? NoorColors.darkTextSecondary : NoorColors.mutedDark,
                   ),
@@ -603,16 +603,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
               'We value your suggestions and bug reports. Thank you for helping us improve Noor AI Companion for the Ummah.',
               Icons.chat_bubble_outline,
             ),
-        'About NOOR' => () => _showSimpleSheet(
+        'About MuslimGo' => () => _showSimpleSheet(
               c,
-              'About NOOR AI Companion',
+              'About MuslimGo',
               'Version 1.2.0 (Build 42). Built with reverence, authentic sources (Bukhari, Muslim, Tirmidhi), and state-of-the-art mobile engineering.',
               Icons.info_outline,
             ),
-        'Rate NOOR' => () => _showSimpleSheet(
+        'Rate MuslimGo' => () => _showSimpleSheet(
               c,
-              'Rate NOOR',
-              'If NOOR has enriched your daily spiritual journey, please leave a 5-star review on the App Store or Google Play.',
+              'Rate MuslimGo',
+              'If MuslimGo has enriched your daily spiritual journey, please leave a 5-star review on the App Store or Google Play.',
               Icons.star_border,
             ),
         _ => () => _showSimpleSheet(
@@ -699,7 +699,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       rowValue = controller?.themePreferenceLabel ?? 'System';
                     } else if (label == 'Text Size') {
                       rowValue = _textSize;
-                    } else if (label == 'About NOOR') {
+                    } else if (label == 'About MuslimGo') {
                       rowValue = rows[i].$3.isNotEmpty ? rows[i].$3 : 'v1.2.0';
                     }
 
@@ -782,7 +782,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 }
 
-/// Geometric pointed-arch emblem matching the NOOR brand icon on Page 13.
+/// Geometric pointed-arch emblem matching the MuslimGo brand icon on Page 13.
 class NoorLogoBadge extends StatelessWidget {
   final double size;
   final Color color;

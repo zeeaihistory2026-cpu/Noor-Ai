@@ -64,7 +64,7 @@ class NoorNotifications {
         requestSoundPermission: false,
       );
       const linuxInit =
-          LinuxInitializationSettings(defaultActionName: 'Open NOOR');
+          LinuxInitializationSettings(defaultActionName: 'Open MuslimGo');
       const settings = InitializationSettings(
         android: androidInit,
         iOS: iosInit,
@@ -113,7 +113,7 @@ class NoorNotifications {
     }
   }
 
-  /// Replaces whatever NOOR previously scheduled with [plan]
+  /// Replaces whatever MuslimGo previously scheduled with [plan]
   /// (from NotificationPlan.buildFullPlan) and returns how many
   /// entries were actually scheduled. Past entries are skipped.
   static Future<int> schedulePlan(List<PlannedNotification> plan) async {
@@ -229,7 +229,7 @@ class NoorNotifications {
     try {
       final android = AndroidNotificationDetails(
         isSalah ? prayerChannelId : dailyChannelId,
-        isSalah ? 'Prayer reminders' : 'Daily NOOR reminders',
+        isSalah ? 'Prayer reminders' : 'Daily MuslimGo reminders',
         channelDescription: isSalah
             ? 'A short reminder before each prayer time'
             : 'Adhkar, Dua, Hadith, Ayah and Quote reminders',
@@ -268,7 +268,7 @@ class NoorNotifications {
     final isSalah = entry.group == 'Salah';
     final android = AndroidNotificationDetails(
       isSalah ? prayerChannelId : dailyChannelId,
-      isSalah ? 'Prayer reminders' : 'Daily NOOR reminders',
+      isSalah ? 'Prayer reminders' : 'Daily MuslimGo reminders',
       channelDescription: isSalah
           ? 'A short reminder before each prayer time'
           : 'Adhkar, Dua and Hadith reminders',
