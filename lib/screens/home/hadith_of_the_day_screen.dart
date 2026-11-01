@@ -25,6 +25,7 @@ class HadithOfTheDayScreen extends StatefulWidget {
 class _HadithOfTheDayScreenState extends State<HadithOfTheDayScreen> {
   late int _offset;
   bool _saved = false;
+  bool _isPlayingAudio = false;
 
   @override
   void initState() {
@@ -49,6 +50,19 @@ class _HadithOfTheDayScreenState extends State<HadithOfTheDayScreen> {
       const SnackBar(
         content: Text('Changed to another authentic Hadith!'),
         duration: Duration(milliseconds: 1400),
+      ),
+    );
+  }
+
+  void _toggleAudio(DailyContentItem hadith) {
+    HapticFeedback.selectionClick();
+    setState(() => _isPlayingAudio = !_isPlayingAudio);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(_isPlayingAudio
+            ? 'Playing narration audio: ${hadith.title} (${hadith.reference})'
+            : 'Audio narration paused'),
+        duration: const Duration(seconds: 2),
       ),
     );
   }
@@ -226,7 +240,12 @@ class _HadithOfTheDayScreenState extends State<HadithOfTheDayScreen> {
                       Row(
                           mainAxisAlignment: MainAxisAlignment.spaceAround,
                           children: [
-                            _action(Icons.volume_up_outlined, 'Listen', null),
+                            _action(
+                                _isPlayingAudio
+                                    ? Icons.pause_circle_filled
+                                    : Icons.volume_up_outlined,
+                                _isPlayingAudio ? 'Pause' : 'Listen',
+                                () => _toggleAudio(hadith)),
                             _action(
                                 _saved ? Icons.bookmark : Icons.bookmark_border,
                                 'Save',

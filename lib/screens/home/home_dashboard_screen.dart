@@ -102,8 +102,10 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
 
     void push(Widget page) =>
         Navigator.of(context).push(MaterialPageRoute(builder: (_) => page));
-    return SafeArea(
-      child: ListView(
+    return Material(
+      color: Colors.transparent,
+      child: SafeArea(
+        child: ListView(
         padding: const EdgeInsets.fromLTRB(20, 14, 20, 24),
         children: [
           // Greeting row (bell with red dot + dome avatar in design).
@@ -500,7 +502,8 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
           ),
         ],
       ),
-    );
+    ),
+  );
   }
 
   Widget _streakCard(BuildContext context, String assetPath, String label, int days) {

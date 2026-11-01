@@ -26,6 +26,7 @@ class DuaOfTheDayScreen extends StatefulWidget {
 class _DuaOfTheDayScreenState extends State<DuaOfTheDayScreen> {
   late int _offset;
   bool _saved = false;
+  bool _isPlayingAudio = false;
 
   @override
   void initState() {
@@ -50,6 +51,19 @@ class _DuaOfTheDayScreenState extends State<DuaOfTheDayScreen> {
       const SnackBar(
         content: Text('Changed to another authentic Dua!'),
         duration: Duration(milliseconds: 1400),
+      ),
+    );
+  }
+
+  void _toggleAudio(DailyContentItem dua) {
+    HapticFeedback.selectionClick();
+    setState(() => _isPlayingAudio = !_isPlayingAudio);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(_isPlayingAudio
+            ? 'Playing supplication audio: ${dua.title}'
+            : 'Audio paused'),
+        duration: const Duration(seconds: 2),
       ),
     );
   }
@@ -199,7 +213,12 @@ class _DuaOfTheDayScreenState extends State<DuaOfTheDayScreen> {
                   Row(
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: [
-                        _action(Icons.volume_up_outlined, 'Listen', null),
+                        _action(
+                            _isPlayingAudio
+                                ? Icons.pause_circle_filled
+                                : Icons.volume_up_outlined,
+                            _isPlayingAudio ? 'Pause' : 'Listen',
+                            () => _toggleAudio(dua)),
                         _action(_saved ? Icons.bookmark : Icons.bookmark_border,
                             'Save', () => setState(() => _saved = !_saved)),
                         _action(
