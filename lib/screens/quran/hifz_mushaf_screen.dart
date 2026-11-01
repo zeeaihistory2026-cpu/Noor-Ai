@@ -294,6 +294,37 @@ class _HifzMushafScreenState extends State<HifzMushafScreen> {
                 },
               ),
             ),
+            const SizedBox(height: 18),
+            Text('Quick Surah Navigation (1 – 114):', style: NoorType.meta.copyWith(color: NoorColors.muted)),
+            const SizedBox(height: 8),
+            SizedBox(
+              height: 42,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                physics: const BouncingScrollPhysics(),
+                itemCount: 114,
+                separatorBuilder: (_, __) => const SizedBox(width: 6),
+                itemBuilder: (_, i) {
+                  final sNum = i + 1;
+                  final sName = QuranService.surahInfoMap[sNum]?.$1 ?? 'Surah $sNum';
+                  final p = QuranService.surahStartPages[sNum] ?? 1;
+                  final isCurrent = _pageData?.surahNumber == sNum;
+                  return ActionChip(
+                    label: Text('$sNum. $sName'),
+                    backgroundColor: isCurrent ? NoorColors.emeraldDark : NoorColors.emeraldSoft,
+                    labelStyle: TextStyle(
+                      color: isCurrent ? Colors.white : NoorColors.emeraldDark,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12,
+                    ),
+                    onPressed: () {
+                      Navigator.of(ctx).pop();
+                      _loadPage(p);
+                    },
+                  );
+                },
+              ),
+            ),
           ],
         ),
       ),

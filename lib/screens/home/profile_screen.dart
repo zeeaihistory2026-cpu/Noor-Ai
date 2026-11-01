@@ -6,6 +6,7 @@ import '../../data/firebase_rest_service.dart';
 import '../../data/noor_controller.dart';
 import '../../data/noor_store.dart';
 import '../../widgets/noor_components.dart';
+import '../../widgets/noor_share_card.dart';
 import '../auth/login_screen.dart';
 import '../library/saved_content_screen.dart';
 import '../onboarding/goal_selection_screen.dart';

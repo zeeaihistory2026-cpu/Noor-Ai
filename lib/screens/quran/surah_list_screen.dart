@@ -326,7 +326,14 @@ class _SurahListScreenState extends State<SurahListScreen> {
                 textDirection: TextDirection.rtl,
                 style:
                     NoorType.arabic(size: 18, color: NoorColors.emeraldDark)),
-            const Icon(Icons.more_vert, size: 19, color: NoorColors.muted),
+            const SizedBox(width: 6),
+            IconButton(
+              icon: const Icon(Icons.play_circle_fill, color: NoorColors.emeraldMid, size: 28),
+              tooltip: 'Listen to Surah ${s.$2}',
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => QuranAudioPlayerScreen(surah: s.$1)),
+              ),
+            ),
           ]),
         ),
       );

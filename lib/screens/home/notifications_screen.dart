@@ -4,6 +4,11 @@ import '../../data/sample_data.dart';
 import '../../theme/noor_theme.dart';
 import '../../widgets/noor_share_card.dart';
 import '../worship/reminder_center_screen.dart';
+import '../quran/quran_audio_player_screen.dart';
+import '../quran/hifz_mushaf_screen.dart';
+import 'ayat_of_the_day_screen.dart';
+import 'hadith_of_the_day_screen.dart';
+import 'dua_of_the_day_screen.dart';
 
 /// Page 35 — Notifications. Emerald header, Today group
 /// (Fajr reminder / Daily Dua / Quran) and Earlier group
@@ -49,6 +54,7 @@ class NotificationsScreen extends StatelessWidget {
                 const SizedBox(height: 12),
                 for (var i = 0; i < notifToday.length; i++)
                   _row(
+                    context,
                     notifToday[i],
                     time: _timeForIndex(i),
                     unread: i < 2,
@@ -60,6 +66,7 @@ class NotificationsScreen extends StatelessWidget {
                 const SizedBox(height: 12),
                 for (var i = 0; i < SampleData.notifEarlier.length; i++)
                   _row(
+                    context,
                     SampleData.notifEarlier[i],
                     time: _earlierTimeForIndex(i),
                   ),
@@ -86,46 +93,69 @@ class NotificationsScreen extends StatelessWidget {
     return i < times.length ? times[i] : 'Earlier';
   }
 
-  Widget _row((String, String, String) n,
+  Widget _row(BuildContext context, (String, String, String) n,
           {String time = '', bool unread = false}) =>
       Padding(
         padding: const EdgeInsets.only(bottom: 10),
-        child: Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(NoorRadius.card),
-                border: Border.all(color: NoorColors.hairline)),
-            child: Row(children: [
-              CircleAvatar(
-                  radius: 21,
-                  backgroundColor: NoorColors.emeraldSoft,
-                  child: Icon(_iconFor(n.$1),
-                      color: NoorColors.emeraldDark, size: 20)),
-              const SizedBox(width: 14),
-              Expanded(
-                  child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                    Row(children: [
-                      Expanded(
-                          child: Text(n.$1,
-                              style: NoorType.body)),
-                      if (unread)
-                        Container(
-                            width: 8,
-                            height: 8,
-                            decoration: const BoxDecoration(
-                                color: NoorColors.goldDeep,
-                                shape: BoxShape.circle))
-                    ]),
-                    const SizedBox(height: 3),
-                    Text(n.$2, style: NoorType.secondary),
-                    const SizedBox(height: 4),
-                    Text(time, style: NoorType.meta),
-                  ])),
-            ])),
+        child: Material(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(NoorRadius.card),
+          child: InkWell(
+            onTap: () => _handleTap(context, n.$1),
+            borderRadius: BorderRadius.circular(NoorRadius.card),
+            child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(NoorRadius.card),
+                    border: Border.all(color: NoorColors.hairline)),
+                child: Row(children: [
+                  CircleAvatar(
+                      radius: 21,
+                      backgroundColor: NoorColors.emeraldSoft,
+                      child: Icon(_iconFor(n.$1),
+                          color: NoorColors.emeraldDark, size: 20)),
+                  const SizedBox(width: 14),
+                  Expanded(
+                      child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                        Row(children: [
+                          Expanded(
+                              child: Text(n.$1,
+                                  style: NoorType.body)),
+                          if (unread)
+                            Container(
+                                width: 8,
+                                height: 8,
+                                decoration: const BoxDecoration(
+                                    color: NoorColors.goldDeep,
+                                    shape: BoxShape.circle))
+                        ]),
+                        const SizedBox(height: 3),
+                        Text(n.$2, style: NoorType.secondary),
+                        const SizedBox(height: 4),
+                        Text(time, style: NoorType.meta),
+                      ])),
+                ])),
+          ),
+        ),
       );
+
+  void _handleTap(BuildContext context, String title) {
+    if (title.contains('reminder') || title.contains('Salah') || title.contains('Fajr') || title.contains('Zikr')) {
+      Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ReminderCenterScreen()));
+    } else if (title.contains('Ayat')) {
+      Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AyatOfTheDayScreen()));
+    } else if (title.contains('Hadith')) {
+      Navigator.of(context).push(MaterialPageRoute(builder: (_) => const HadithOfTheDayScreen()));
+    } else if (title.contains('Dua')) {
+      Navigator.of(context).push(MaterialPageRoute(builder: (_) => const DuaOfTheDayScreen()));
+    } else if (title.contains('Quran')) {
+      Navigator.of(context).push(MaterialPageRoute(builder: (_) => const QuranAudioPlayerScreen()));
+    } else if (title.contains('Hifz')) {
+      Navigator.of(context).push(MaterialPageRoute(builder: (_) => const HifzMushafScreen()));
+    }
+  }
 }
 
 IconData _iconFor(String title) => switch (title) {

@@ -12,6 +12,7 @@ import '../../data/sample_data.dart';
 import '../../theme/noor_theme.dart';
 import '../../widgets/noor_components.dart';
 import '../quran/quran_reader_screen.dart';
+import 'ayat_of_the_day_screen.dart';
 import 'dua_of_the_day_screen.dart';
 import 'hadith_of_the_day_screen.dart';
 import 'my_journey_screen.dart';
@@ -37,6 +38,9 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
   String _nextPrayerTime = NoorAppState.nextPrayerTime;
   String _nextPrayerIn = '${NoorAppState.nextPrayerCountdown} remaining';
   String _userName = '';
+  int _ayahOffset = 0;
+  int _hadithOffset = 0;
+  int _duaOffset = 0;
 
   @override
   void initState() {
@@ -92,9 +96,9 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
     final isGuest = controller?.isGuest ?? (savedName.isEmpty || savedName == 'Guest');
     final displayName = savedName.isNotEmpty ? savedName : (isGuest ? 'Guest' : 'Believer');
 
-    final todayAyah = DailyContentService.getAyahOfDay();
-    final todayHadith = DailyContentService.getHadithOfDay();
-    final todayDua = DailyContentService.getDuaOfDay();
+    final todayAyah = DailyContentService.getAyah(offset: _ayahOffset);
+    final todayHadith = DailyContentService.getHadith(offset: _hadithOffset);
+    final todayDua = DailyContentService.getDua(offset: _duaOffset);
 
     void push(Widget page) =>
         Navigator.of(context).push(MaterialPageRoute(builder: (_) => page));
@@ -383,7 +387,16 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
             body: '${todayAyah.translation}\n${todayAyah.reference}',
             art: NoorAssets.quranRehal,
             action: 'Share',
-            onTap: () => push(const DuaOfTheDayScreen()),
+            onTap: () => push(AyatOfTheDayScreen(initialOffset: _ayahOffset)),
+            onChange: () {
+              setState(() => _ayahOffset++);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Ayat changed to next verse'),
+                  duration: Duration(milliseconds: 1200),
+                ),
+              );
+            },
           ),
           _contentCard(
             context,
@@ -392,7 +405,16 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
             body: '${todayHadith.translation}\n${todayHadith.reference}',
             art: NoorAssets.quranRehal,
             action: 'Share',
-            onTap: () => push(const HadithOfTheDayScreen()),
+            onTap: () => push(HadithOfTheDayScreen(initialOffset: _hadithOffset)),
+            onChange: () {
+              setState(() => _hadithOffset++);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Hadith changed to next narration'),
+                  duration: Duration(milliseconds: 1200),
+                ),
+              );
+            },
           ),
           _contentCard(
             context,
@@ -402,7 +424,16 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                 '${todayDua.transliteration ?? ""}\n${todayDua.translation}\n${todayDua.reference}',
             art: NoorAssets.duaHands,
             action: 'Share',
-            onTap: () => push(const DuaOfTheDayScreen()),
+            onTap: () => push(DuaOfTheDayScreen(initialOffset: _duaOffset)),
+            onChange: () {
+              setState(() => _duaOffset++);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Dua changed to next supplication'),
+                  duration: Duration(milliseconds: 1200),
+                ),
+              );
+            },
           ),
           NoorCard(
             child: Column(
@@ -539,7 +570,9 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
       required String body,
       required String art,
       required String action,
-      required VoidCallback onTap}) {
+      required VoidCallback onTap,
+      VoidCallback? onChange}) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: NoorCard(
@@ -547,6 +580,38 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
             Expanded(child: NoorSectionLabel(title)),
+            if (onChange != null) ...[
+              InkWell(
+                onTap: onChange,
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: isDark ? NoorColors.darkSurface : NoorColors.emeraldSoft,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isDark ? NoorColors.darkBorder : NoorColors.emeraldMid.withValues(alpha: 0.3),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.shuffle, size: 13, color: isDark ? NoorColors.darkGold : NoorColors.emeraldDark),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Change',
+                        style: NoorType.meta.copyWith(
+                          color: isDark ? NoorColors.darkGold : NoorColors.emeraldDark,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+            ],
             const Icon(Icons.bookmark_border,
                 size: 18, color: NoorColors.muted),
           ]),

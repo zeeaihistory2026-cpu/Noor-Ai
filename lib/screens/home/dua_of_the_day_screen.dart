@@ -15,16 +15,48 @@ import '../library/dua_library_screen.dart';
 /// Save / Share / Copy circles, About, More Duas chips, dark
 /// Share Your Card preview (brief excerpt) with Customize -> 19.
 class DuaOfTheDayScreen extends StatefulWidget {
-  const DuaOfTheDayScreen({super.key});
+  const DuaOfTheDayScreen({super.key, this.initialOffset = 0});
+
+  final int initialOffset;
+
   @override
   State<DuaOfTheDayScreen> createState() => _DuaOfTheDayScreenState();
 }
 
 class _DuaOfTheDayScreenState extends State<DuaOfTheDayScreen> {
+  late int _offset;
   bool _saved = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _offset = widget.initialOffset;
+  }
+
+  void _nextDua() {
+    HapticFeedback.selectionClick();
+    setState(() => _offset++);
+  }
+
+  void _prevDua() {
+    HapticFeedback.selectionClick();
+    setState(() => _offset--);
+  }
+
+  void _shuffleDua() {
+    HapticFeedback.mediumImpact();
+    setState(() => _offset += 1 + (DateTime.now().microsecond % 5));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Changed to another authentic Dua!'),
+        duration: Duration(milliseconds: 1400),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final dua = DailyContentService.getDuaOfDay();
+    final dua = DailyContentService.getDua(offset: _offset);
 
     return Scaffold(
         backgroundColor: NoorColors.cream,
@@ -95,10 +127,40 @@ class _DuaOfTheDayScreenState extends State<DuaOfTheDayScreen> {
                   Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Icon(Icons.bookmark_border,
-                            color: NoorColors.emeraldDark, size: 20),
-                        Icon(_saved ? Icons.favorite : Icons.favorite_border,
-                            color: NoorColors.emeraldDark, size: 20),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: NoorColors.emeraldSoft,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            dua.category,
+                            style: NoorType.meta.copyWith(
+                              color: NoorColors.emeraldDark,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.arrow_back_ios, size: 16),
+                              tooltip: 'Previous Dua',
+                              onPressed: _prevDua,
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.shuffle, size: 17, color: NoorColors.emeraldDark),
+                              tooltip: 'Change Dua',
+                              onPressed: _shuffleDua,
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.arrow_forward_ios, size: 16),
+                              tooltip: 'Next Dua',
+                              onPressed: _nextDua,
+                            ),
+                          ],
+                        ),
                       ]),
                   ClipOval(
                       child: Image.asset(NoorAssets.duaMedallion,

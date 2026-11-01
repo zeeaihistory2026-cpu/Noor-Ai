@@ -14,16 +14,48 @@ import '../library/share_card_studio_screen.dart';
 /// Share & Earn Reward, More Hadiths. Brief attributed excerpt
 /// only; full text from the licensed source at runtime.
 class HadithOfTheDayScreen extends StatefulWidget {
-  const HadithOfTheDayScreen({super.key});
+  const HadithOfTheDayScreen({super.key, this.initialOffset = 0});
+
+  final int initialOffset;
+
   @override
   State<HadithOfTheDayScreen> createState() => _HadithOfTheDayScreenState();
 }
 
 class _HadithOfTheDayScreenState extends State<HadithOfTheDayScreen> {
+  late int _offset;
   bool _saved = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _offset = widget.initialOffset;
+  }
+
+  void _nextHadith() {
+    HapticFeedback.selectionClick();
+    setState(() => _offset++);
+  }
+
+  void _prevHadith() {
+    HapticFeedback.selectionClick();
+    setState(() => _offset--);
+  }
+
+  void _shuffleHadith() {
+    HapticFeedback.mediumImpact();
+    setState(() => _offset += 1 + (DateTime.now().microsecond % 5));
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Changed to another authentic Hadith!'),
+        duration: Duration(milliseconds: 1400),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final hadith = DailyContentService.getHadithOfDay();
+    final hadith = DailyContentService.getHadith(offset: _offset);
 
     return Scaffold(
         backgroundColor: NoorColors.cream,
@@ -117,6 +149,46 @@ class _HadithOfTheDayScreenState extends State<HadithOfTheDayScreen> {
                   children: [
                     NoorCard(
                         child: Column(children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: NoorColors.emeraldSoft,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              hadith.title,
+                              style: NoorType.meta.copyWith(
+                                color: NoorColors.emeraldDark,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.arrow_back_ios, size: 16),
+                                tooltip: 'Previous Hadith',
+                                onPressed: _prevHadith,
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.shuffle, size: 17, color: NoorColors.emeraldDark),
+                                tooltip: 'Change Hadith',
+                                onPressed: _shuffleHadith,
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.arrow_forward_ios, size: 16),
+                                tooltip: 'Next Hadith',
+                                onPressed: _nextHadith,
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
                       ClipOval(
                           child: Image.asset(NoorAssets.hadithDayMedallion,
                               width: 88,

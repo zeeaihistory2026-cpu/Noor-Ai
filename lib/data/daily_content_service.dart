@@ -1,11 +1,9 @@
 /// Phase 17 — Daily Content Service for rotating Ayat, Hadith, and Duas.
 ///
 /// Features authentic Quranic verses, Sahih Hadiths (Bukhari, Muslim,
-/// Tirmidhi, Abu Dawud, Ibn Majah), and authentic supplications.
-/// Each collection deterministically rotates every calendar day, so:
-/// 1. A new Ayah, Hadith, and Dua appears every day.
-/// 2. Throughout that specific day, it remains consistent.
-/// 3. Offline-safe with complete fallback content.
+/// Tirmidhi, Abu Dawud, Ibn Majah, Nasai), and authentic supplications.
+/// Each collection deterministically rotates every calendar day, and also
+/// allows interactive changing / shuffling / cycling by the user.
 class DailyContentItem {
   const DailyContentItem({
     required this.id,
@@ -46,26 +44,78 @@ class DailyContentService {
     return diff.abs() % length;
   }
 
-  /// Returns today's Ayat of the Day, rotating each day.
-  static DailyContentItem getAyahOfDay([DateTime? date]) {
-    final idx = _dayIndex(ayatList.length, date);
-    return ayatList[idx];
+  static int get totalAyat => ayatList.length;
+  static int get totalHadiths => hadithList.length;
+  static int get totalDuas => duaList.length;
+
+  /// Returns today's Ayat of the Day, with optional offset for card changing.
+  static DailyContentItem getAyahOfDay([DateTime? date]) => getAyah(offset: 0, date: date);
+
+  /// Returns today's Hadith of the Day, with optional offset for card changing.
+  static DailyContentItem getHadithOfDay([DateTime? date]) => getHadith(offset: 0, date: date);
+
+  /// Returns today's Dua of the Day, with optional offset for card changing.
+  static DailyContentItem getDuaOfDay([DateTime? date]) => getDua(offset: 0, date: date);
+
+  /// Flexible card rotation & shuffle getter for Ayat
+  static DailyContentItem getAyah({int offset = 0, DateTime? date}) {
+    if (ayatList.isEmpty) {
+      return const DailyContentItem(
+        id: 'fallback',
+        title: 'Remembrance',
+        arabic: 'فَاذْكُرُونِي أَذْكُرْكُمْ',
+        translation: 'Remember Me; I will remember you.',
+        reference: 'Quran 2:152',
+      );
+    }
+    final baseIdx = _dayIndex(ayatList.length, date);
+    final idx = (baseIdx + offset) % ayatList.length;
+    return ayatList[idx < 0 ? idx + ayatList.length : idx];
   }
 
-  /// Returns today's Hadith of the Day, rotating each day.
-  static DailyContentItem getHadithOfDay([DateTime? date]) {
-    final idx = _dayIndex(hadithList.length, date);
-    return hadithList[idx];
+  /// Flexible card rotation & shuffle getter for Hadith
+  static DailyContentItem getHadith({int offset = 0, DateTime? date}) {
+    if (hadithList.isEmpty) {
+      return const DailyContentItem(
+        id: 'fallback',
+        title: 'Good Deeds',
+        arabic: 'إِنَّمَا الأَعْمَالُ بِالنِّيَّاتِ',
+        translation: 'Actions are judged by intentions.',
+        reference: 'Sahih al-Bukhari 1',
+      );
+    }
+    final baseIdx = _dayIndex(hadithList.length, date);
+    final idx = (baseIdx + offset) % hadithList.length;
+    return hadithList[idx < 0 ? idx + hadithList.length : idx];
   }
 
-  /// Returns today's Dua of the Day, rotating each day.
-  static DailyContentItem getDuaOfDay([DateTime? date]) {
-    final idx = _dayIndex(duaList.length, date);
-    return duaList[idx];
+  /// Flexible card rotation & shuffle getter for Dua
+  static DailyContentItem getDua({int offset = 0, DateTime? date}) {
+    if (duaList.isEmpty) {
+      return const DailyContentItem(
+        id: 'fallback',
+        title: 'Knowledge',
+        arabic: 'رَّبِّ زِدْنِي عِلْمًا',
+        translation: 'My Lord, increase me in knowledge.',
+        reference: 'Quran 20:114',
+      );
+    }
+    final baseIdx = _dayIndex(duaList.length, date);
+    final idx = (baseIdx + offset) % duaList.length;
+    return duaList[idx < 0 ? idx + duaList.length : idx];
   }
+
+  static DailyContentItem getAyahByIndex(int index) =>
+      ayatList[index.clamp(0, ayatList.length - 1)];
+
+  static DailyContentItem getHadithByIndex(int index) =>
+      hadithList[index.clamp(0, hadithList.length - 1)];
+
+  static DailyContentItem getDuaByIndex(int index) =>
+      duaList[index.clamp(0, duaList.length - 1)];
 
   // =========================================================================
-  // 30+ Authentic Ayat of the Day
+  // 30 Authentic Ayat of the Day
   // =========================================================================
   static const List<DailyContentItem> ayatList = [
     DailyContentItem(
@@ -218,10 +268,160 @@ class DailyContentService {
       reference: 'Surah Al-Hujurat 49:10',
       contextOrReflection: 'The brotherhood of faith is sacred; mend relationships and spread peace among people.',
     ),
+    DailyContentItem(
+      id: 'ayah-2-255',
+      title: 'Ayatul Kursi — The Throne Verse',
+      arabic: 'اللَّهُ لَا إِلَٰهَ إِلَّا هُوَ الْحَيُّ الْقَيُّومُ ۚ لَا تَأْخُذُهُ سِنَةٌ وَلَا نَوْمٌ ۚ لَّهُ مَا فِي السَّمَاوَاتِ وَمَا فِي الْأَرْضِ',
+      transliteration: "Allahu la ilaha illa Huwa, Al-Hayyul-Qayyoom. La ta'khudhuhu sinatun wa la nawm...",
+      translation: '“Allah! There is no deity except Him, the Ever-Living, the Sustainer of all existence. Neither drowsiness overtakes Him nor sleep...”',
+      urdu: 'اللہ کے سوا کوئی معبود نہیں، وہ ہمیشہ زندہ اور سب کا نگہبان ہے۔ اسے نہ اونگھ آتی ہے نہ نیند۔',
+      reference: 'Surah Al-Baqarah 2:255',
+      contextOrReflection: 'The greatest verse in the Holy Quran, conveying Allah’s absolute sovereignty and majestic power.',
+    ),
+    DailyContentItem(
+      id: 'ayah-3-159',
+      title: 'Gentleness & Reliance on Allah',
+      arabic: 'فَبِمَا رَحْمَةٍ مِّنَ اللَّهِ لِنتَ لَهُمْ ۖ وَلَوْ كُنتَ فَظًّا غَلِيظَ الْقَلْبِ لَانفَضُّوا مِنْ حَوْلِكَ ۖ فَاعْفُ عَنْهُمْ وَاسْتَغْفِرْ لَهُمْ وَشَاوِرْهُمْ فِي الْأَمْرِ',
+      transliteration: "Fabima rahmatin minallahi linta lahum, walaw kunta fadh-dhan ghaleedhal-qalbi lanfaddoo min hawlika...",
+      translation: '“So by mercy from Allah, you were gentle with them. And if you had been rude and harsh in heart, they would have disbanded from about you...”',
+      urdu: 'پس اللہ کی رحمت سے آپ ان کے لیے نرم دل ہو گئے، اور اگر آپ سخت مزاج اور سنگ دل ہوتے تو یہ سب آپ کے گرد سے منتشر ہو جاتے۔',
+      reference: 'Surah Ali ‘Imran 3:159',
+      contextOrReflection: 'Gentleness and compassion win hearts and reflect true divine character.',
+    ),
+    DailyContentItem(
+      id: 'ayah-4-86',
+      title: 'Returning Greetings with Excellence',
+      arabic: 'وَإِذَا حُيِّيتُم بِتَحِيَّةٍ فَحَيُّوا بِأَحْسَنَ مِنْهَا أَوْ رُدُّوهَا ۗ إِنَّ اللَّهَ كَانَ عَلَىٰ كُلِّ شَيْءٍ حَسِيبًا',
+      transliteration: "Wa-itha huyyeetum bitahiyyatin fahayyoo bi-ahsana minha aw ruddooha",
+      translation: '“And when you are greeted with a greeting, greet with [one] better than it or return it [in a like manner]. Indeed, Allah is ever over all things an Accountant.”',
+      urdu: 'اور جب تمہیں کوئی سلام کہے تو تم اس سے بہتر سلام کرو یا وہی لوٹا دو، یقیناً اللہ ہر چیز کا حساب لینے والا ہے۔',
+      reference: 'Surah An-Nisa 4:86',
+      contextOrReflection: 'Spreading greetings of peace (Salam) with warmth fosters unity and love in the community.',
+    ),
+    DailyContentItem(
+      id: 'ayah-5-32',
+      title: 'The Sanctity of Human Life',
+      arabic: 'مَن قَتَلَ نَفْسًا بِغَيْرِ نَفْسٍ أَوْ فَسَادٍ فِي الْأَرْضِ فَكَأَنَّمَا قَتَلَ النَّاسَ جَمِيعًا وَمَنْ أَحْيَاهَا فَكَأَنَّمَا أَحْيَا النَّاسَ جَمِيعًا',
+      transliteration: "Man qatala nafsan bighayri nafsin aw fasadin fee al-ardi faka-annama qatala annasa jamee'a...",
+      translation: '“Whoever saves one life — it is as if he had saved all of humanity.”',
+      urdu: 'جس نے کسی ایک جان کو بچایا تو گویا اس نے تمام انسانوں کو بچا لیا۔',
+      reference: 'Surah Al-Ma’idah 5:32',
+      contextOrReflection: 'Every soul is precious; preserving life, relieving suffering, and supporting others carries monumental reward.',
+    ),
+    DailyContentItem(
+      id: 'ayah-6-162',
+      title: 'Devotion of the Whole Life',
+      arabic: 'قُلْ إِنَّ صَلَاتِي وَنُسُكِي وَمَحْيَايَ وَمَمَاتِي لِلَّهِ رَبِّ الْعَالَمِينَ',
+      transliteration: "Qul inna salatee wa nusukee wa mahyaya wa mamatee lillahi Rabbil-'alameen",
+      translation: '“Say, ‘Indeed, my prayer, my rites of sacrifice, my living and my dying are for Allah, Lord of the worlds.’”',
+      urdu: 'کہہ دو: بے شک میری نماز اور میری قربانی اور میرا جینا اور میرا مرنا سب اللہ کے لیے ہے جو تمام جہانوں کا پالنے والا ہے۔',
+      reference: 'Surah Al-An’am 6:162',
+      contextOrReflection: 'Living with purpose means dedicating our daily routine, work, worship, and rest to the Almighty.',
+    ),
+    DailyContentItem(
+      id: 'ayah-7-199',
+      title: 'Forgiveness and Goodness',
+      arabic: 'خُذِ الْعَفْوَ وَأْمُرْ بِالْعُرْفِ وَأَعْرِضْ عَنِ الْجَاهِلِينَ',
+      transliteration: "Khuthil-'afwa wa'mur bil-'urfi wa a'rid 'anil-jahileen",
+      translation: '“Take to forgiveness, enjoin what is good, and turn away from the ignorant.”',
+      urdu: 'عفو اور درگزر کا راستہ اپناؤ، نیکی کا حکم دو اور جاہلوں سے اعراض کرو۔',
+      reference: 'Surah Al-A’raf 7:199',
+      contextOrReflection: 'A timeless rule of emotional resilience: forgive readily, encourage virtue, and do not entertain toxic provocations.',
+    ),
+    DailyContentItem(
+      id: 'ayah-8-2',
+      title: 'Quality of the True Believers',
+      arabic: 'إِنَّمَا الْمُؤْمِنُونَ الَّذِينَ إِذَا ذُكِرَ اللَّهُ وَجِلَتْ قُلُوبُهُمْ وَإِذَا تُلِيَتْ عَلَيْهِمْ آيَاتُهُ زَادَتْهُمْ إِيمَانًا وَعَلَىٰ رَبِّهِمْ يَتَوَكَّلُونَ',
+      transliteration: "Innamal-mu'minoona allatheena itha thukira Allahu wajilat quloobuhum...",
+      translation: '“The believers are only those who, when Allah is mentioned, their hearts feel fear, and when His verses are recited to them, it increases them in faith...”',
+      urdu: 'سچے مومن تو وہی ہیں کہ جب اللہ کا ذکر کیا جائے تو ان کے دل ڈر جاتے ہیں، اور جب ان کے سامنے آیات تلاوت کی جائیں تو ان کا ایمان بڑھ جاتا ہے۔',
+      reference: 'Surah Al-Anfal 8:2',
+      contextOrReflection: 'Contemplating Quranic verses deeply revitalizes faith and softens the heart.',
+    ),
+    DailyContentItem(
+      id: 'ayah-9-129',
+      title: 'Allah is Enough for Me',
+      arabic: 'فَإِن تَوَلَّوْا فَقُلْ حَسْبِيَ اللَّهُ لَا إِلَٰهَ إِلَّا هُوَ ۖ عَلَيْهِ تَوَكَّلْتُ ۖ وَهُوَ رَبُّ الْعَرْشِ الْعَظِيمِ',
+      transliteration: "Fa-in tawallaw faqul hasbiya Allahu la ilaha illa Huwa 'alayhi tawakkaltu wa Huwa Rabbul-'Arshil-'Azeem",
+      translation: '“‘Sufficient for me is Allah; there is no deity except Him. On Him I have relied, and He is the Lord of the Great Throne.’”',
+      urdu: 'اگر وہ منہ موڑیں تو کہہ دو: میرے لیے اللہ کافی ہے، اس کے سوا کوئی معبود نہیں، اسی پر میں نے بھروسہ کیا اور وہ عرشِ عظیم کا مالک ہے۔',
+      reference: 'Surah At-Tawbah 9:129',
+      contextOrReflection: 'When you feel isolated or misunderstood, anchor yourself with Hasbiyallah.',
+    ),
+    DailyContentItem(
+      id: 'ayah-10-57',
+      title: 'Healing for the Hearts',
+      arabic: 'يَا أَيُّهَا النَّاسُ قَدْ جَاءَتْكُم مَّوْعِظَةٌ مِّن رَّبِّكُمْ وَشِفَاءٌ لِّمَا فِي الصُّدُورِ وَهُدًى وَرَحْمَةٌ لِّلْمُؤْمِنِينَ',
+      transliteration: "Ya ayyuha annasu qad ja-atkum maw'idhatun min Rabbikum wa shifa-un lima fee assudoor...",
+      translation: '“O mankind, there has to come to you instruction from your Lord and healing for what is in the breasts and guidance and mercy for the believers.”',
+      urdu: 'اے لوگو! تمہارے پاس تمہارے رب کی طرف سے نصیحت اور دلوں کے امراض کے لیے شفا اور ہدایت و رحمت آ چکی ہے۔',
+      reference: 'Surah Yunus 10:57',
+      contextOrReflection: 'The Quran heals emotional sorrow, spiritual doubt, and mental restlessness.',
+    ),
+    DailyContentItem(
+      id: 'ayah-11-88',
+      title: 'Success Comes Only From Allah',
+      arabic: 'إِنْ أُرِيدُ إِلَّا الْإِصْلَاحَ مَا اسْتَطَعْتُ ۚ وَمَا تَوْفِيقِي إِلَّا بِاللَّهِ ۚ عَلَيْهِ تَوَكَّلْتُ وَإِلَيْهِ أُنِيبُ',
+      transliteration: "In ureedu illa al-islaha ma istata'tu, wa ma tawfeeqee illa billah...",
+      translation: '“I only intend reform as much as I am able. And my success is not but through Allah. Upon Him I have relied, and to Him I return.”',
+      urdu: 'میں اپنی بساط بھر صرف اصلاح ہی چاہتا ہوں، اور میری توفیق صرف اللہ ہی کی مدد سے ہے، اسی پر میں نے بھروسہ کیا اور اسی کی طرف رجوع کرتا ہوں۔',
+      reference: 'Surah Hud 11:88',
+      contextOrReflection: 'Humility in our endeavors: our effort is required, but success (tawfeeq) is gifted by Allah alone.',
+    ),
+    DailyContentItem(
+      id: 'ayah-12-86',
+      title: 'Complaining Only to Allah',
+      arabic: 'قَالَ إِنَّمَا أَشْكُو بَثِّي وَحُزْنِي إِلَى اللَّهِ وَأَعْلَمُ مِنَ اللَّهِ مَا لَا تَعْلَمُونَ',
+      transliteration: "Qala innama ashkoo baththee wa huznee ila Allahi wa a'lamu mina Allahi ma la ta'lamoon",
+      translation: '“He said, ‘I only complain of my suffering and my grief to Allah, and I know from Allah that which you do not know.’”',
+      urdu: 'یعقوب (ع) نے کہا: میں تو اپنے غم اور پریشانی کی فریاد صرف اللہ ہی سے کرتا ہوں، اور میں اللہ کی طرف سے وہ جانتا ہوں جو تم نہیں جانتے۔',
+      reference: 'Surah Yusuf 12:86',
+      contextOrReflection: 'Do not exhaust yourself complaining to people; pour out your vulnerability to the One who can fix everything.',
+    ),
+    DailyContentItem(
+      id: 'ayah-16-90',
+      title: 'Justice and Excellence',
+      arabic: 'إِنَّ اللَّهَ يَأْمُرُ بِالْعَدْلِ وَالْإِحْسَانِ وَإِيتَاءِ ذِي الْقُرْبَىٰ وَيَنْهَىٰ عَنِ الْفَحْشَاءِ وَالْمُنكَرِ وَالْبَغْيِ',
+      transliteration: "Inna Allaha ya'muru bil-'adli wal-ihsani wa eeta-i thee alqurba...",
+      translation: '“Indeed, Allah orders justice and good conduct and giving to relatives and forbids immorality and bad conduct and oppression.”',
+      urdu: 'یقیناً اللہ عدل کا، احسان کا اور رشتہ داروں کو دینے کا حکم دیتا ہے اور بے حیائی، برائی اور سرکشی سے روکتا ہے۔',
+      reference: 'Surah An-Nahl 16:90',
+      contextOrReflection: 'The foundation of moral excellence: justice in dealings, kindness in relationships, and restraint from harm.',
+    ),
+    DailyContentItem(
+      id: 'ayah-17-23',
+      title: 'Honoring Parents',
+      arabic: 'وَقَضَىٰ رَبُّكَ أَلَّا تَعْبُدُوا إِلَّا إِيَّاهُ وَبِالْوَالِدَيْنِ إِحْسَانًا ۚ إِمَّا يَبْلُغَنَّ عِندَكَ الْكِبَرَ أَحَدُهُمَا أَوْ كِلَاهُمَا فَلَا تَقُل لَّهُمَا أُفٍّ',
+      transliteration: "Wa qada Rabbuka alla ta'budoo illa iyyahu wa bil-walidayni ihsana...",
+      translation: '“And your Lord has decreed that you not worship except Him, and to parents, good treatment. Whether one or both reach old age with you, say not to them ‘uff’...”',
+      urdu: 'اور تمہارے رب نے فیصلہ کر دیا ہے کہ تم اس کے سوا کسی کی عبادت نہ کرو اور والدین کے ساتھ بھلائی کرو، اگر ان میں سے کوئی ایک یا دونوں بڑھاپے کو پہنچ جائیں تو انہیں اف بھی نہ کہو۔',
+      reference: 'Surah Al-Isra 17:23',
+      contextOrReflection: 'Serving parents with patience, respect, and affectionate words is second only to monotheism.',
+    ),
+    DailyContentItem(
+      id: 'ayah-18-10',
+      title: 'Mercy and Right Guidance',
+      arabic: 'إِذْ أَوَى الْفِتْيَةُ إِلَى الْكَهْفِ فَقَالُوا رَبَّنَا آتِنَا مِن لَّدُنكَ رَحْمَةً وَهَيِّئْ لَنَا مِنْ أَمْرِنَا رَشَدًا',
+      transliteration: "Idh awal-fityatu ilal-kahfi faqaloo Rabbana atina min ladunka rahmatan wa hayyi' lana min amrina rashada",
+      translation: '“‘Our Lord, grant us from Yourself mercy and prepare for us from our affair right guidance.’”',
+      urdu: 'جب ان نوجوانوں نے غار میں پناہ لی تو کہا: اے ہمارے رب! ہمیں اپنی بارگاہ سے خاص رحمت عطا فرما اور ہمارے معاملے میں رہنمائی کا سامان فراہم کر۔',
+      reference: 'Surah Al-Kahf 18:10',
+      contextOrReflection: 'The prayer of the Youth of the Cave: asking Allah for spiritual sanctuary and divine direction during moral storms.',
+    ),
+    DailyContentItem(
+      id: 'ayah-19-96',
+      title: 'Love Bestowed by the Most Merciful',
+      arabic: 'إِنَّ الَّذِينَ آمَنُوا وَعَمِلُوا الصَّالِحَاتِ سَيَجْعَلُ لَهُمُ الرَّحْمَٰنُ وُدًّا',
+      transliteration: "Inna allatheena amanoo wa 'amiloo assalihati sayaj'alu lahumu Ar-Rahmanu wudda",
+      translation: '“Indeed, those who have believed and done righteous deeds — the Most Merciful will appoint for them affection.”',
+      urdu: 'بے شک جو لوگ ایمان لائے اور نیک عمل کیے، رحمان ان کے لیے دلوں میں محبت پیدا کر دے گا۔',
+      reference: 'Surah Maryam 19:96',
+      contextOrReflection: 'When you please Allah in secret, He places love and respect for you in the hearts of righteous people.',
+    ),
   ];
 
   // =========================================================================
-  // 30+ Authentic Hadith of the Day
+  // 30 Authentic Sahih Hadiths of the Day
   // =========================================================================
   static const List<DailyContentItem> hadithList = [
     DailyContentItem(
@@ -350,10 +550,154 @@ class DailyContentService {
       reference: 'Sahih al-Bukhari 6407',
       contextOrReflection: 'Keep your tongue moist with the praise of Allah throughout your day; its weight on the Day of Judgment is immense.',
     ),
+    DailyContentItem(
+      id: 'hadith-hakim-7831',
+      title: 'Take Advantage of Five Before Five',
+      arabic: 'اغْتَنِمْ خَمْسًا قَبْلَ خَمْسٍ: شَبَابَكَ قَبْلَ هَرَمِكَ، وَصِحَّتَكَ قَبْلَ سَقَمِكَ، وَغِنَاكَ قَبْلَ فَقْرِكَ، وَفَرَاغَكَ قَبْلَ شُغْلِكَ، وَحَيَاتَكَ قَبْلَ مَوْتِكَ',
+      translation: '“Take advantage of five before five: your youth before your old age, your health before your illness, your wealth before your poverty, your free time before your busyness, and your life before your death.”',
+      urdu: 'پانچ چیزوں کو پانچ چیزوں سے پہلے غنیمت جانو: جوانی کو بڑھاپے سے پہلے، صحت کو بیماری سے پہلے، مالداری کو غربت سے پہلے، فراغت کو مصروفیت سے پہلے، اور زندگی کو موت سے پہلے۔',
+      reference: 'Al-Hakim 7831 (Sahih)',
+      contextOrReflection: 'Time is your most irreplaceable capital; seize present opportunities to build your eternal Hereafter.',
+    ),
+    DailyContentItem(
+      id: 'hadith-bukhari-10',
+      title: 'Definition of a True Muslim',
+      arabic: 'الْمُسْلِمُ مَنْ سَلِمَ الْمُسْلِمُونَ مِنْ لِسَانِهِ وَيَدِهِ',
+      translation: '“A Muslim is the one from whose tongue and hands the Muslims are safe.”',
+      urdu: 'کامل مسلمان وہ ہے جس کی زبان اور ہاتھ سے دوسرے مسلمان محفوظ رہیں۔',
+      reference: 'Sahih al-Bukhari 10',
+      contextOrReflection: 'Faith is validated by social safety: neither damaging others’ honor with words nor hurting them with actions.',
+    ),
+    DailyContentItem(
+      id: 'hadith-abudawud-4682',
+      title: 'Completeness of Faith',
+      arabic: 'أَكْمَلُ الْمُؤْمِنِينَ إِيمَانًا أَحْسَنُهُمْ خُلُقًا، وَخِيَارُكُمْ خِيَارُكُمْ لِنِسَائِهِمْ',
+      translation: '“The most complete of believers in faith are those with the best character, and the best of you are those best to their wives.”',
+      urdu: 'مومنوں میں سب سے کامل ایمان والا وہ ہے جو اخلاق میں سب سے اچھا ہو، اور تم میں سب سے بہتر وہ ہے جو اپنے اہل و عیال کے لیے سب سے بہتر ہو۔',
+      reference: 'Sunan Abi Dawud 4682 (Sahih)',
+      contextOrReflection: 'Private conduct at home with your family is the true benchmark of spiritual sincerity.',
+    ),
+    DailyContentItem(
+      id: 'hadith-muslim-2564',
+      title: 'Allah Looks at the Hearts',
+      arabic: 'إِنَّ اللَّهَ لاَ يَنْظُرُ إِلَى صُوَرِكُمْ وَأَمْوَالِكُمْ، وَلَكِنْ يَنْظُرُ إِلَى قُلُوبِكُمْ وَأَعْمَالِكُمْ',
+      translation: '“Allah does not look at your outward appearances or your wealth, but He looks at your hearts and your actions.”',
+      urdu: 'اللہ تمہاری صورتوں اور مالوں کو نہیں دیکھتا، بلکہ وہ تمہارے دلوں اور اعمال کو دیکھتا ہے۔',
+      reference: 'Sahih Muslim 2564',
+      contextOrReflection: 'Outer status means nothing without inner sincerity and righteous deeds.',
+    ),
+    DailyContentItem(
+      id: 'hadith-bukhari-6018',
+      title: 'Speak Good or Remain Silent',
+      arabic: 'مَنْ كَانَ يُؤْمِنُ بِاللَّهِ وَالْيَوْمِ الآخِرِ فَلْيَقُلْ خَيْرًا أَوْ لِيَصْمُتْ',
+      translation: '“Whoever believes in Allah and the Last Day, let him speak good or remain silent.”',
+      urdu: 'جو اللہ اور آخرت کے دن پر ایمان رکھتا ہو، اسے چاہیے کہ اچھی بات کہے یا خاموش رہے۔',
+      reference: 'Sahih al-Bukhari 6018',
+      contextOrReflection: 'Guard your tongue; silence is wisdom and prevents countless regrets.',
+    ),
+    DailyContentItem(
+      id: 'hadith-bukhari-5304',
+      title: 'Caring for the Orphan',
+      arabic: 'أَنَا وَكَافِلُ الْيَتِيمِ فِي الْجَنَّةِ هَكَذَا — وَأَشَارَ بِالسَّبَّابَةِ وَالْوُسْطَى',
+      translation: '“I and the sponsor of an orphan will be in Paradise like this” — and he indicated with his index and middle fingers.',
+      urdu: 'میں اور یتیم کی کفالت کرنے والا جنت میں اس طرح ہوں گے — اور آپ نے شہادت اور بیچ کی انگلی سے اشارہ فرمایا۔',
+      reference: 'Sahih al-Bukhari 5304',
+      contextOrReflection: 'Supporting vulnerable children brings direct companionship with the Prophet (ﷺ) in the highest gardens of Jannah.',
+    ),
+    DailyContentItem(
+      id: 'hadith-muslim-2553',
+      title: 'Righteousness and Sin',
+      arabic: 'الْبِرُّ حُسْنُ الْخُلُقِ، وَالإِثْمُ مَا حَاكَ فِي صَدْرِكَ وَكَرِهْتَ أَنْ يَطَّلِعَ عَلَيْهِ النَّاسُ',
+      translation: '“Righteousness is good character, and sin is that which wavers in your chest and you dislike that people should find out about it.”',
+      urdu: 'نیکی اچھے اخلاق کا نام ہے، اور گناہ وہ ہے جو تمہارے سینے میں کھٹکے اور تم ناپسند کرو کہ لوگوں کو اس کی خبر ہو۔',
+      reference: 'Sahih Muslim 2553',
+      contextOrReflection: 'Your conscience is a divine compass; when something feels unsettled, turn away from it.',
+    ),
+    DailyContentItem(
+      id: 'hadith-bukhari-6446',
+      title: 'True Wealth is Contentment',
+      arabic: 'لَيْسَ الْغِنَى عَنْ كَثْرَةِ الْعَرَضِ، وَلَكِنَّ الْغِنَى غِنَى النَّفْسِ',
+      translation: '“Richness does not lie in an abundance of worldly goods; true richness is the contentment of the soul.”',
+      urdu: 'مالداری ساز و سامان کی کثرت کا نام نہیں، بلکہ حقیقی مالداری دل کا غنی ہونا ہے۔',
+      reference: 'Sahih al-Bukhari 6446',
+      contextOrReflection: 'A peaceful, grateful heart experiences wealth that no bank account can purchase.',
+    ),
+    DailyContentItem(
+      id: 'hadith-muslim-2664',
+      title: 'The Strong Believer',
+      arabic: 'الْمُؤْمِنُ الْقَوِيُّ خَيْرٌ وَأَحَبُّ إِلَى اللَّهِ مِنَ الْمُؤْمِنِ الضَّعِيفِ، وَفِي كُلٍّ خَيْرٌ',
+      translation: '“The strong believer is better and more beloved to Allah than the weak believer, while there is good in both.”',
+      urdu: 'طاقتور مومن کمزور مومن سے بہتر اور اللہ کو زیادہ محبوب ہے، اگرچہ دونوں میں ہی بھلائی ہے۔',
+      reference: 'Sahih Muslim 2664',
+      contextOrReflection: 'Strive for mental fortitude, physical vitality, financial independence, and spiritual depth.',
+    ),
+    DailyContentItem(
+      id: 'hadith-bukhari-6117',
+      title: 'Modesty Brings Only Good',
+      arabic: 'الْحَيَاءُ لاَ يَأْتِي إِلاَّ بِخَيْرٍ',
+      translation: '“Modesty (Haya) brings forth nothing but goodness.”',
+      urdu: 'حیا ہمیشہ بھلائی ہی لاتی ہے۔',
+      reference: 'Sahih al-Bukhari 6117',
+      contextOrReflection: 'Modesty before Allah and people protects dignity, speech, and moral clarity.',
+    ),
+    DailyContentItem(
+      id: 'hadith-bukhari-6416',
+      title: 'A Traveler in This World',
+      arabic: 'كُنْ فِي الدُّنْيَا كَأَنَّكَ غَرِيبٌ، أَوْ عَابِرُ سَبِيلٍ',
+      translation: '“Be in this world as if you were a stranger or a traveler passing on a pathway.”',
+      urdu: 'دنیا میں اس طرح رہو گویا کہ تم کوئی پردیسی ہو یا راستہ پار کرنے والے مسافر۔',
+      reference: 'Sahih al-Bukhari 6416',
+      contextOrReflection: 'Do not attach your soul permanently to a temporary station; pack good deeds for the eternal home.',
+    ),
+    DailyContentItem(
+      id: 'hadith-tirmidhi-1924',
+      title: 'Mercy to the Creation',
+      arabic: 'الرَّاحِمُونَ يَرْحَمُهُمُ الرَّحْمَنُ، ارْحَمُوا مَنْ فِي الأَرْضِ يَرْحَمْكُمْ مَنْ فِي السَّمَاءِ',
+      translation: '“The merciful will be shown mercy by the Most Merciful. Be merciful to those on earth, and the One in the heavens will be merciful to you.”',
+      urdu: 'رحم کرنے والوں پر رحمان رحم فرماتا ہے، تم زمین والوں پر رحم کرو، آسمان والا تم پر رحم فرمائے گا۔',
+      reference: 'Jami` at-Tirmidhi 1924 (Sahih)',
+      contextOrReflection: 'Extend forgiveness, gentle care, and kindness to every human and animal in your orbit.',
+    ),
+    DailyContentItem(
+      id: 'hadith-bukhari-6116',
+      title: 'Do Not Be Angry',
+      arabic: 'لاَ تَغْضَبْ — فَرَدَّدَ مِرَارًا، قَالَ: لاَ تَغْضَبْ',
+      translation: '“‘Do not become angry.’ The man asked repeatedly, and each time the Prophet said: ‘Do not become angry.’”',
+      urdu: 'غصہ مت کرو — اس شخص نے بار بار پوچھا، آپ نے ہر بار یہی فرمایا: غصہ مت کرو۔',
+      reference: 'Sahih al-Bukhari 6116',
+      contextOrReflection: 'Pause and breathe before reacting; suppressing impulsive rage safeguards relationships and dignity.',
+    ),
+    DailyContentItem(
+      id: 'hadith-tirmidhi-1977',
+      title: 'Noble Speech',
+      arabic: 'لَيْسَ الْمُؤْمِنُ بِالطَّعَّانِ وَلاَ اللَّعَّانِ وَلاَ الْفَاحِشِ وَلاَ الْبَذِيءِ',
+      translation: '“The believer is not one who taunts, curses, or acts indecently or speaks foul language.”',
+      urdu: 'مومن نہ طعنہ دینے والا ہوتا ہے، نہ لعنت کرنے والا، نہ بے حیا اور نہ گالی گلوچ کرنے والا۔',
+      reference: 'Jami` at-Tirmidhi 1977 (Sahih)',
+      contextOrReflection: 'Clean speech reflects an illuminated heart. Refrain from gossip, mockery, and slander.',
+    ),
+    DailyContentItem(
+      id: 'hadith-adab-594',
+      title: 'Exchanging Gifts',
+      arabic: 'تَهَادَوْا تَحَابُّوا',
+      translation: '“Exchange gifts and you will increase in love for one another.”',
+      urdu: 'ایک دوسرے کو تحفے دیا کرو، تم میں باہمی محبت بڑھے گی۔',
+      reference: 'Al-Adab Al-Mufrad 594 (Hasan)',
+      contextOrReflection: 'Even a small thoughtful gesture melts grudges and solidifies companionship.',
+    ),
+    DailyContentItem(
+      id: 'hadith-tirmidhi-2317',
+      title: 'Leaving What Does Not Concern You',
+      arabic: 'مِنْ حُسْنِ إِسْلاَمِ الْمَرْءِ تَرْكُهُ مَا لاَ يَعْنِيهِ',
+      translation: '“Part of the excellence of one’s Islam is his leaving alone that which does not concern him.”',
+      urdu: 'انسان کے اسلام کی اچھائی میں سے یہ ہے کہ وہ بے مقصد اور فضول باتوں کو چھوڑ دے۔',
+      reference: 'Jami` at-Tirmidhi 2317 (Sahih)',
+      contextOrReflection: 'Focus on your personal growth, family, and duties; discard needless drama and curiosity.',
+    ),
   ];
 
   // =========================================================================
-  // 30+ Authentic Daily Duas
+  // 30 Authentic Daily Duas
   // =========================================================================
   static const List<DailyContentItem> duaList = [
     DailyContentItem(
@@ -425,6 +769,236 @@ class DailyContentService {
       urdu: 'اے اللہ! میں تیری پناہ مانگتا ہوں پریشانی اور غم سے، کمزوری اور سستی سے، بخل اور بزدلی سے، اور قرض کے بوجھ اور لوگوں کے دباؤ سے۔',
       reference: 'Sahih al-Bukhari 2893',
       contextOrReflection: 'The ultimate daily supplication against mental overwhelm, fatigue, financial distress, and self-doubt.',
+    ),
+    DailyContentItem(
+      id: 'dua-17-24',
+      title: 'Dua for Parents',
+      arabic: 'رَّبِّ ارْحَمْهُمَا كَمَا رَبَّيَانِي صَغِيرًا',
+      transliteration: "Rabbi irhamhuma kama rabbayanee sagheera",
+      translation: '“My Lord, have mercy upon them as they brought me up [when I was] small.”',
+      urdu: 'اے میرے رب! ان دونوں پر رحم فرما جیسا کہ انہوں نے بچپن میں میری پرورش کی۔',
+      reference: 'Quran 17:24',
+      contextOrReflection: 'The most beautiful prayer for parents, honoring their tender sacrifices during childhood.',
+    ),
+    DailyContentItem(
+      id: 'dua-25-74',
+      title: 'Dua for Family & Offspring',
+      arabic: 'رَبَّنَا هَبْ لَنَا مِنْ أَزْوَاجِنَا وَذُرِّيَّاتِنَا قُرَّةَ أَعْيُنٍ وَاجْعَلْنَا لِلْمُتَّقِينَ إِمَامًا',
+      transliteration: "Rabbana hab lana min azwajina wa dhurriyyatina qurrata a'yunin waj'alna lil-muttaqeena imama",
+      translation: '“Our Lord, grant us from among our spouses and offspring comfort to our eyes and make us an example for the righteous.”',
+      urdu: 'اے ہمارے رب! ہمیں ہماری بیویوں اور اولاد کی طرف سے آنکھوں کی ٹھنڈک عطا فرما اور ہمیں پرہیزگاروں کا پیشوا بنا۔',
+      reference: 'Quran 25:74',
+      contextOrReflection: 'A comprehensive prayer for household harmony, pious children, and spiritual leadership.',
+    ),
+    DailyContentItem(
+      id: 'dua-bukhari-6306',
+      title: 'Sayyidul Istighfar (Chief of Prayers for Forgiveness)',
+      arabic: 'اللَّهُمَّ أَنْتَ رَبِّي لاَ إِلَهَ إِلاَّ أَنْتَ، خَلَقْتَنِي وَأَنَا عَبْدُكَ، وَأَنَا عَلَى عَهْدِكَ وَوَعْدِكَ مَا اسْتَطَعْتُ، أَعُوذُ بِكَ مِنْ شَرِّ مَا صَنَعْتُ',
+      transliteration: "Allahumma anta Rabbi la ilaha illa anta, khalaqtanee wa ana 'abduka, wa ana 'ala 'ahdika wa wa'dika mastata'tu...",
+      translation: '“O Allah, You are my Lord; there is no deity except You. You created me and I am Your servant, and I abide by Your covenant as much as I am able...”',
+      urdu: 'اے اللہ! تو میرا رب ہے، تیرے سوا کوئی معبود نہیں، تو نے مجھے پیدا کیا اور میں تیرا بندہ ہوں اور تیرے عہد پر قائم ہوں۔',
+      reference: 'Sahih al-Bukhari 6306',
+      contextOrReflection: 'Whoever recites this with firm conviction during the day or night and dies, enters Paradise.',
+    ),
+    DailyContentItem(
+      id: 'dua-home-leaving',
+      title: 'Dua Leaving Home',
+      arabic: 'بِسْمِ اللَّهِ، تَوَكَّلْتُ عَلَى اللَّهِ، وَلاَ حَوْلَ وَلاَ قُوَّةَ إِلاَّ بِاللَّهِ',
+      transliteration: "Bismillahi tawakkaltu 'ala Allahi, wa la hawla wa la quwwata illa billah",
+      translation: '“In the name of Allah, I rely upon Allah; there is no power nor strength except with Allah.”',
+      urdu: 'اللہ کے نام کے ساتھ، میں نے اللہ پر بھروسہ کیا، اور گناہ سے بچنے اور نیکی کرنے کی طاقت اللہ ہی کی توفیق سے ہے۔',
+      reference: 'Sunan Abi Dawud 5095 (Sahih)',
+      contextOrReflection: 'Upon reciting this, an angel calls out: You are guided, defended, and protected, and Shaytan steps away.',
+    ),
+    DailyContentItem(
+      id: 'dua-muslim-2721',
+      title: 'Dua for Guidance, Piety & Contentment',
+      arabic: 'اللَّهُمَّ إِنِّي أَسْأَلُكَ الْهُدَى وَالتُّقَى وَالْعَفَافَ وَالْغِنَى',
+      transliteration: "Allahumma innee as'alukal-huda wat-tuqa wal-'afafa wal-ghina",
+      translation: '“O Allah, I ask You for guidance, piety, chastity, and self-sufficiency.”',
+      urdu: 'اے اللہ! میں تجھ سے ہدایت، تقویٰ، پاکدامنی اور دل کی بے نیازی کا سوال کرتا ہوں۔',
+      reference: 'Sahih Muslim 2721',
+      contextOrReflection: 'Four words that encompass the pinnacle of spiritual success and worldly peace.',
+    ),
+    DailyContentItem(
+      id: 'dua-2-250',
+      title: 'Dua for Patience & Firmness',
+      arabic: 'رَبَّنَا أَفْرِغْ عَلَيْنَا صَبْرًا وَثَبِّتْ أَقْدَامَنَا وَانصُرْنَا عَلَى الْقَوْمِ الْكَافِرِينَ',
+      transliteration: "Rabbana afrigh 'alayna sabran wa thabbit aqdamana wansurna 'alal-qawmil-kafireen",
+      translation: '“Our Lord, pour upon us patience and plant firmly our feet and give us victory over the disbelieving people.”',
+      urdu: 'اے ہمارے رب! ہم پر صبر انڈیل دے اور ہمارے قدم جما دے اور کافر قوم کے مقابلے میں ہماری مدد فرما۔',
+      reference: 'Quran 2:250',
+      contextOrReflection: 'Recite when facing challenging trials, high-stakes tasks, or moments requiring extreme endurance.',
+    ),
+    DailyContentItem(
+      id: 'dua-7-23',
+      title: 'Prayer of Adam & Hawwa (AS)',
+      arabic: 'رَبَّنَا ظَلَمْنَا أَنفُسَنَا وَإِن لَّمْ تَغْفِرْ لَنَا وَتَرْحَمْنَا لَنَكُونَنَّ مِنَ الْخَاسِرِينَ',
+      transliteration: "Rabbana zalamna anfusana wa-in lam taghfir lana wa tarhamna lanakoonanna minal-khasireen",
+      translation: '“Our Lord, we have wronged ourselves, and if You do not forgive us and have mercy upon us, we will surely be among the losers.”',
+      urdu: 'اے ہمارے رب! ہم نے اپنی جانوں پر ظلم کیا، اور اگر تو نے ہمیں نہ بخشا اور ہم پر رحم نہ فرمایا تو ہم خسارہ پانے والوں میں سے ہو جائیں گے۔',
+      reference: 'Quran 7:23',
+      contextOrReflection: 'The humble prayer of sincere tawbah (repentance) taught to our first parents by Allah Himself.',
+    ),
+    DailyContentItem(
+      id: 'dua-muslim-763',
+      title: 'Dua for Light (Nur) in Heart and Senses',
+      arabic: 'اللَّهُمَّ اجْعَلْ فِي قَلْبِي نُورًا، وَفِي لِسَانِي نُورًا، وَفِي بَصَرِي نُورًا، وَفِي سَمْعِي نُورًا، وَعَنْ يَمِينِي نُورًا، وَعَنْ يَسَارِي نُورًا',
+      transliteration: "Allahumma ij'al fee qalbee noora, wa fee lisaanee noora, wa fee basaree noora, wa fee sam'ee noora...",
+      translation: '“O Allah, place light in my heart, light on my tongue, light in my hearing, light in my sight, light on my right, and light on my left...”',
+      urdu: 'اے اللہ! میرے دل میں نور پیدا فرما، میری زبان میں نور، میری آنکھوں میں نور، میرے کانوں میں نور، میرے دائیں نور اور میرے بائیں نور پیدا فرما۔',
+      reference: 'Sahih Muslim 763',
+      contextOrReflection: 'Invokes divine illumination (Noor) so that your thoughts, speech, and vision are guided by truth.',
+    ),
+    DailyContentItem(
+      id: 'dua-21-83',
+      title: 'Dua of Ayyub (AS) in Sickness',
+      arabic: 'أَنِّي مَسَّنِيَ الضُّرُّ وَأَنتَ أَرْحَمُ الرَّاحِمِينَ',
+      transliteration: "Annee massaniya addurru wa-anta arhamu arrahimeen",
+      translation: '“‘Indeed, adversity has touched me, and You are the most merciful of the merciful.’”',
+      urdu: 'بے شک مجھے بیماری نے آ گھیرا ہے اور تو سب رحم کرنے والوں سے بڑھ کر رحم فرمانے والا ہے۔',
+      reference: 'Quran 21:83',
+      contextOrReflection: 'The humble prayer of Prophet Ayyub (AS) during illness; Allah answered him and restored his health and family.',
+    ),
+    DailyContentItem(
+      id: 'dua-3-173',
+      title: 'Allah is Sufficient for Us',
+      arabic: 'حَسْبُنَا اللَّهُ وَنِعْمَ الْوَكِيلُ',
+      transliteration: "Hasbuna Allahu wa ni'mal-wakeel",
+      translation: '“Allah is sufficient for us, and He is the best Disposer of affairs.”',
+      urdu: 'ہمیں اللہ ہی کافی ہے اور وہ بہترین کارساز ہے۔',
+      reference: 'Quran 3:173',
+      contextOrReflection: 'Uttered by Prophet Ibrahim (AS) when thrown into the fire, and Prophet Muhammad (ﷺ) in the face of daunting adversity.',
+    ),
+    DailyContentItem(
+      id: 'dua-tirmidhi-3522',
+      title: 'Dua for a Steadfast Heart in Faith',
+      arabic: 'يَا مُقَلِّبَ الْقُلُوبِ ثَبِّتْ قَلْبِي عَلَى دِينِكَ',
+      transliteration: "Ya Muqallibal-quloob, thabbit qalbee 'ala deenik",
+      translation: '“O Turner of hearts, make my heart firm upon Your religion.”',
+      urdu: 'اے دلوں کو پھیرنے والے! میرے دل کو اپنے دین پر ثابت قدم رکھ۔',
+      reference: 'Jami` at-Tirmidhi 3522 (Sahih)',
+      contextOrReflection: 'The Prophet (ﷺ) recited this frequently, reminding us that hearts change easily and require continuous divine steadfastness.',
+    ),
+    DailyContentItem(
+      id: 'dua-muslim-2708',
+      title: 'Protection from Harm & Evil',
+      arabic: 'أَعُوذُ بِكَلِمَاتِ اللَّهِ التَّامَّاتِ مِنْ شَرِّ مَا خَلَقَ',
+      transliteration: "A'oothu bi-kalimatillahi attammati min sharri ma khalaq",
+      translation: '“I seek refuge in the perfect words of Allah from the evil of what He has created.”',
+      urdu: 'میں اللہ کے کامل کلمات کی پناہ مانگتا ہوں اس کی پیدا کردہ تمام چیزوں کے شر سے۔',
+      reference: 'Sahih Muslim 2708',
+      contextOrReflection: 'A powerful sunnah protection when stopping at any place or beginning morning and evening hours.',
+    ),
+    DailyContentItem(
+      id: 'dua-abudawud-5090',
+      title: 'Dua for Health & Senses',
+      arabic: 'اللَّهُمَّ عَافِنِي فِي بَدَنِي، اللَّهُمَّ عَافِنِي فِي سَمْعِي، اللَّهُمَّ عَافِنِي فِي بَصَرِي، لاَ إِلَهَ إِلاَّ أَنْتَ',
+      transliteration: "Allahumma 'afinee fee badanee, Allahumma 'afinee fee sam'ee, Allahumma 'afinee fee basaree, la ilaha illa anta",
+      translation: '“O Allah, grant well-being to my body; O Allah, grant well-being to my hearing; O Allah, grant well-being to my sight. There is no deity except You.”',
+      urdu: 'اے اللہ! میرے بدن میں عافیت دے، اے اللہ! میرے کانوں میں عافیت دے، اے اللہ! میری آنکھوں میں عافیت دے، تیرے سوا کوئی معبود نہیں۔',
+      reference: 'Sunan Abi Dawud 5090 (Hasan)',
+      contextOrReflection: 'Recite three times morning and evening to seek lifelong bodily health and clarity of senses.',
+    ),
+    DailyContentItem(
+      id: 'dua-tirmidhi-3563',
+      title: 'Dua for Halal Provision & Freedom from Debt',
+      arabic: 'اللَّهُمَّ اكْفِنِي بِحَلاَلِكَ عَنْ حَرَامِكَ، وَأَغْنِنِي بِفَضْلِكَ عَمَّنْ سِوَاكَ',
+      transliteration: "Allahumma ikfinee bi-halalika 'an haramik, wa aghninee bi-fadlika 'amman siwak",
+      translation: '“O Allah, suffice me with Your lawful against Your unlawful, and enrich me with Your grace from all besides You.”',
+      urdu: 'اے اللہ! مجھے حلال رزق دے کر حرام سے بچا، اور اپنے فضل سے اپنے سوا سب سے بے نیاز کر دے۔',
+      reference: 'Jami` at-Tirmidhi 3563 (Hasan)',
+      contextOrReflection: 'Relieves financial anxiety and anchors one to pure, ethical earning free from corrupt compromise.',
+    ),
+    DailyContentItem(
+      id: 'dua-2-127',
+      title: 'Dua for Acceptance of Worship',
+      arabic: 'رَبَّنَا تَقَبَّلْ مِنَّا ۖ إِنَّكَ أَنتَ السَّمِيعُ الْعَلِيمُ',
+      transliteration: "Rabbana taqabbal minna innaka anta Assamee'ul-'Aleem",
+      translation: '“Our Lord, accept [this] from us. Indeed, You are the Hearing, the Knowing.”',
+      urdu: 'اے ہمارے رب! ہم سے قبول فرما، بے شک تو ہی سب کچھ سننے والا اور جاننے والا ہے۔',
+      reference: 'Quran 2:127 (Dua of Ibrahim AS & Ismail AS)',
+      contextOrReflection: 'Supplicated after finishing prayer, fasting, charity, or reading Quran, asking Allah to graciously accept our modest deeds.',
+    ),
+    DailyContentItem(
+      id: 'dua-tirmidhi-3433',
+      title: 'Expiation of the Gathering (Kaffaratul Majlis)',
+      arabic: 'سُبْحَانَكَ اللَّهُمَّ وَبِحَمْدِكَ، أَشْهَدُ أَنْ لاَ إِلَهَ إِلاَّ أَنْتَ، أَسْتَغْفِرُكَ وَأَتُوبُ إِلَيْكَ',
+      transliteration: "Subhanakallahumma wa bihamdika, ash-hadu alla ilaha illa anta, astaghfiruka wa atoobu ilayk",
+      translation: '“Glory is to You, O Allah, and praise. I bear witness that there is no deity except You. I seek Your forgiveness and repent to You.”',
+      urdu: 'پاک ہے تو اے اللہ اور تیری ہی تعریف ہے، میں گواہی دیتا ہوں کہ تیرے سوا کوئی معبود نہیں، میں تجھ سے بخشش مانگتا ہوں اور تیری طرف توبہ کرتا ہوں۔',
+      reference: 'Jami` at-Tirmidhi 3433 (Sahih)',
+      contextOrReflection: 'Wipes clean any unintentional idle words or mistakes made during any conversation or gathering before departing.',
+    ),
+    DailyContentItem(
+      id: 'dua-abudawud-5079',
+      title: 'Protection from Hellfire',
+      arabic: 'اللَّهُمَّ أَجِرْنِي مِنَ النَّارِ',
+      transliteration: "Allahumma ajirnee minan-nar",
+      translation: '“O Allah, protect me from the Fire.”',
+      urdu: 'اے اللہ! مجھے جہنم کی آگ سے پناہ عطا فرما۔',
+      reference: 'Sunan Abi Dawud 5079',
+      contextOrReflection: 'Recite seven times after Fajr and Maghrib for divine safety and preservation.',
+    ),
+    DailyContentItem(
+      id: 'dua-ibnmajah-4340',
+      title: 'Asking for Paradise',
+      arabic: 'اللَّهُمَّ إِنِّي أَسْأَلُكَ الْجَنَّةَ وَمَا قَرَّبَ إِلَيْهَا مِنْ قَوْلٍ أَوْ عَمَلٍ، وَأَعُوذُ بِكَ مِنَ النَّارِ',
+      transliteration: "Allahumma innee as'alukal-jannata wa ma qarraba ilayha min qawlin aw 'amal, wa a'oothu bika minan-nar",
+      translation: '“O Allah, I ask You for Paradise and whatever words or actions bring me closer to it, and I seek refuge in You from the Fire.”',
+      urdu: 'اے اللہ! میں تجھ سے جنت اور اس کے قریب کرنے والے قول و عمل کا سوال کرتا ہوں، اور جہنم کی آگ سے پناہ مانگتا ہوں۔',
+      reference: 'Sunan Ibn Majah 4340 (Sahih)',
+      contextOrReflection: 'The ultimate aspiration of every Muslim: requesting entry into Jannah and the righteous deeds that lead to it.',
+    ),
+    DailyContentItem(
+      id: 'dua-bukhari-6345',
+      title: 'Dua During Distress & Calamity',
+      arabic: 'لاَ إِلَهَ إِلاَّ اللَّهُ الْعَظِيمُ الْحَلِيمُ، لاَ إِلَهَ إِلاَّ اللَّهُ رَبُّ الْعَرْشِ الْعَظِيمِ، لاَ إِلَهَ إِلاَّ اللَّهُ رَبُّ السَّمَاوَاتِ وَرَبُّ الأَرْضِ وَرَبُّ الْعَرْشِ الْكَرِيمِ',
+      transliteration: "La ilaha illallahu Al-'Azeemul-Haleem, la ilaha illallahu Rabbul-'Arshil-'Azeem...",
+      translation: '“There is no deity except Allah, the Magnificent, the Forbearing. There is no deity except Allah, Lord of the Magnificent Throne...”',
+      urdu: 'اللہ کے سوا کوئی معبود نہیں جو عظیم اور بردبار ہے، اللہ کے سوا کوئی معبود نہیں جو عرشِ عظیم کا رب ہے، آسمانوں اور زمین اور عزت والے عرش کا رب ہے۔',
+      reference: 'Sahih al-Bukhari 6345',
+      contextOrReflection: 'The Prophet (ﷺ) turned to this magnificent praise whenever an acute crisis or severe distress emerged.',
+    ),
+    DailyContentItem(
+      id: 'dua-abudawud-5073',
+      title: 'Morning Thanksgiving',
+      arabic: 'اللَّهُمَّ مَا أَصْبَحَ بِي مِنْ نِعْمَةٍ أَوْ بِأَحَدٍ مِنْ خَلْقِكَ فَمِنْكَ وَحْدَكَ لاَ شَرِيكَ لَكَ، فَلَكَ الْحَمْدُ وَلَكَ الشُّكْرُ',
+      transliteration: "Allahumma ma asbaha bee min ni'matin aw bi-ahadin min khalqika faminka wahdaka la shareeka lak...",
+      translation: '“O Allah, whatever blessing has come to me or any of Your creation this morning is from You alone, without partner; to You belongs praise and thanks.”',
+      urdu: 'اے اللہ! مجھ پر یا تیری مخلوق میں سے کسی پر بھی جو نعمت صبح کے وقت ہے وہ اکیلے تیری طرف سے ہے، تیرا کوئی شریک نہیں، پس تیرے ہی لیے تمام تعریف اور شکر ہے۔',
+      reference: 'Sunan Abi Dawud 5073 (Sahih)',
+      contextOrReflection: 'Whoever recites this in the morning fulfills their obligation of gratitude for that entire day.',
+    ),
+    DailyContentItem(
+      id: 'dua-26-83',
+      title: 'Wisdom & Joining the Righteous',
+      arabic: 'رَبِّ هَبْ لِي حُكْمًا وَأَلْحِقْنِي بِالصَّالِحِينَ • وَاجْعَل لِّي لِسَانَ صِدْقٍ فِي الْآخِرِينَ',
+      transliteration: "Rabbi hab lee hukman wa-alhiqnee bissaliheen, waj'al lee lisana sidqin fil-akhireen",
+      translation: '“My Lord, grant me wisdom and join me with the righteous, and grant me a reputation of honor among later generations.”',
+      urdu: 'اے میرے رب! مجھے حکمت عطا فرما اور مجھے نیکوکاروں کے ساتھ ملا دے، اور بعد کے لوگوں میں میرا اچھا ذکر قائم رکھ۔',
+      reference: 'Quran 26:83-84 (Dua of Ibrahim AS)',
+      contextOrReflection: 'A prayer for sound moral judgment, righteous company, and leaving behind a legacy that guides others.',
+    ),
+    DailyContentItem(
+      id: 'dua-ahmad-3712',
+      title: 'Relief from Anxiety and Heavy Grief',
+      arabic: 'اللَّهُمَّ إِنِّي عَبْدُكَ، ابْنُ عَبْدِكَ، ابْنُ أَمَتِكَ، نَاصِيَتِي بِيَدِكَ، مَاضٍ فِيَّ حُكْمُكَ، عَدْلٌ فِيَّ قَضَاؤُكَ',
+      transliteration: "Allahumma innee 'abduka, ibnu 'abdika, ibnu amatika, nasiyatee biyadika, madin fiyya hukmuka, 'adlun fiyya qada-uka...",
+      translation: '“O Allah, I am Your servant, son of Your servant, son of Your maidservant; my forelock is in Your hand, Your command over me is ever executed and Your decree over me is just...”',
+      urdu: 'اے اللہ! میں تیرا بندہ ہوں، تیرے بندے اور تیری بندی کا بیٹا ہوں، میری پیشانی تیرے ہاتھ میں ہے، مجھ پر تیرا حکم نافذ ہے، میرے حق میں تیرا فیصلہ سراسر عدل ہے۔',
+      reference: 'Musnad Ahmad 3712 (Sahih)',
+      contextOrReflection: 'Whoever says this in deep grief, Allah removes their sorrow and replaces it with joy and ease.',
+    ),
+    DailyContentItem(
+      id: 'dua-2-286',
+      title: 'Our Lord, Do Not Hold Us Accountable',
+      arabic: 'رَبَّنَا لَا تُؤَاخِذْنَا إِن نَّسِينَا أَوْ أَخْطَأْنَا ۚ رَبَّنَا وَلَا تَحْمِلْ عَلَيْنَا إِصْرًا كَمَا حَمَلْتَهُ عَلَى الَّذِينَ مِن قَبْلِنَا',
+      transliteration: "Rabbana la tu-akhithna in naseena aw akhta'na, Rabbana wala tahmil 'alayna isran...",
+      translation: '“Our Lord, do not impose blame upon us if we have forgotten or erred. Our Lord, and lay not upon us a burden like that which You laid upon those before us...”',
+      urdu: 'اے ہمارے رب! اگر ہم بھول جائیں یا خطا کر بیٹھیں تو ہماری پکڑ نہ فرما، اے ہمارے رب! اور ہم پر بھاری بوجھ نہ ڈال جیسا کہ تو نے ہم سے پہلے لوگوں پر ڈالا تھا۔',
+      reference: 'Quran 2:286',
+      contextOrReflection: 'The concluding verse of Surah Al-Baqarah, carrying divine guarantees of pardon, protection, and victory.',
     ),
   ];
 }

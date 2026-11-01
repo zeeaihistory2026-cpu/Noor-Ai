@@ -2,6 +2,7 @@ import 'package:app_settings/app_settings.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../../data/daily_content_service.dart';
+import '../../data/location_service.dart';
 import '../../data/noor_store.dart';
 import '../../data/notification_plan.dart';
 import '../../data/notification_service.dart';
@@ -129,14 +130,9 @@ class _ReminderCenterScreenState extends State<ReminderCenterScreen> {
     String? error;
     try {
       final service = PrayerService();
-      final city = await NoorStore.getCity();
-      final country = await NoorStore.getCountry();
+      final loc = await LocationService().getSavedLocation();
       final method = await NoorStore.getCalculationMethod();
-      final day = await service.fetchTodayByCity(
-        city: city,
-        country: country,
-        method: method,
-      );
+      final day = await service.fetchTodayAuto();
       // Also plan tomorrow's Salah times: otherwise a Fajr reminder
       // switched on after today's Fajr has passed would never be
       // scheduled for tomorrow morning (the phone-run step 8 trap).
@@ -144,12 +140,22 @@ class _ReminderCenterScreenState extends State<ReminderCenterScreen> {
       // back to today's times shifted by one day (within ~1 minute).
       PrayerDay? nextDay;
       try {
-        nextDay = await service.fetchTimingsByCity(
-          city: city,
-          country: country,
-          date: DateTime.now().add(const Duration(days: 1)),
-          method: method,
-        );
+        final tomorrow = DateTime.now().add(const Duration(days: 1));
+        if (loc.latitude != 0 && loc.longitude != 0) {
+          nextDay = await service.fetchTimingsByCoordinates(
+            latitude: loc.latitude,
+            longitude: loc.longitude,
+            date: tomorrow,
+            method: method,
+          );
+        } else {
+          nextDay = await service.fetchTimingsByCity(
+            city: loc.city,
+            country: loc.country,
+            date: tomorrow,
+            method: method,
+          );
+        }
       } catch (_) {
         nextDay = PrayerDay(
           timings: {
@@ -166,8 +172,6 @@ class _ReminderCenterScreenState extends State<ReminderCenterScreen> {
         toggles: _toggleMap(),
       );
     } catch (e) {
-      // fetchTodayByCity already falls back internally (cache ->
-      // sample), so this is defensive only.
       error = 'prayer times unavailable';
     }
 
@@ -376,6 +380,11 @@ class _ReminderCenterScreenState extends State<ReminderCenterScreen> {
           NoorDarkHeader(
             title: 'Reminder Center',
             actions: [
+              IconButton(
+                tooltip: 'Test Live Notification',
+                icon: const Icon(Icons.notifications_active, color: NoorColors.gold),
+                onPressed: _showTestNotificationSheet,
+              ),
               IconButton(
                   tooltip: 'Reminder options',
                   icon: const Icon(Icons.more_vert, color: Colors.white),
