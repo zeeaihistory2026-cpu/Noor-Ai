@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../data/firebase_rest_service.dart';
 import '../../data/location_service.dart';
 import '../../data/noor_controller.dart';
+import '../../data/noor_store.dart';
 import '../../data/sample_data.dart';
 import '../../widgets/noor_components.dart';
 import '../auth/login_screen.dart';
@@ -10,8 +11,8 @@ import '../worship/reminder_center_screen.dart';
 import '../../theme/noor_theme.dart';
 import 'profile_screen.dart';
 
-/// Page 13 — Settings. Dark emerald header with the real lantern
-/// crop from the user's Page 13 PNG, overlapping profile card
+/// Page 13 — Settings. Dark emerald header with the lantern
+/// crop from the user's design, overlapping profile card
 /// (user name + email), then Account / App Preferences /
 /// Support & About grouped rows with right-side values, Log Out.
 class SettingsScreen extends StatefulWidget {
@@ -34,6 +35,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _loadProfile() async {
     try {
+      final savedName = await NoorStore.getUserName();
+      final savedEmail = await NoorStore.getUserEmail();
+      if (savedName != null && savedName.isNotEmpty && mounted) {
+        setState(() {
+          _userName = savedName;
+          _userEmail = savedEmail ?? '';
+        });
+        return;
+      }
       final profile = await FirebaseRestService().currentProfile();
       if (profile != null && mounted) {
         setState(() {
@@ -69,8 +79,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final displayName = _userName.isNotEmpty ? _userName : 'Abdullah Khan';
-    final displayEmail = _userEmail.isNotEmpty ? _userEmail : 'abdullah.khan@email.com';
+    final controller = NoorScope.of(context);
+    final currentName = (controller?.userName.isNotEmpty == true)
+        ? controller!.userName
+        : (_userName.isNotEmpty ? _userName : '');
+    final currentEmail = (controller?.userEmail.isNotEmpty == true)
+        ? controller!.userEmail
+        : _userEmail;
+    final isGuest = controller?.isGuest ?? (currentName.isEmpty || currentName == 'Guest');
+    final displayName = currentName.isNotEmpty ? currentName : (isGuest ? 'Guest User' : 'Believer');
+    final displayEmail = currentEmail.isNotEmpty ? currentEmail : (isGuest ? 'Tap to sign in or create account' : 'Personal Profile');
 
     return Scaffold(
       backgroundColor: isDark ? NoorColors.darkBg : NoorColors.cream,
@@ -147,7 +165,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     child: InkWell(
                       borderRadius: BorderRadius.circular(16),
                       onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute(builder: (_) => const ProfileScreen()),
+                        MaterialPageRoute(
+                          builder: (_) => isGuest ? const LoginScreen() : const ProfileScreen(),
+                        ),
                       ),
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -161,22 +181,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                         child: Row(
                           children: [
-                            Container(
-                              width: 52,
-                              height: 52,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: NoorColors.emeraldDark,
-                                border: Border.all(
-                                  color: NoorColors.goldSoft,
-                                  width: 1.5,
-                                ),
-                              ),
-                              alignment: Alignment.center,
-                              child: const NoorLogoBadge(
-                                size: 26,
-                                color: NoorColors.goldSoft,
-                              ),
+                            NoorAvatar(
+                              size: 52,
+                              name: displayName,
                             ),
                             const SizedBox(width: 14),
                             Expanded(
@@ -247,7 +254,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       child: InkWell(
                         borderRadius: BorderRadius.circular(16),
                         onTap: () async {
-                          await FirebaseRestService().logout();
+                          await controller?.logout();
                           if (!context.mounted) return;
                           Navigator.of(context).pushAndRemoveUntil(
                             MaterialPageRoute(builder: (_) => const LoginScreen()),

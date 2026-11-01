@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../../app.dart';
 import '../../data/auth_service.dart';
 import '../../data/firebase_rest_service.dart';
+import '../../data/noor_controller.dart';
+import '../../data/noor_store.dart';
 import '../../theme/noor_theme.dart';
 import '../../widgets/noor_components.dart';
 import 'login_screen.dart';
@@ -10,10 +12,7 @@ import 'login_screen.dart';
 /// personalized Deen journey." Name, Email and Password fields in
 /// white pill inputs, the emerald Create Account pill, and an
 /// "Already have an account? Login" link that swaps to Page 42.
-/// Phase 9: wired to AuthService (LocalAuthService). Validation is
-/// real; the account is LOCAL-ONLY (no backend yet) and only a
-/// placeholder hash is stored — never the plain password.
-/// Submitting enters the 5-tab shell, as drawn.
+/// Submitting persists the user profile and enters the 5-tab shell.
 class CreateAccountScreen extends StatefulWidget {
   const CreateAccountScreen({super.key});
   @override
@@ -63,6 +62,32 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
       setState(() => _error = result.error);
       return;
     }
+    final enteredName = _name.text.trim();
+    final enteredEmail = _email.text.trim();
+    await NoorStore.setUserName(enteredName);
+    await NoorStore.setUserEmail(enteredEmail);
+    await NoorStore.setIsGuest(false);
+    if (!mounted) return;
+    NoorScope.read(context)?.setUserProfile(
+      enteredName,
+      email: enteredEmail,
+      isGuest: false,
+    );
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Welcome, $enteredName! Your account has been created.'),
+        backgroundColor: NoorColors.emeraldDark,
+      ),
+    );
+    Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const NoorTabShell()), (_) => false);
+  }
+
+  Future<void> _continueAsGuest() async {
+    await NoorStore.setIsGuest(true);
+    await NoorStore.setUserName('Guest');
+    if (!mounted) return;
+    NoorScope.read(context)?.setUserProfile('Guest', isGuest: true);
     Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => const NoorTabShell()), (_) => false);
   }
@@ -138,9 +163,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
           const SizedBox(height: 8),
           Center(
             child: TextButton(
-              onPressed: () => Navigator.of(context).pushAndRemoveUntil(
-                  MaterialPageRoute(builder: (_) => const NoorTabShell()),
-                  (_) => false),
+              onPressed: _continueAsGuest,
               style: TextButton.styleFrom(minimumSize: const Size(48, 44)),
               child: Text('Continue as Guest',
                   style: NoorType.secondary.copyWith(

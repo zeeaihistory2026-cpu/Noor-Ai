@@ -2,12 +2,14 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../app.dart';
 import '../../data/firebase_rest_service.dart';
+import '../../data/noor_store.dart';
 import '../../theme/noor_theme.dart';
+import '../auth/login_screen.dart';
 
 /// Page 36 — Animated Splash Screen.
 /// Clean, elegant opening: cream page, glowing emerald Islamic tile with
 /// gold MuslimGo typography and star emblem, brand titles, and animated
-/// loading pulse. Automatically transitions directly into the app shell.
+/// loading pulse. Automatically transitions into the app or login.
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -66,6 +68,11 @@ class _SplashScreenState extends State<SplashScreen>
       if (hasSession) {
         return const NoorTabShell();
       }
+      final savedName = await NoorStore.getUserName();
+      final isGuest = await NoorStore.getIsGuest();
+      if ((savedName != null && savedName.isNotEmpty) || isGuest) {
+        return const NoorTabShell();
+      }
       final profile = await auth.currentProfile().timeout(
             const Duration(milliseconds: 600),
             onTimeout: () => null,
@@ -74,9 +81,9 @@ class _SplashScreenState extends State<SplashScreen>
         return const NoorTabShell();
       }
     } catch (_) {
-      // Fall through to app start
+      // Fall through to login
     }
-    return const NoorTabShell();
+    return const LoginScreen();
   }
 
   Future<void> _checkAndAdvance() async {
@@ -127,24 +134,12 @@ class _SplashScreenState extends State<SplashScreen>
                   children: [
                     const Spacer(flex: 3),
                     // Glowing Emerald Islamic Medallion Tile
+                    // Official Emerald & Gold App Icon
                     Container(
                       width: 140,
                       height: 140,
                       decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            NoorColors.emeraldDark,
-                            NoorColors.emeraldMid,
-                            NoorColors.inkDeep,
-                          ],
-                        ),
-                        borderRadius: BorderRadius.circular(36),
-                        border: Border.all(
-                          color: NoorColors.gold.withValues(alpha: 0.65),
-                          width: 2,
-                        ),
+                        borderRadius: BorderRadius.circular(34),
                         boxShadow: [
                           BoxShadow(
                             color: NoorColors.emeraldDark.withValues(alpha: 0.35),
@@ -160,53 +155,14 @@ class _SplashScreenState extends State<SplashScreen>
                           ),
                         ],
                       ),
-                      child: Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          // Subtle geometric Islamic star motif
-                          Opacity(
-                            opacity: 0.15,
-                            child: Transform.rotate(
-                              angle: 0.785398, // 45 deg
-                              child: Container(
-                                width: 88,
-                                height: 88,
-                                decoration: BoxDecoration(
-                                  border: Border.all(
-                                      color: NoorColors.gold, width: 1.5),
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                              ),
-                            ),
-                          ),
-                          Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              const Icon(
-                                Icons.auto_stories_rounded,
-                                color: NoorColors.gold,
-                                size: 36,
-                              ),
-                              const SizedBox(height: 6),
-                              Text(
-                                'MuslimGo',
-                                style: NoorType.display.copyWith(
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.w900,
-                                  color: NoorColors.gold,
-                                  letterSpacing: 4,
-                                ),
-                              ),
-                              Text(
-                                'نُور',
-                                style: NoorType.arabic(
-                                  size: 13,
-                                  color: NoorColors.gold.withValues(alpha: 0.8),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(34),
+                        child: Image.asset(
+                          'assets/images/app_logo.png',
+                          width: 140,
+                          height: 140,
+                          fit: BoxFit.contain,
+                        ),
                       ),
                     ),
                     const SizedBox(height: 32),

@@ -343,38 +343,52 @@ class _SurahListScreenState extends State<SurahListScreen> {
         ),
         child: Row(children: [
           const CircleAvatar(
+              radius: 18,
               backgroundColor: NoorColors.emeraldSoft,
               backgroundImage: AssetImage(NoorAssets.reciterAvatar)),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text('Surah Al-Kahf',
-                      style: NoorType.secondary.copyWith(color: Colors.white)),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: NoorType.secondary.copyWith(color: Colors.white, fontWeight: FontWeight.w600)),
                   Text('Mishary Rashid Alafasy',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: NoorType.meta.copyWith(color: Colors.white70)),
                 ]),
           ),
           IconButton(
-              icon: const Icon(Icons.skip_previous, color: Colors.white),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+              icon: const Icon(Icons.skip_previous, color: Colors.white, size: 20),
               onPressed: _openPlayer),
+          const SizedBox(width: 4),
           Container(
-            width: 42,
-            height: 42,
+            width: 38,
+            height: 38,
             decoration: const BoxDecoration(
                 color: Colors.white, shape: BoxShape.circle),
             child: IconButton(
+                padding: EdgeInsets.zero,
                 icon:
-                    const Icon(Icons.play_arrow, color: NoorColors.emeraldDark),
+                    const Icon(Icons.play_arrow, color: NoorColors.emeraldDark, size: 22),
                 onPressed: _openPlayer),
           ),
+          const SizedBox(width: 4),
           IconButton(
-              icon: const Icon(Icons.skip_next, color: Colors.white),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+              icon: const Icon(Icons.skip_next, color: Colors.white, size: 20),
               onPressed: _openPlayer),
           IconButton(
-              icon: const Icon(Icons.keyboard_arrow_up, color: Colors.white),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+              icon: const Icon(Icons.keyboard_arrow_up, color: Colors.white, size: 20),
               onPressed: _openPlayer),
         ]),
       );

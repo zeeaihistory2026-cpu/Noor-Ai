@@ -215,12 +215,13 @@ class _SalahTrackerScreenState extends State<SalahTrackerScreen> {
                               }
 
                               final prayerNames = ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'];
+                              final fallbackTimes = ['5:32 AM', '12:45 PM', '3:58 PM', '5:56 PM', '7:23 PM'];
                               final prayerDisplayTimes = List.generate(5, (i) {
                                 final name = prayerNames[i];
                                 if (prayerDay?.timings[name] != null) {
                                   return PrayerService.formatTime(prayerDay!.timings[name]!);
                                 }
-                                return NoorAppState.prayerTimes[i].$2;
+                                return fallbackTimes[i];
                               });
 
                               final countdownText = nextPrayer != null
@@ -257,7 +258,7 @@ class _SalahTrackerScreenState extends State<SalahTrackerScreen> {
                                             padding: const EdgeInsets.symmetric(horizontal: 2),
                                             child: FittedBox(
                                               fit: BoxFit.scaleDown,
-                                              child: Text(NoorAppState.prayerTimes[i].$1,
+                                              child: Text(prayerNames[i],
                                                   textAlign: TextAlign.center,
                                                   maxLines: 1,
                                                   style: NoorType.meta),
@@ -268,7 +269,7 @@ class _SalahTrackerScreenState extends State<SalahTrackerScreen> {
                                             button: true,
                                             checked: _done[i],
                                             label:
-                                                '${NoorAppState.prayerTimes[i].$1} prayer, ${_done[i] ? "prayed" : "not prayed"}. Tap to toggle.',
+                                                '${prayerNames[i]} prayer, ${_done[i] ? "prayed" : "not prayed"}. Tap to toggle.',
                                             child: SizedBox(
                                               width: 48,
                                               height: 48,

@@ -3,8 +3,10 @@ import '../../data/sample_data.dart';
 import '../../theme/noor_theme.dart';
 import '../../data/app_state.dart';
 import '../../data/firebase_rest_service.dart';
+import '../../data/noor_controller.dart';
+import '../../data/noor_store.dart';
 import '../../widgets/noor_components.dart';
-import '../../widgets/noor_share_card.dart';
+import '../auth/login_screen.dart';
 import '../library/saved_content_screen.dart';
 import '../onboarding/goal_selection_screen.dart';
 import '../onboarding/language_selection_screen.dart';
@@ -13,8 +15,8 @@ import 'my_journey_screen.dart';
 import 'settings_screen.dart';
 
 /// Page 34 — Profile. Emerald header, profile initial circle,
-/// user name, journey summary emerald card, then the 7
-/// outline rows as drawn (chevron right), wired where screens exist.
+/// user name, journey summary emerald card, then the outline rows
+/// as drawn, and sign in / sign out actions.
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
@@ -34,6 +36,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _loadProfile() async {
     try {
+      final savedName = await NoorStore.getUserName();
+      final savedEmail = await NoorStore.getUserEmail();
+      if (savedName != null && savedName.isNotEmpty && mounted) {
+        setState(() {
+          _userName = savedName;
+          _userEmail = savedEmail ?? '';
+        });
+        return;
+      }
       final profile = await FirebaseRestService().currentProfile();
       if (profile != null && mounted && profile.name.trim().isNotEmpty) {
         setState(() {
@@ -42,7 +53,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         });
       }
     } catch (_) {
-      // Keep blank until the real profile loads — never a placeholder name.
+      // Handled
     }
   }
 
@@ -64,8 +75,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
         'Subscription' => 'Free',
         _ => null,
       };
+
   @override
   Widget build(BuildContext context) {
+    final controller = NoorScope.of(context);
+    final currentName = (controller?.userName.isNotEmpty == true)
+        ? controller!.userName
+        : (_userName.isNotEmpty ? _userName : '');
+    final currentEmail = (controller?.userEmail.isNotEmpty == true)
+        ? controller!.userEmail
+        : _userEmail;
+    final isGuest = controller?.isGuest ?? (currentName.isEmpty || currentName == 'Guest');
+    final displayName = currentName.isNotEmpty ? currentName : (isGuest ? 'Guest User' : 'Believer');
+
     void push(Widget w) =>
         Navigator.of(context).push(MaterialPageRoute(builder: (_) => w));
     final targets = <String, Widget>{
@@ -75,6 +97,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       'Saved Content': const SavedContentScreen(),
       'Settings': const SettingsScreen(),
     };
+
     return Scaffold(
       backgroundColor: NoorColors.cream,
       body: SafeArea(
@@ -95,22 +118,69 @@ class _ProfileScreenState extends State<ProfileScreen> {
             child: ListView(
                 padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
                 children: [
-              const Center(child: NoorAvatar(size: 118)),
+              Center(child: NoorAvatar(size: 118, name: displayName)),
               const SizedBox(height: 16),
               Center(
-                  child: Text(_userName,
+                  child: Text(displayName,
                       style: NoorType.screenTitle)),
-              if (_userEmail.isNotEmpty) ...[
+              if (currentEmail.isNotEmpty) ...[
                 const SizedBox(height: 4),
                 Center(
-                    child: Text(_userEmail,
+                    child: Text(currentEmail,
                         style: NoorType.secondary.copyWith(color: NoorColors.muted))),
               ],
               const SizedBox(height: 4),
               Center(
                   child: Text(SampleData.profileTags,
                       style: NoorType.secondary.copyWith(color: NoorColors.muted))),
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
+              if (isGuest) ...[
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(NoorRadius.card),
+                    border: Border.all(color: NoorColors.gold.withValues(alpha: 0.5)),
+                    boxShadow: NoorShadows.card,
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: NoorColors.gold.withValues(alpha: 0.15),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.person_add_outlined,
+                            color: NoorColors.emeraldDark, size: 22),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('Sync Your Journey',
+                                style: NoorType.secondary.copyWith(
+                                    fontWeight: FontWeight.w700, color: NoorColors.ink)),
+                            const SizedBox(height: 2),
+                            Text('Sign in or register to preserve streaks and data.',
+                                style: NoorType.meta.copyWith(color: NoorColors.muted)),
+                          ],
+                        ),
+                      ),
+                      FilledButton(
+                        onPressed: () => push(const LoginScreen()),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: NoorColors.emeraldDark,
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        ),
+                        child: const Text('Sign In'),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
               Material(
                   color: NoorColors.emeraldDark,
                   borderRadius: BorderRadius.circular(NoorRadius.card),
@@ -138,9 +208,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   title: r,
                   leading: Icon(_profileIcon(r), color: NoorColors.emeraldDark),
                   value: _profileValue(r),
-                  // Phase 16 audit: chevron only where a real target
-                  // exists (Privacy/Subscription have no screen yet —
-                  // no fake chevron, no dead tap).
                   trailing: targets[r] == null
                       ? null
                       : const Icon(Icons.chevron_right,
@@ -148,6 +215,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   onTap: targets[r] == null ? null : () => push(targets[r]!),
                 ),
                 const SizedBox(height: 10),
+              ],
+              if (!isGuest) ...[
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: OutlinedButton.icon(
+                    onPressed: () async {
+                      await controller?.logout();
+                      if (!context.mounted) return;
+                      Navigator.of(context).pushAndRemoveUntil(
+                        MaterialPageRoute(builder: (_) => const LoginScreen()),
+                        (_) => false,
+                      );
+                    },
+                    icon: const Icon(Icons.logout, size: 18, color: NoorColors.error),
+                    label: Text('Log Out',
+                        style: NoorType.secondary.copyWith(
+                            color: NoorColors.error, fontWeight: FontWeight.w700)),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: NoorColors.error),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(NoorRadius.button)),
+                    ),
+                  ),
+                ),
               ],
             ])),
       ])),

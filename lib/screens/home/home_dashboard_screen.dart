@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import '../../data/app_state.dart';
 import '../../data/daily_content_service.dart';
 import '../../data/firebase_rest_service.dart';
+import '../../data/location_service.dart';
+import '../../data/noor_store.dart';
+import '../auth/login_screen.dart';
 import '../worship/salah_tracker_screen.dart';
 import '../../data/noor_controller.dart';
 import '../../data/prayer_service.dart';
@@ -44,8 +47,13 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
 
   Future<void> _loadUserName() async {
     try {
+      final savedName = await NoorStore.getUserName();
+      if (savedName != null && savedName.isNotEmpty && mounted) {
+        setState(() => _userName = savedName);
+        return;
+      }
       final profile = await FirebaseRestService().currentProfile();
-      if (profile != null && mounted) {
+      if (profile != null && mounted && profile.name.isNotEmpty) {
         setState(() => _userName = profile.name);
       }
     } catch (_) {}
@@ -80,6 +88,10 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
     final currentNextIn = activeNext != null ? activeNext.remainingLabel : _nextPrayerIn;
     final currentHijri = controller?.activeDay.hijriDisplay ?? _hijriDate;
 
+    final savedName = (controller?.userName.isNotEmpty == true) ? controller!.userName : _userName;
+    final isGuest = controller?.isGuest ?? (savedName.isEmpty || savedName == 'Guest');
+    final displayName = savedName.isNotEmpty ? savedName : (isGuest ? 'Guest' : 'Believer');
+
     final todayAyah = DailyContentService.getAyahOfDay();
     final todayHadith = DailyContentService.getHadithOfDay();
     final todayDua = DailyContentService.getDuaOfDay();
@@ -100,13 +112,81 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                         style: NoorType.body.copyWith(
                             color: isDark ? NoorColors.darkTextSecondary : NoorColors.ink)),
                     const SizedBox(height: 2),
-                    Text(_userName.isNotEmpty ? _userName : '',
-                        style: NoorType.display.copyWith(
-                            color: isDark ? NoorColors.darkGold : NoorColors.emeraldDark)),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Flexible(
+                          child: Text(
+                            displayName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: NoorType.display.copyWith(
+                                color: isDark ? NoorColors.darkGold : NoorColors.emeraldDark),
+                          ),
+                        ),
+                        if (isGuest) ...[
+                          const SizedBox(width: 8),
+                          InkWell(
+                            onTap: () => push(const LoginScreen()),
+                            borderRadius: BorderRadius.circular(12),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: NoorColors.gold.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: NoorColors.gold),
+                              ),
+                              child: Text(
+                                'Sign In',
+                                style: NoorType.meta.copyWith(
+                                  color: NoorColors.emeraldDark,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
                     const SizedBox(height: 3),
-                    Text(currentHijri,
-                        style: NoorType.secondary.copyWith(
-                            color: isDark ? NoorColors.darkTextSecondary : NoorColors.emerald)),
+                    InkWell(
+                      onTap: () async {
+                        final picked = await LocationService.showLocationPicker(context: context);
+                        if (picked != null) {
+                          await controller?.updateLocation(picked);
+                        }
+                      },
+                      borderRadius: BorderRadius.circular(6),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(currentHijri,
+                                style: NoorType.secondary.copyWith(
+                                    color: isDark ? NoorColors.darkTextSecondary : NoorColors.emerald)),
+                            const SizedBox(width: 6),
+                            const Text('•', style: TextStyle(color: NoorColors.gold, fontSize: 12)),
+                            const SizedBox(width: 6),
+                            Icon(Icons.location_on, size: 13, color: isDark ? NoorColors.darkGold : NoorColors.emeraldDark),
+                            const SizedBox(width: 2),
+                            Flexible(
+                              child: Text(
+                                controller?.locationLabel ?? 'Live Times',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: NoorType.meta.copyWith(
+                                  color: isDark ? NoorColors.darkGold : NoorColors.emeraldDark,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 2),
+                            Icon(Icons.arrow_drop_down, size: 14, color: isDark ? NoorColors.darkGold : NoorColors.emeraldDark),
+                          ],
+                        ),
+                      ),
+                    ),
                   ]),
             ),
             Stack(children: [
@@ -134,7 +214,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
             // Avatar shows the logged-in user's initials; tap opens profile.
             GestureDetector(
               onTap: () => push(const ProfileScreen()),
-              child: NoorAvatar(size: 46, name: _userName),
+              child: NoorAvatar(size: 46, name: displayName),
             ),
           ]),
           const SizedBox(height: 18),
@@ -183,7 +263,7 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                                     const SizedBox.shrink())),
                       ),
                       Padding(
-                        padding: const EdgeInsets.fromLTRB(20, 20, 150, 20),
+                        padding: const EdgeInsets.fromLTRB(20, 20, 110, 20),
                         child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -497,29 +577,39 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
             ),
           ]),
           const SizedBox(height: 14),
-          Row(children: [
-            TextButton.icon(
-              onPressed: onTap,
-              icon: const Icon(Icons.volume_up_outlined, size: 18),
-              label: const Text('Listen'),
-            ),
-            TextButton.icon(
-              onPressed: onTap,
-              icon: const Icon(Icons.favorite_border, size: 18),
-              label: const Text('Save'),
-            ),
-            const Spacer(),
-            FilledButton.icon(
-              onPressed: onTap,
-              icon: const Icon(Icons.share, size: 16),
-              label: Text(action),
-              style: FilledButton.styleFrom(
-                backgroundColor: NoorColors.emeraldDark,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextButton.icon(
+                    onPressed: onTap,
+                    icon: const Icon(Icons.volume_up_outlined, size: 18),
+                    label: const Text('Listen'),
+                  ),
+                  TextButton.icon(
+                    onPressed: onTap,
+                    icon: const Icon(Icons.favorite_border, size: 18),
+                    label: const Text('Save'),
+                  ),
+                ],
               ),
-            ),
-          ]),
+              FilledButton.icon(
+                onPressed: onTap,
+                icon: const Icon(Icons.share, size: 16),
+                label: Text(action),
+                style: FilledButton.styleFrom(
+                  backgroundColor: NoorColors.emeraldDark,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                ),
+              ),
+            ],
+          ),
         ]),
       ),
     );

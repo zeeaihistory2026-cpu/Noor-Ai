@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../../app.dart';
 import '../../data/auth_service.dart';
 import '../../data/firebase_rest_service.dart';
+import '../../data/noor_controller.dart';
+import '../../data/noor_store.dart';
 import '../../theme/noor_theme.dart';
 import '../../widgets/noor_components.dart';
 import 'create_account_screen.dart';
@@ -10,10 +12,6 @@ import 'create_account_screen.dart';
 /// journey." Email + Password pill inputs, a right-aligned "Forgot
 /// password?" link, the emerald Login pill, and a "New to MuslimGo?
 /// Create account" link that swaps back to Page 41.
-/// Phase 9: wired to AuthService (LocalAuthService) — real
-/// validation against the local on-device account only. No backend
-/// exists yet, so "Forgot password?" honestly says so instead of
-/// pretending to send a reset email.
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
   @override
@@ -60,6 +58,42 @@ class _LoginScreenState extends State<LoginScreen> {
       setState(() => _error = result.error);
       return;
     }
+    String name = result.profile?.name ?? '';
+    if (name.isEmpty) {
+      final saved = await NoorStore.getUserName();
+      if (saved != null && saved.isNotEmpty) {
+        name = saved;
+      } else {
+        name = _email.text.split('@').first;
+        if (name.isNotEmpty) {
+          name = name[0].toUpperCase() + name.substring(1);
+        }
+      }
+    }
+    await NoorStore.setUserName(name);
+    await NoorStore.setUserEmail(_email.text.trim());
+    await NoorStore.setIsGuest(false);
+    if (!mounted) return;
+    NoorScope.read(context)?.setUserProfile(
+      name,
+      email: _email.text.trim(),
+      isGuest: false,
+    );
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Welcome back, $name!'),
+        backgroundColor: NoorColors.emeraldDark,
+      ),
+    );
+    Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const NoorTabShell()), (_) => false);
+  }
+
+  Future<void> _continueAsGuest() async {
+    await NoorStore.setIsGuest(true);
+    await NoorStore.setUserName('Guest');
+    if (!mounted) return;
+    NoorScope.read(context)?.setUserProfile('Guest', isGuest: true);
     Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(builder: (_) => const NoorTabShell()), (_) => false);
   }
@@ -151,9 +185,7 @@ class _LoginScreenState extends State<LoginScreen> {
           const SizedBox(height: 8),
           Center(
             child: TextButton(
-              onPressed: () => Navigator.of(context).pushAndRemoveUntil(
-                  MaterialPageRoute(builder: (_) => const NoorTabShell()),
-                  (_) => false),
+              onPressed: _continueAsGuest,
               style: TextButton.styleFrom(minimumSize: const Size(48, 44)),
               child: Text('Continue as Guest',
                   style: NoorType.secondary.copyWith(

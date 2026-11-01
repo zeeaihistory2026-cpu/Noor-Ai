@@ -118,6 +118,31 @@ class NoorStore {
   static Future<void> setCountry(String country) =>
       _writeString('settings.country', country);
 
+  // ---- User Identity --------------------------------------------------
+  static Future<String?> getUserName() async =>
+      await _readString('user.name');
+
+  static Future<void> setUserName(String name) =>
+      _writeString('user.name', name);
+
+  static Future<String?> getUserEmail() async =>
+      await _readString('user.email');
+
+  static Future<void> setUserEmail(String email) =>
+      _writeString('user.email', email);
+
+  static Future<bool> getIsGuest() async =>
+      await _readBool('user.isGuest') ?? true;
+
+  static Future<void> setIsGuest(bool isGuest) =>
+      _writeBool('user.isGuest', isGuest);
+
+  static Future<void> clearUser() async {
+    await setUserName('');
+    await setUserEmail('');
+    await setIsGuest(true);
+  }
+
   // ---- Theme Preference (Phase 4: solar | light | dark | system) ------
 
   static const keyThemePreference = 'settings.themePreference';

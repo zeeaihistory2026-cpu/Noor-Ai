@@ -198,18 +198,18 @@ class _WorshipDashboardScreenState extends State<WorshipDashboardScreen> {
                               splashColor: NoorColors.gold.withValues(alpha: 0.25),
                               highlightColor: Colors.white.withValues(alpha: 0.1),
                               child: Padding(
-                                padding: const EdgeInsets.all(18),
+                                padding: const EdgeInsets.all(16),
                                 child: Row(children: [
                                   Container(
-                                      width: 58,
-                                      height: 58,
+                                      width: 48,
+                                      height: 48,
                                       decoration: BoxDecoration(
                                           shape: BoxShape.circle,
                                           border: Border.all(
                                               color: NoorColors.gold, width: 1.6)),
                                       child: const Icon(Icons.wb_sunny_outlined,
-                                          color: NoorColors.gold, size: 28)),
-                                  const SizedBox(width: 14),
+                                          color: NoorColors.gold, size: 24)),
+                                  const SizedBox(width: 12),
                                   Expanded(
                                       child: Column(
                                           crossAxisAlignment:
@@ -243,27 +243,39 @@ class _WorshipDashboardScreenState extends State<WorshipDashboardScreen> {
                                             ),
                                           ],
                                         ),
-                                        Text(nextName,
-                                            style: NoorType.screenTitle
-                                                .copyWith(color: Colors.white)),
-                                        Text(nextRemaining,
-                                            style: NoorType.secondary
-                                                .copyWith(color: Colors.white)),
+                                        const SizedBox(height: 2),
+                                        FittedBox(
+                                          fit: BoxFit.scaleDown,
+                                          alignment: Alignment.centerLeft,
+                                          child: Text(nextName,
+                                              style: NoorType.screenTitle
+                                                  .copyWith(color: Colors.white)),
+                                        ),
+                                        FittedBox(
+                                          fit: BoxFit.scaleDown,
+                                          alignment: Alignment.centerLeft,
+                                          child: Text(nextRemaining,
+                                              style: NoorType.secondary
+                                                  .copyWith(color: Colors.white)),
+                                        ),
+                                        const SizedBox(height: 2),
                                         Text(nextTime,
                                             style: NoorType.meta
                                                 .copyWith(color: Colors.white70)),
                                       ])),
+                                  const SizedBox(width: 8),
                                   ClipRRect(
                                       borderRadius: BorderRadius.circular(10),
                                       child: Image.asset(NoorAssets.nextPrayerMosque,
-                                          width: 84,
-                                          cacheWidth: 252,
-                                          height: 88,
+                                          width: 68,
+                                          cacheWidth: 204,
+                                          height: 74,
                                           fit: BoxFit.cover,
                                           alignment: Alignment.bottomRight,
                                           errorBuilder: (_, __, ___) =>
                                               const SizedBox(
-                                                  width: 84, height: 88))),
+                                                  width: 68, height: 74))),
+                                  const SizedBox(width: 4),
                                   const Icon(Icons.chevron_right,
                                       color: Colors.white70, size: 20),
                                 ]),

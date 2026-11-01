@@ -318,7 +318,7 @@ class _HadithLibraryScreenState extends State<HadithLibraryScreen> {
                                     aspectRatio: 188 / 250,
                                     child: Image.asset(
                                         _covers[_featured[i]]!,
-                                        fit: BoxFit.fill,
+                                        fit: BoxFit.cover,
                                         errorBuilder: (_, __, ___) => Container(
                                             color: NoorColors.emeraldDark)),
                                   )),
@@ -343,7 +343,7 @@ class _HadithLibraryScreenState extends State<HadithLibraryScreen> {
                       crossAxisCount: 3,
                       mainAxisSpacing: 10,
                       crossAxisSpacing: 10,
-                      childAspectRatio: 0.95),
+                      childAspectRatio: 0.86),
                   itemCount: 8,
                   itemBuilder: (_, i) => Semantics(button: true, child: GestureDetector(
                       onTap: () => _openBook('bukhari'),

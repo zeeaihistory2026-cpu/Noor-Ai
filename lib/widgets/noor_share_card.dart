@@ -69,57 +69,67 @@ class NoorShareCard extends StatelessWidget {
                   fontSize: mini ? 7 : 11,
                   fontWeight: FontWeight.w800,
                   letterSpacing: 1.4)),
-        const Spacer(),
-        if (streak != null) ...[
-          Icon(
-              streak!.iconName == 'calendar'
-                  ? Icons.calendar_month_outlined
-                  : Icons.local_fire_department_outlined,
-              color: sub,
-              size: mini ? 14 : 38),
-          SizedBox(height: mini ? 2 : 8),
-          Text(streak!.headline,
-              style: TextStyle(
-                  color: fg,
-                  fontSize: mini ? 16 : 64,
-                  fontWeight: FontWeight.w800,
-                  height: 1)),
-          Text(streak!.label,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                  color: fg,
-                  fontSize: mini ? 8 : 16,
-                  fontWeight: FontWeight.w700)),
-          if (!mini) ...[
-            const SizedBox(height: 8),
-            Text('${streak!.days} days · ${streak!.caption}',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: fg, fontSize: 13, height: 1.4)),
-          ],
-        ] else ...[
-          if ((item?.arabicText ?? SampleData.duaArabic).isNotEmpty)
-            Text(item?.arabicText ?? SampleData.duaArabic,
-                textDirection: TextDirection.rtl,
-                textAlign: TextAlign.center,
-                maxLines: mini ? 2 : null,
-                overflow: mini ? TextOverflow.ellipsis : null,
-                style: (emphasis == 2
-                    ? NoorType.urdu(size: mini ? 11 : 26, color: fg)
-                    : NoorType.arabic(
-                        size: mini ? 11 : (emphasis == 1 ? 22 : 30),
-                        color: fg))),
-          if (!mini) ...[
-            const SizedBox(height: 14),
-            Text(item?.text ?? SampleData.duaTranslation,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                    color: fg,
-                    fontSize: emphasis == 1 ? 18 : 15,
-                    fontWeight:
-                        emphasis == 1 ? FontWeight.w700 : FontWeight.w400)),
-          ],
-        ],
-        const Spacer(),
+        Expanded(
+          child: Center(
+            child: SingleChildScrollView(
+              physics: const ClampingScrollPhysics(),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (streak != null) ...[
+                    Icon(
+                        streak!.iconName == 'calendar'
+                            ? Icons.calendar_month_outlined
+                            : Icons.local_fire_department_outlined,
+                        color: sub,
+                        size: mini ? 14 : 38),
+                    SizedBox(height: mini ? 2 : 8),
+                    Text(streak!.headline,
+                        style: TextStyle(
+                            color: fg,
+                            fontSize: mini ? 16 : 64,
+                            fontWeight: FontWeight.w800,
+                            height: 1)),
+                    Text(streak!.label,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                            color: fg,
+                            fontSize: mini ? 8 : 16,
+                            fontWeight: FontWeight.w700)),
+                    if (!mini) ...[
+                      const SizedBox(height: 8),
+                      Text('${streak!.days} days · ${streak!.caption}',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: fg, fontSize: 13, height: 1.4)),
+                    ],
+                  ] else ...[
+                    if ((item?.arabicText ?? SampleData.duaArabic).isNotEmpty)
+                      Text(item?.arabicText ?? SampleData.duaArabic,
+                          textDirection: TextDirection.rtl,
+                          textAlign: TextAlign.center,
+                          maxLines: mini ? 2 : null,
+                          overflow: mini ? TextOverflow.ellipsis : null,
+                          style: (emphasis == 2
+                              ? NoorType.urdu(size: mini ? 11 : 26, color: fg)
+                              : NoorType.arabic(
+                                  size: mini ? 11 : (emphasis == 1 ? 22 : 30),
+                                  color: fg))),
+                    if (!mini) ...[
+                      const SizedBox(height: 14),
+                      Text(item?.text ?? SampleData.duaTranslation,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                              color: fg,
+                              fontSize: emphasis == 1 ? 18 : 15,
+                              fontWeight:
+                                  emphasis == 1 ? FontWeight.w700 : FontWeight.w400)),
+                    ],
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ),
         Text(
             streak != null
                 ? '${streak!.days}-DAY STREAK'

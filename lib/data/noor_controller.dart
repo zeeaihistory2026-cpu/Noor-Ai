@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 
 import 'app_state.dart';
+import 'firebase_rest_service.dart';
 import 'location_service.dart';
 import 'noor_store.dart';
 import 'notification_plan.dart';
@@ -27,6 +28,9 @@ enum NoorThemePreference {
 class NoorController extends ChangeNotifier {
   NoorController({bool autoInit = true}) {
     if (autoInit) {
+      loadUserProfile().catchError((e, st) {
+        // Ignored or logged in test / headless environments
+      });
       loadThemePreference().catchError((e, st) {
         // Ignored or logged in test / headless environments
       });
@@ -74,8 +78,14 @@ class NoorController extends ChangeNotifier {
     });
   }
 
-  String _userName = NoorAppState.userName;
+  String _userName = '';
+  String _userEmail = '';
+  bool _isGuest = true;
+
   String get userName => _userName;
+  String get userEmail => _userEmail;
+  bool get isGuest => _isGuest;
+  bool get isLoggedIn => !_isGuest && _userName.isNotEmpty;
 
   Map<String, int> _streaks = {
     for (final s in NoorAppState.streaks) s.$1: s.$2,
@@ -144,9 +154,67 @@ class NoorController extends ChangeNotifier {
     }
   }
 
-  void setUserName(String name) {
-    if (name == _userName || name.trim().isEmpty) return;
+  Future<void> loadUserProfile() async {
+    try {
+      // 1. Check local persistent store first for instant UI response
+      final savedName = await NoorStore.getUserName();
+      final savedEmail = await NoorStore.getUserEmail();
+      final isGuestVal = await NoorStore.getIsGuest();
+      if (savedName != null && savedName.trim().isNotEmpty) {
+        _userName = savedName.trim();
+        _userEmail = (savedEmail ?? '').trim();
+        _isGuest = isGuestVal;
+        notifyListeners();
+        return;
+      }
+
+      // 2. Try loading from active auth session
+      final auth = FirebaseRestService();
+      final hasSession = await auth.hasSession();
+      if (hasSession) {
+        final profile = await auth.currentProfile();
+        if (profile != null && profile.name.trim().isNotEmpty) {
+          _userName = profile.name.trim();
+          _userEmail = profile.email.trim();
+          _isGuest = false;
+          await NoorStore.setUserName(_userName);
+          await NoorStore.setUserEmail(_userEmail);
+          await NoorStore.setIsGuest(false);
+          notifyListeners();
+        }
+      }
+    } catch (e) {
+      debugPrint('NoorController: loadUserProfile error: $e');
+    }
+  }
+
+  void setUserProfile(String name, {String? email, bool isGuest = false}) {
     _userName = name.trim();
+    if (email != null) _userEmail = email.trim();
+    _isGuest = isGuest;
+    NoorStore.setUserName(_userName);
+    if (email != null) NoorStore.setUserEmail(_userEmail);
+    NoorStore.setIsGuest(isGuest);
+    notifyListeners();
+  }
+
+  void setUserName(String name) {
+    if (name.trim().isEmpty) return;
+    _userName = name.trim();
+    _isGuest = false;
+    NoorStore.setUserName(_userName);
+    NoorStore.setIsGuest(false);
+    notifyListeners();
+  }
+
+  Future<void> logout() async {
+    try {
+      await FirebaseRestService().logout();
+    } catch (_) {}
+    _userName = '';
+    _userEmail = '';
+    _isGuest = true;
+    await NoorStore.clearUser();
     notifyListeners();
   }
 
@@ -181,6 +249,17 @@ class NoorController extends ChangeNotifier {
     } catch (e) {
       debugPrint('NoorController: Failed to refresh prayer times for new location: $e');
     }
+  }
+
+  Future<void> setLocation(String city, {String country = 'Pakistan', double? lat, double? lng}) async {
+    final loc = LocationModel(
+      city: city,
+      country: country,
+      latitude: lat ?? 0,
+      longitude: lng ?? 0,
+      isLive: lat != null && lng != null && lat != 0,
+    );
+    await updateLocation(loc);
   }
 
   Future<void> setThemePreference(NoorThemePreference pref) async {

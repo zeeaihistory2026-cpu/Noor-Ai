@@ -295,42 +295,56 @@ class AiAssistantHomeScreen extends StatelessWidget {
               const SizedBox(height: 20),
               _row('Popular Topics', onTap: openChat),
               const SizedBox(height: 12),
-              Row(
-                children: [
-                  for (var i = 0; i < SampleData.popularTopics.length; i++) ...[
-                    if (i > 0) const SizedBox(width: 9),
-                    Expanded(
-                      child: Semantics(
-                          button: true,
-                          child: GestureDetector(
-                            onTap: openChat,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(vertical: 13),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(color: NoorColors.hairline),
-                              ),
-                              child: Column(children: [
-                                Icon(
-                                    [
-                                      Icons.menu_book_outlined,
-                                      Icons.library_books_outlined,
-                                      Icons.balance_outlined,
-                                      Icons.favorite_border,
-                                      Icons.mosque_outlined
-                                    ][i],
-                                    color: NoorColors.emeraldDark,
-                                    size: 21),
-                                const SizedBox(height: 7),
-                                Text(SampleData.popularTopics[i],
-                                    style: NoorType.meta),
-                              ]),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                physics: const BouncingScrollPhysics(),
+                child: Row(
+                  children: [
+                    for (var i = 0; i < SampleData.popularTopics.length; i++) ...[
+                      if (i > 0) const SizedBox(width: 10),
+                      Semantics(
+                        button: true,
+                        child: GestureDetector(
+                          onTap: openChat,
+                          child: Container(
+                            constraints: const BoxConstraints(minWidth: 78),
+                            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: NoorColors.hairline),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.03),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
                             ),
-                          )),
-                    ),
+                            child: Column(children: [
+                              Icon(
+                                  [
+                                    Icons.menu_book_outlined,
+                                    Icons.library_books_outlined,
+                                    Icons.balance_outlined,
+                                    Icons.favorite_border,
+                                    Icons.mosque_outlined
+                                  ][i],
+                                  color: NoorColors.emeraldDark,
+                                  size: 22),
+                              const SizedBox(height: 7),
+                              Text(SampleData.popularTopics[i],
+                                  style: NoorType.meta.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                    color: NoorColors.ink,
+                                  )),
+                            ]),
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
-                ],
+                ),
               ),
             ]),
           ),

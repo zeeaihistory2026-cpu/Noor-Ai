@@ -55,17 +55,17 @@ class LocationService {
   /// Detects real live location via secure IP-based geolocation.
   /// Works across Android, iOS, Windows, and Web with zero native permissions or GPS popups required.
   Future<LocationModel?> fetchLiveLocation() async {
-    // 1. Primary: ip-api.com
+    // 1. Primary: ipwho.is (HTTPS, fast, free, works on Web & Mobile without mixed-content blocks)
     try {
-      final uri = Uri.parse('http://ip-api.com/json/?fields=status,message,country,city,lat,lon');
+      final uri = Uri.parse('https://ipwho.is/');
       final res = await _client.get(uri).timeout(const Duration(seconds: 7));
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body) as Map<String, dynamic>;
-        if (data['status'] == 'success') {
+        if (data['success'] == true) {
           final city = data['city'] as String? ?? '';
           final country = data['country'] as String? ?? '';
-          final lat = (data['lat'] as num?)?.toDouble();
-          final lon = (data['lon'] as num?)?.toDouble();
+          final lat = (data['latitude'] as num?)?.toDouble();
+          final lon = (data['longitude'] as num?)?.toDouble();
           if (city.isNotEmpty && lat != null && lon != null) {
             final model = LocationModel(
               city: city,
@@ -80,10 +80,10 @@ class LocationService {
         }
       }
     } catch (e) {
-      debugPrint('LocationService: ip-api detection failed: $e');
+      debugPrint('LocationService: ipwho.is detection failed: $e');
     }
 
-    // 2. Fallback mirror: ipapi.co
+    // 2. Secondary fallback: ipapi.co (HTTPS)
     try {
       final uri = Uri.parse('https://ipapi.co/json/');
       final res = await _client.get(uri).timeout(const Duration(seconds: 7));

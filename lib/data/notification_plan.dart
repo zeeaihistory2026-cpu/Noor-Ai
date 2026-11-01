@@ -59,16 +59,31 @@ class NotificationPlan {
       final at = day.timings[name] ?? (name == 'Dhuhr' ? day.timings['Zuhr'] : null);
       if (at == null) continue;
       final displayName = (name == 'Dhuhr') ? 'Zuhr' : name;
-      final when = at.subtract(const Duration(minutes: salahLeadMinutes));
-      if (!includePast && when.isBefore(n)) continue;
-      out.add(PlannedNotification(
-        id: _stableId('salah', name, at),
-        group: 'Salah',
-        title: '$displayName reminder',
-        body: '$displayName begins in $salahLeadMinutes minutes.',
-        scheduledAt: when,
-        prayerName: name,
-      ));
+      
+      // 1. Lead reminder (15 minutes prior)
+      final whenLead = at.subtract(const Duration(minutes: salahLeadMinutes));
+      if (includePast || !whenLead.isBefore(n)) {
+        out.add(PlannedNotification(
+          id: _stableId('salah_lead', name, at),
+          group: 'Salah',
+          title: '$displayName reminder',
+          body: '$displayName begins in $salahLeadMinutes minutes.',
+          scheduledAt: whenLead,
+          prayerName: name,
+        ));
+      }
+
+      // 2. Exact prayer time notification
+      if (includePast || !at.isBefore(n)) {
+        out.add(PlannedNotification(
+          id: _stableId('salah_exact', name, at),
+          group: 'Salah',
+          title: 'Time for $displayName',
+          body: 'It is now time for $displayName prayer. Hayya \'alas-Salah.',
+          scheduledAt: at,
+          prayerName: name,
+        ));
+      }
     }
     out.sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));
     return out;
