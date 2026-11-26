@@ -5,6 +5,7 @@ import 'package:http/testing.dart';
 import 'package:noor_ai_companion/data/halal_database.dart';
 import 'package:noor_ai_companion/data/noor_store.dart';
 import 'package:noor_ai_companion/data/offline_quran.dart';
+import 'package:noor_ai_companion/screens/home/home_dashboard_screen.dart';
 import 'package:noor_ai_companion/screens/library/beginner_guide_screen.dart';
 import 'package:noor_ai_companion/screens/library/dua_library_screen.dart';
 import 'package:noor_ai_companion/screens/library/hajj_umrah_screen.dart';
@@ -552,6 +553,35 @@ void main() {
       await tester.tap(find.byType(Switch));
       await tester.pumpAndSettle();
       expect(await NoorStore.getCycleExemptMode(), isTrue);
+    });
+
+    testWidgets(
+        'HomeDashboardScreen links Umrah & Hajj and Halal Scanner quick actions',
+        (tester) async {
+      await tester.pumpWidget(MaterialApp(
+        theme: NoorTheme.light(),
+        home: const Scaffold(body: HomeDashboardScreen()),
+      ));
+      await tester.pumpAndSettle();
+
+      await tester.ensureVisible(find.byKey(const ValueKey('home-umrah-hajj')));
+      await tester.pumpAndSettle();
+      expect(find.text('Umrah & Hajj'), findsOneWidget);
+      expect(find.text('Halal Scanner'), findsOneWidget);
+
+      await tester.tap(find.byKey(const ValueKey('home-umrah-hajj')));
+      await tester.pumpAndSettle();
+      expect(find.text('Hajj & Umrah'), findsOneWidget);
+
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+
+      await tester
+          .ensureVisible(find.byKey(const ValueKey('home-halal-scanner')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('home-halal-scanner')));
+      await tester.pumpAndSettle();
+      expect(find.text('Scan Barcode with Camera'), findsOneWidget);
     });
   });
 }

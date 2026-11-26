@@ -22,6 +22,8 @@ import 'profile_screen.dart';
 import '../worship/zikr_tasbih_screen.dart';
 import '../quran/quran_home_screen.dart';
 import '../../widgets/daily_reflection_card.dart';
+import '../library/hajj_umrah_screen.dart';
+import '../library/halal_scanner_screen.dart';
 import '../library/library_home_screen.dart';
 
 /// Compact daily dashboard with current prayer times and saved reading progress.
@@ -290,19 +292,45 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
                     next: next,
                     onTap: () => open(const SalahTrackerScreen())),
                 const SizedBox(height: 13),
-                Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Expanded(
-                      child: _practice(Icons.menu_book_outlined, 'Quran',
-                          () => open(const QuranHomeScreen()))),
-                  const SizedBox(width: 9),
-                  Expanded(
-                      child: _practice(Icons.spa_outlined, 'Zikr',
-                          () => open(const ZikrTasbihScreen()))),
-                  const SizedBox(width: 9),
-                  Expanded(
-                      child: _practice(Icons.mosque_outlined, 'Salah',
-                          () => open(const SalahTrackerScreen()))),
-                ]),
+                IntrinsicHeight(
+                  child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Expanded(
+                            child: _practice(Icons.menu_book_outlined, 'Quran',
+                                () => open(const QuranHomeScreen()))),
+                        const SizedBox(width: 9),
+                        Expanded(
+                            child: _practice(Icons.spa_outlined, 'Zikr',
+                                () => open(const ZikrTasbihScreen()))),
+                        const SizedBox(width: 9),
+                        Expanded(
+                            child: _practice(Icons.mosque_outlined, 'Salah',
+                                () => open(const SalahTrackerScreen()))),
+                      ]),
+                ),
+                const SizedBox(height: 9),
+                IntrinsicHeight(
+                  child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Expanded(
+                            child: _practice(
+                          Icons.location_city_outlined,
+                          'Umrah & Hajj',
+                          () => open(const HajjUmrahScreen()),
+                          keyValue: 'home-umrah-hajj',
+                        )),
+                        const SizedBox(width: 9),
+                        Expanded(
+                            child: _practice(
+                          Icons.qr_code_scanner_outlined,
+                          'Halal Scanner',
+                          () => open(const HalalScannerScreen(initialTab: 1)),
+                          keyValue: 'home-halal-scanner',
+                        )),
+                      ]),
+                ),
                 const SizedBox(height: 20),
                 Wrap(
                     alignment: WrapAlignment.spaceBetween,
@@ -347,14 +375,20 @@ class _HomeDashboardScreenState extends State<HomeDashboardScreen> {
         )));
   }
 
-  Widget _practice(IconData icon, String title, VoidCallback onTap) => NoorCard(
-      key: ValueKey('home-${title.toLowerCase()}'),
-      radius: 16,
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 13),
-      onTap: onTap,
-      child: Column(children: [
-        Icon(icon, color: Theme.of(context).colorScheme.primary, size: 24),
-        const SizedBox(height: 7),
-        Text(title, textAlign: TextAlign.center, style: NoorType.meta)
-      ]));
+  Widget _practice(IconData icon, String title, VoidCallback onTap,
+          {String? keyValue}) =>
+      NoorCard(
+          key: ValueKey(keyValue ?? 'home-${title.toLowerCase()}'),
+          radius: 16,
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 13),
+          onTap: onTap,
+          child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+            Icon(icon, color: Theme.of(context).colorScheme.primary, size: 24),
+            const SizedBox(height: 7),
+            Text(title,
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: NoorType.meta)
+          ]));
 }
