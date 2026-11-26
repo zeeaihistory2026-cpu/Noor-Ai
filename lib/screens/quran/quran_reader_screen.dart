@@ -6,6 +6,10 @@ import '../../data/sample_data.dart';
 import '../../theme/noor_theme.dart';
 import '../../widgets/noor_components.dart';
 import 'quran_audio_player_screen.dart';
+import 'hifz_mushaf_screen.dart';
+import '../../data/offline_quran.dart';
+import '../../data/share_content.dart';
+import '../library/share_card_studio_screen.dart';
 
 /// Page 03 — Quran Reader English/Urdu. Emerald header (Al-Kahf),
 /// Arabic / English / Urdu segmented tabs, Text Size, one ayah card,
@@ -26,7 +30,8 @@ import 'quran_audio_player_screen.dart';
 /// QuranService.nextSurahNumber); bookmarks stay keyed per
 /// (surah, ayah).
 class QuranReaderScreen extends StatefulWidget {
-  const QuranReaderScreen({super.key, this.surah = 18});
+  const QuranReaderScreen({super.key, this.surah = 18, this.initialAyah = 1});
+  final int initialAyah;
 
   /// Surah number 1..114. Default 18 (Al-Kahf) preserves the Page 03
   /// design and the existing goldens.
@@ -41,6 +46,7 @@ class QuranReaderScreen extends StatefulWidget {
 }
 
 class _QuranReaderScreenState extends State<QuranReaderScreen> {
+  bool _modeTouched = false;
   int _mode = 0; // 0 Arabic, 1 English, 2 Urdu
   double _textSize = 20;
   bool _showSize = false; // design tucks the slider behind Text Size
@@ -58,9 +64,25 @@ class _QuranReaderScreenState extends State<QuranReaderScreen> {
   @override
   void initState() {
     super.initState();
-    _ayah = widget.surah == 18 ? SampleData.readerAyahNumber : 1;
+    final info = QuranService.surahInfoMap[widget.surah];
+    _surahTitle = info?.$1 ?? 'Surah ${widget.surah}';
+    _surahMeaning = '';
+    _ayahCount = info?.$3 ?? 1;
+    _ayah = widget.initialAyah.clamp(1, _ayahCount);
+    _loadReadingLanguage();
     _loadLive();
     _loadBookmark();
+  }
+
+  Future<void> _loadReadingLanguage() async {
+    final language = await NoorStore.getLanguage();
+    if (mounted && !_modeTouched) {
+      setState(() => _mode = language == 'Urdu'
+          ? 2
+          : language == 'English'
+              ? 1
+              : 0);
+    }
   }
 
   Future<void> _loadLive() async {
@@ -68,12 +90,14 @@ class _QuranReaderScreenState extends State<QuranReaderScreen> {
     try {
       final map = await QuranService().fetchSurahEditions(surah);
       if (map.isNotEmpty && mounted) {
+        NoorStore.recordActivity('Quran');
         setState(() {
           _live = map;
           final arabic = map[QuranService.editionArabic];
           if (arabic != null && arabic.ayahs.isNotEmpty) {
             _ayahCount = arabic.ayahs.length;
             _ayah = _ayah.clamp(1, _ayahCount);
+            NoorStore.setReadingPosition(widget.surah, _ayah);
           }
         });
       }
@@ -122,9 +146,13 @@ class _QuranReaderScreenState extends State<QuranReaderScreen> {
     final key = QuranReaderScreen.bookmarkKeyFor(widget.surah, _ayah);
     final v = await NoorStore.toggleBookmark(key);
     if (v) {
-      final textEn = _liveText('en.asad') ?? _liveText('en.sahih') ?? '$_surahTitle, Ayah $_ayah';
+      final textEn = _liveText('en.asad') ??
+          _liveText('en.sahih') ??
+          '$_surahTitle, Ayah $_ayah';
       final cleanText = textEn.replaceAll('\n', ' ').trim();
-      final snippet = cleanText.length > 80 ? '${cleanText.substring(0, 80)}...' : cleanText;
+      final snippet = cleanText.length > 80
+          ? '${cleanText.substring(0, 80)}...'
+          : cleanText;
       await NoorStore.saveRichItem(
         id: key,
         title: '$_surahTitle, Ayah $_ayah',
@@ -139,6 +167,12 @@ class _QuranReaderScreenState extends State<QuranReaderScreen> {
 
   /// Text for a specific ayah number (1-based) — used by the
   /// full-surah scroll view.
+  String? _displayArabic(int ayah) {
+    final raw = _liveTextFor(QuranService.editionArabic, ayah);
+    if (raw == null) return null;
+    return OfflineQuran.stripLeadingBismillah(widget.surah, ayah, raw);
+  }
+
   String? _liveTextFor(String edition, int ayahNum) {
     final detail = _live[edition];
     if (detail == null || detail.ayahs.isEmpty) return null;
@@ -151,6 +185,7 @@ class _QuranReaderScreenState extends State<QuranReaderScreen> {
 
   void _goAyah(int next) {
     setState(() => _ayah = next.clamp(1, _ayahCount));
+    NoorStore.setReadingPosition(widget.surah, _ayah);
     _loadBookmark();
   }
 
@@ -158,14 +193,14 @@ class _QuranReaderScreenState extends State<QuranReaderScreen> {
   /// or next surah (wraps 1<->114). Ayah resets to the new surah's
   /// start, except the drawn Al-Kahf view (surah 18 -> ayah 18).
   void _goSurah(int next) {
-    Navigator.of(context).pushReplacement(MaterialPageRoute(
-        builder: (_) => QuranReaderScreen(surah: next)));
+    Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => QuranReaderScreen(surah: next)));
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: NoorColors.cream,
+      backgroundColor: NoorTheme.background(context, light: NoorColors.cream),
       body: SafeArea(
         child: Column(children: [
           Container(
@@ -176,6 +211,7 @@ class _QuranReaderScreenState extends State<QuranReaderScreen> {
             padding: const EdgeInsets.fromLTRB(10, 10, 10, 18),
             child: Row(children: [
               IconButton(
+                      tooltip: 'Back',
                 icon: const Icon(Icons.arrow_back_ios_new,
                     color: Colors.white, size: 19),
                 onPressed: () => Navigator.of(context).maybePop(),
@@ -183,13 +219,14 @@ class _QuranReaderScreenState extends State<QuranReaderScreen> {
               Expanded(
                 child: Column(children: [
                   Text(_surahTitle,
-                      style: NoorType.screenTitle.copyWith(color: Colors.white)),
-                  Text('$_surahMeaning  •  Ayah $_ayah',
                       style:
-                          NoorType.meta.copyWith(color: Colors.white70)),
+                          NoorType.screenTitle.copyWith(color: Colors.white)),
+                  Text(_surahMeaning.isEmpty ? 'Ayah $_ayah' : '$_surahMeaning  •  Ayah $_ayah',
+                      style: NoorType.meta.copyWith(color: Colors.white70)),
                 ]),
               ),
               IconButton(
+                  tooltip: _bookmarked ? 'Remove bookmark' : 'Bookmark this Ayah',
                 icon: Icon(_bookmarked ? Icons.bookmark : Icons.bookmark_border,
                     color: Colors.white),
                 onPressed: _toggleBookmarkCurrentAyah,
@@ -198,18 +235,18 @@ class _QuranReaderScreenState extends State<QuranReaderScreen> {
               Container(
                 width: 40,
                 height: 40,
-                decoration: const BoxDecoration(
-                  color: Colors.white,
+                decoration: BoxDecoration(
+                  color: NoorTheme.surface(context, light: Colors.white),
                   shape: BoxShape.circle,
                 ),
                 child: IconButton(
-                  icon: const Icon(Icons.play_arrow,
-                      color: NoorColors.emeraldDark, size: 22),
+                  icon: const Icon(Icons.play_arrow, color: null, size: 22),
                   tooltip: 'Play audio',
                   onPressed: () {
                     final surah = widget.surah;
                     Navigator.of(context).push(MaterialPageRoute(
-                        builder: (_) => QuranAudioPlayerScreen(surah: surah)));
+                        builder: (_) => QuranAudioPlayerScreen(
+                            surah: surah, initialAyah: _ayah)));
                   },
                 ),
               ),
@@ -223,7 +260,8 @@ class _QuranReaderScreenState extends State<QuranReaderScreen> {
                     if (!mounted) return;
                     final surah = widget.surah;
                     Navigator.of(context).push(MaterialPageRoute(
-                        builder: (_) => QuranAudioPlayerScreen(surah: surah)));
+                        builder: (_) => QuranAudioPlayerScreen(
+                            surah: surah, initialAyah: _ayah)));
                   }
                 },
                 itemBuilder: (_) => [
@@ -248,9 +286,9 @@ class _QuranReaderScreenState extends State<QuranReaderScreen> {
                     child: Container(
                       padding: const EdgeInsets.all(4),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: NoorTheme.surface(context, light: Colors.white),
                         borderRadius: BorderRadius.circular(NoorRadius.chip),
-                        border: Border.all(color: NoorColors.hairline),
+                        border: Border.all(color: NoorTheme.border(context)),
                       ),
                       child: Row(
                         children: List.generate(3, (i) {
@@ -268,7 +306,10 @@ class _QuranReaderScreenState extends State<QuranReaderScreen> {
                                 borderRadius:
                                     BorderRadius.circular(NoorRadius.chip),
                                 child: InkWell(
-                                  onTap: () => setState(() => _mode = i),
+                                  onTap: () => setState(() {
+                                    _modeTouched = true;
+                                    _mode = i;
+                                  }),
                                   borderRadius:
                                       BorderRadius.circular(NoorRadius.chip),
                                   child: Container(
@@ -277,9 +318,11 @@ class _QuranReaderScreenState extends State<QuranReaderScreen> {
                                     alignment: Alignment.center,
                                     child: Text(labels[i],
                                         textAlign: TextAlign.center,
-                                        style: NoorType.secondary.copyWith(color: on
-                                                ? Colors.white
-                                                : NoorColors.ink)),
+                                        style: NoorType.secondary.copyWith(
+                                            color: NoorTheme.foreground(context,
+                                                light: on
+                                                    ? Colors.white
+                                                    : NoorColors.ink))),
                                   ),
                                 ),
                               ),
@@ -294,7 +337,7 @@ class _QuranReaderScreenState extends State<QuranReaderScreen> {
                     button: true,
                     label: 'Text Size',
                     child: Material(
-                      color: Colors.white,
+                      color: NoorTheme.surface(context, light: Colors.white),
                       borderRadius: BorderRadius.circular(NoorRadius.chip),
                       child: InkWell(
                         onTap: () => setState(() => _showSize = !_showSize),
@@ -305,15 +348,13 @@ class _QuranReaderScreenState extends State<QuranReaderScreen> {
                           decoration: BoxDecoration(
                               borderRadius:
                                   BorderRadius.circular(NoorRadius.chip),
-                              border: Border.all(color: NoorColors.hairline)),
+                              border: Border.all(color: NoorTheme.border(context))),
                           child: const Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(Icons.text_fields,
-                                    size: 17, color: NoorColors.emeraldDark),
+                                Icon(Icons.text_fields, size: 17, color: null),
                                 SizedBox(width: 6),
-                                Text('Text Size',
-                                    style: NoorType.secondary),
+                                Text('Text Size', style: NoorType.secondary),
                               ]),
                         ),
                       ),
@@ -321,15 +362,97 @@ class _QuranReaderScreenState extends State<QuranReaderScreen> {
                   ),
                 ]),
                 if (_showSize)
-                  Slider(
-                    value: _textSize,
-                    min: 16,
-                    max: 28,
-                    activeColor: NoorColors.emerald,
-                    onChanged: (v) => setState(() => _textSize = v),
+                  Semantics(
+                    label: 'Quran text size',
+                    child: Slider(
+                      value: _textSize,
+                      min: 16,
+                      max: 28,
+                      activeColor: NoorTheme.accent(context),
+                      label: '${_textSize.round()}',
+                      semanticFormatterCallback: (v) =>
+                          'Font size ${v.round()}',
+                      onChanged: (v) => setState(() => _textSize = v),
+                    ),
                   ),
+                NoorCard(
+                    key: const ValueKey('reader-quick-tools'),
+                    padding: const EdgeInsets.all(14),
+                    child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Wrap(
+                              alignment: WrapAlignment.spaceBetween,
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              children: [
+                                const Text('Quick Tools',
+                                    style: NoorType.cardTitle),
+                                Text('Ayah $_ayah', style: NoorType.meta)
+                              ]),
+                          const SizedBox(height: 12),
+                          LayoutBuilder(builder: (context, constraints) {
+                            final scale =
+                                MediaQuery.textScalerOf(context).scale(1);
+                            final columns = scale > 1.4
+                                ? 2
+                                : constraints.maxWidth >= 280
+                                    ? 5
+                                    : 3;
+                            final width =
+                                (constraints.maxWidth - (columns - 1) * 8) /
+                                    columns;
+                            final tools = [
+                              _tool(Icons.volume_up_outlined, 'Listen',
+                                  onTap: () => Navigator.of(context).push(
+                                      MaterialPageRoute(
+                                          builder: (_) =>
+                                              QuranAudioPlayerScreen(
+                                                  surah: widget.surah,
+                                                  initialAyah: _ayah)))),
+                              _tool(
+                                  _bookmarked
+                                      ? Icons.bookmark
+                                      : Icons.bookmark_border,
+                                  _bookmarked ? 'Saved' : 'Save',
+                                  onTap: _toggleBookmarkCurrentAyah),
+                              _tool(Icons.ios_share_outlined, 'Share ayah',
+                                  onTap: _shareCurrent),
+                              _tool(Icons.copy_outlined, 'Copy',
+                                  onTap: _copyCurrent),
+                              _tool(Icons.menu_book_outlined, '16-line',
+                                  onTap: _openMushaf),
+                            ];
+                            return Wrap(spacing: 8, runSpacing: 8, children: [
+                              for (final tool in tools)
+                                SizedBox(
+                                    width: width,
+                                    height: 58 + 30 * scale,
+                                    child: tool)
+                            ]);
+                          }),
+                        ])),
+                const SizedBox(height: 16),
                 // Full surah — every ayah as its own card, scrollable.
                 // (Was single-ayah with prev/next; user asked for whole surah.)
+                if (_isLive && widget.surah != 1 && widget.surah != 9) ...[
+                  NoorCard(
+                      child: Column(children: [
+                    Text(
+                        'بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ',
+                        textDirection: TextDirection.rtl,
+                        textAlign: TextAlign.center,
+                        style: NoorType.arabic(
+                            size: (_textSize + 2).clamp(18, 32).toDouble(),
+                            color: NoorTheme.accent(context))),
+                    const SizedBox(height: 6),
+                    Text(
+                        'In the name of Allah, the Entirely Merciful, the Especially Merciful.',
+                        textAlign: TextAlign.center,
+                        style: NoorType.meta
+                            .copyWith(color: NoorTheme.muted(context))),
+                  ])),
+                  const SizedBox(height: 12),
+                ],
                 for (var a = 1; a <= _ayahCount; a++) ...[
                   NoorCard(
                     child: Column(children: [
@@ -341,37 +464,39 @@ class _QuranReaderScreenState extends State<QuranReaderScreen> {
                       // Live Arabic from AlQuran Cloud when it lands;
                       // brief design excerpt as the offline fallback.
                       Text(
-                        _liveTextFor(QuranService.editionArabic, a) ??
+                        _displayArabic(a) ??
                             'Ayah text loads from the verified source.',
-                        textDirection:
-                            _liveTextFor(QuranService.editionArabic, a) == null
-                                ? TextDirection.ltr
-                                : TextDirection.rtl,
+                        textDirection: _displayArabic(a) == null
+                            ? TextDirection.ltr
+                            : TextDirection.rtl,
                         textAlign: TextAlign.center,
-                        style: _liveTextFor(QuranService.editionArabic, a) == null
+                        style: _displayArabic(a) == null
                             ? NoorType.body
                             : NoorType.arabic(
                                 size: (_textSize + 2).clamp(18, 34).toDouble()),
                       ),
                       const SizedBox(height: 10),
-                      const Icon(Icons.auto_awesome,
-                          size: 16, color: NoorColors.goldSoft),
+                      ExcludeSemantics(
+                          child: Icon(Icons.auto_awesome,
+                              size: 17, color: NoorTheme.accent(context))),
                       const SizedBox(height: 12),
-                      if (_mode != 2) ...[
+                      if (_mode == 1) ...[
                         Text(
                           _liveTextFor(QuranService.editionEnglish, a) ??
                               'Translation loads with the Ayah text.',
                           textAlign: TextAlign.center,
                           style: NoorType.body.copyWith(
-                              fontSize: (_textSize - 2).clamp(13, 20).toDouble(),
+                              fontSize:
+                                  (_textSize - 2).clamp(13, 20).toDouble(),
                               height: 1.55),
                         ),
                         const SizedBox(height: 8),
                         Text('— ${SampleData.readerSourceEn}',
-                            style: NoorType.meta.copyWith(color: NoorColors.emerald)),
+                            style: NoorType.meta.copyWith(
+                                color: NoorTheme.accent(context))),
                         const SizedBox(height: 14),
                       ],
-                      if (_mode != 1) ...[
+                      if (_mode == 2) ...[
                         Text(
                           _liveTextFor(QuranService.editionUrdu, a) ??
                               'Translation loads with the Ayah text.',
@@ -380,72 +505,30 @@ class _QuranReaderScreenState extends State<QuranReaderScreen> {
                                   ? TextDirection.ltr
                                   : TextDirection.rtl,
                           textAlign: TextAlign.center,
-                          style: _liveTextFor(QuranService.editionUrdu, a) == null
+                          style: _liveTextFor(QuranService.editionUrdu, a) ==
+                                  null
                               ? NoorType.body
                               : NoorType.urdu(
-                                  size: (_textSize - 1).clamp(14, 22).toDouble()),
+                                  size:
+                                      (_textSize - 1).clamp(14, 22).toDouble()),
                         ),
                         const SizedBox(height: 8),
                         Text('— ${SampleData.readerSourceUr}',
-                            style: NoorType.meta.copyWith(color: NoorColors.emerald)),
+                            style: NoorType.meta.copyWith(
+                                color: NoorTheme.accent(context))),
                       ],
                     ]),
                   ),
                   const SizedBox(height: 12),
                 ],
-                // Quick Tools — Tafsir / Word by Word / Listen / Share / Copy.
-                NoorCard(
-                  child: Column(children: [
-                    Row(children: [
-                      const Expanded(
-                          child: Text('Quick Tools',
-                              style: NoorType.cardTitle)),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                            borderRadius:
-                                BorderRadius.circular(NoorRadius.chip),
-                            border: Border.all(color: NoorColors.hairline)),
-                        child: const Text('Customize',
-                            style: NoorType.meta),
-                      ),
-                    ]),
-                    const SizedBox(height: 16),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: [
-                        _tool(Icons.menu_book, 'Tafsir',
-                            onTap: () => _showSourceState('Tafsir')),
-                        _tool(Icons.search, 'Word by\nWord',
-                            onTap: () => _showSourceState('Word by Word')),
-                        _tool(Icons.volume_up_outlined, 'Listen', onTap: () {
-                          final surah = widget.surah;
-                          Navigator.of(context).push(MaterialPageRoute(
-                              builder: (_) =>
-                                  QuranAudioPlayerScreen(surah: surah)));
-                        }),
-                        _tool(Icons.share_outlined, 'Share Ayah',
-                            onTap: _copyCurrent),
-                        _tool(Icons.copy_outlined, 'Copy', onTap: _copyCurrent),
-                      ],
-                    ),
-                  ]),
-                ),
-                const SizedBox(height: 16),
                 // Tafsir preview — one-line app copy, not a
                 // reproduction of any tafsir text.
                 NoorCard(
                   child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Row(children: [
-                          Expanded(
-                              child: Text('Tafsir (Ibn Kathir)',
-                                  style: NoorType.secondary)),
-                          Icon(Icons.chevron_right,
-                              size: 20, color: NoorColors.muted),
-                        ]),
+                        const Text('Tafsir (Ibn Kathir)',
+                            style: NoorType.secondary),
                         const SizedBox(height: 8),
                         Text(
                           'Tafsir opens when the verified source is '
@@ -453,8 +536,6 @@ class _QuranReaderScreenState extends State<QuranReaderScreen> {
                           style: NoorType.secondary.copyWith(height: 1.55),
                         ),
                         const SizedBox(height: 10),
-                        Text('Read More',
-                            style: NoorType.secondary.copyWith(color: NoorColors.emerald)),
                       ]),
                 ),
                 const SizedBox(height: 16),
@@ -472,8 +553,8 @@ class _QuranReaderScreenState extends State<QuranReaderScreen> {
                   Expanded(
                     child: _surahNavButton(
                       'Next Surah ›',
-                      () => _goSurah(
-                          QuranService.nextSurahNumber(widget.surah)),
+                      () =>
+                          _goSurah(QuranService.nextSurahNumber(widget.surah)),
                     ),
                   ),
                 ]),
@@ -486,7 +567,7 @@ class _QuranReaderScreenState extends State<QuranReaderScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                           Text('Next Ayah',
-                              style: NoorType.secondary.copyWith(color: NoorColors.muted)),
+                              style: NoorType.secondary.copyWith(color: null)),
                           const SizedBox(height: 6),
                           Text(
                               _ayah >= _ayahCount
@@ -494,21 +575,21 @@ class _QuranReaderScreenState extends State<QuranReaderScreen> {
                                   : '${_ayah + 1}  •  …',
                               style: NoorType.body),
                         ])),
-                    const Icon(Icons.chevron_right, color: NoorColors.muted),
+                    const Icon(Icons.chevron_right, color: null),
                   ]),
                 ),
                 if (_isLive) ...[
                   const SizedBox(height: 10),
-                  Text('Live text • AlQuran Cloud',
+                  Text('Offline text • AlQuran Cloud editions',
                       textAlign: TextAlign.center,
-                      style: NoorType.meta.copyWith(color: NoorColors.muted)),
+                      style: NoorType.meta.copyWith(color: null)),
                 ],
               ],
             ),
           ),
           // Sticky bottom audio mini player (Page 03).
           Container(
-            color: Colors.white,
+            color: NoorTheme.surface(context, light: Colors.white),
             padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
             child: Row(children: [
               const CircleAvatar(
@@ -522,8 +603,7 @@ class _QuranReaderScreenState extends State<QuranReaderScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Text('Audio Player',
-                          style: NoorType.secondary),
+                      const Text('Audio Player', style: NoorType.secondary),
                       Text('$_surahTitle • Ayah $_ayah',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -539,17 +619,19 @@ class _QuranReaderScreenState extends State<QuranReaderScreen> {
                   tooltip: 'Previous Ayah',
                   onPressed: () => _goAyah(_ayah - 1)),
               Container(
-                width: 44,
-                height: 44,
+                width: 48,
+                height: 48,
                 decoration: const BoxDecoration(
                     color: NoorColors.emeraldDark, shape: BoxShape.circle),
                 child: IconButton(
+                  tooltip: 'Play Surah audio',
                   icon: const Icon(Icons.play_arrow,
                       color: Colors.white, size: 22),
                   onPressed: () {
                     final surah = widget.surah;
                     Navigator.of(context).push(MaterialPageRoute(
-                        builder: (_) => QuranAudioPlayerScreen(surah: surah)));
+                        builder: (_) => QuranAudioPlayerScreen(
+                            surah: surah, initialAyah: _ayah)));
                   },
                 ),
               ),
@@ -564,25 +646,46 @@ class _QuranReaderScreenState extends State<QuranReaderScreen> {
     );
   }
 
-  void _showSourceState(String feature) {
-    showModalBottomSheet<void>(
-      context: context,
-      builder: (_) => Padding(
-        padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
-        child: Text('$feature opens when the verified source is connected.',
-            style: NoorType.body),
-      ),
-    );
+  String get _selectedReference => 'Quran ${widget.surah}:$_ayah';
+  String get _selectedTranslation =>
+      _liveText(_mode == 2
+          ? QuranService.editionUrdu
+          : QuranService.editionEnglish) ??
+      '';
+  Future<void> _openMushaf() async {
+    final page = await OfflineQuran.pageForVerse(widget.surah, _ayah);
+    if (mounted) {
+      Navigator.of(context).push(MaterialPageRoute(
+          builder: (_) => HifzMushafScreen(initialPage: page)));
+    }
+  }
+
+  void _shareCurrent() {
+    if (!_isLive) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Verse text is loading. Please try again.')));
+      return;
+    }
+    final item = ShareContentItem(
+        id: 'quran:${widget.surah}:$_ayah',
+        type: ShareContentType.ayah,
+        title: '$_surahTitle · Ayah $_ayah',
+        text: _selectedTranslation,
+        arabicText: _liveText(QuranService.editionArabic),
+        reference: _selectedReference,
+        tags: const ['Quran']);
+    Navigator.of(context).push(MaterialPageRoute(
+        builder: (_) => ShareCardStudioScreen(initialItem: item)));
   }
 
   Future<void> _copyCurrent() async {
-    final text = _liveText(QuranService.editionEnglish) ??
-        _liveText(QuranService.editionArabic) ??
-        '$_surahTitle · Ayah $_ayah';
-    await Clipboard.setData(ClipboardData(text: text));
+    if (!_isLive) return;
+    await Clipboard.setData(ClipboardData(
+        text:
+            '${_liveText(QuranService.editionArabic)}\n\n$_selectedTranslation\n$_selectedReference'));
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Copied — paste anywhere to share')));
+          const SnackBar(content: Text('Verse and reference copied')));
     }
   }
 
@@ -591,7 +694,7 @@ class _QuranReaderScreenState extends State<QuranReaderScreen> {
         button: true,
         label: label,
         child: Material(
-          color: Colors.white,
+          color: NoorTheme.surface(context, light: Colors.white),
           borderRadius: BorderRadius.circular(12),
           child: InkWell(
             onTap: onTap,
@@ -601,35 +704,43 @@ class _QuranReaderScreenState extends State<QuranReaderScreen> {
               alignment: Alignment.center,
               decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: NoorColors.hairline)),
-              child: Text(label,
-                  style: NoorType.secondary
-                      .copyWith(color: NoorColors.emeraldDark)),
+                  border: Border.all(color: NoorTheme.border(context))),
+              child:
+                  Text(label, style: NoorType.secondary.copyWith(color: null)),
             ),
           ),
         ),
       );
 
-  Widget _tool(IconData icon, String label, {VoidCallback? onTap}) => Semantics(
-        button: true,
-        label: label.replaceAll('\n', ' '),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(14),
-          child: Column(children: [
-            Container(
-              width: 46,
-              height: 46,
-              decoration: BoxDecoration(
-                  color: NoorColors.emeraldSoft,
-                  borderRadius: BorderRadius.circular(14)),
-              child: Icon(icon, color: NoorColors.emeraldDark, size: 21),
-            ),
-            const SizedBox(height: 7),
-            Text(label,
-                textAlign: TextAlign.center,
-                style: NoorType.meta.copyWith(height: 1.2)),
-          ]),
-        ),
-      );
+  Widget _tool(IconData icon, String label, {required VoidCallback onTap}) =>
+      Semantics(
+          button: true,
+          label: label,
+          child: Material(
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? NoorColors.darkSurface
+                  : NoorColors.emeraldSoft.withValues(alpha: .6),
+              borderRadius: BorderRadius.circular(14),
+              clipBehavior: Clip.antiAlias,
+              child: InkWell(
+                  onTap: onTap,
+                  child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 3, vertical: 12),
+                      child: Column(
+                          mainAxisAlignment: MainAxisAlignment.start,
+                          children: [
+                            Icon(icon,
+                                size: 23,
+                                color: Theme.of(context).colorScheme.primary),
+                            const SizedBox(height: 9),
+                            Expanded(
+                                child: Align(
+                                    alignment: Alignment.topCenter,
+                                    child: Text(label,
+                                        maxLines: 2,
+                                        textAlign: TextAlign.center,
+                                        style: NoorType.meta
+                                            .copyWith(height: 1.2)))),
+                          ])))));
 }

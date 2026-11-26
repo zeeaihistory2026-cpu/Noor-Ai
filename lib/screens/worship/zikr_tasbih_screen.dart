@@ -1,9 +1,9 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import '../../data/firebase_rest_service.dart';
 import '../../data/noor_store.dart';
+import '../../data/noor_controller.dart';
 import '../../data/user_data_service.dart';
 import '../../theme/noor_theme.dart';
 import '../../widgets/noor_components.dart';
@@ -30,24 +30,24 @@ class DhikrModel {
   });
 
   Map<String, dynamic> toMap() => {
-    'id': id,
-    'arabic': arabic,
-    'transliteration': transliteration,
-    'meaning': meaning,
-    'defaultTarget': defaultTarget,
-    'reference': reference,
-    'category': category,
-  };
+        'id': id,
+        'arabic': arabic,
+        'transliteration': transliteration,
+        'meaning': meaning,
+        'defaultTarget': defaultTarget,
+        'reference': reference,
+        'category': category,
+      };
 
   factory DhikrModel.fromMap(Map<String, dynamic> map) => DhikrModel(
-    id: map['id']?.toString() ?? '',
-    arabic: map['arabic']?.toString() ?? '',
-    transliteration: map['transliteration']?.toString() ?? '',
-    meaning: map['meaning']?.toString() ?? '',
-    defaultTarget: (map['defaultTarget'] as num?)?.toInt() ?? 33,
-    reference: map['reference']?.toString(),
-    category: map['category']?.toString() ?? 'custom',
-  );
+        id: map['id']?.toString() ?? '',
+        arabic: map['arabic']?.toString() ?? '',
+        transliteration: map['transliteration']?.toString() ?? '',
+        meaning: map['meaning']?.toString() ?? '',
+        defaultTarget: (map['defaultTarget'] as num?)?.toInt() ?? 33,
+        reference: map['reference']?.toString(),
+        category: map['category']?.toString() ?? 'custom',
+      );
 }
 
 /// Page 07 — Zikr & Tasbih Screen.
@@ -77,10 +77,11 @@ class ZikrTasbihScreen extends StatefulWidget {
 class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
     with SingleTickerProviderStateMixin {
   int _tab = 0; // 0: Tasbih, 1: Daily Adhkar, 2: My Zikr
-  int _count = 27;
+  int _count = 0;
   int _target = 33;
-  int _totalToday = 164;
-  final int _sessionsToday = 3;
+  int _totalToday = 0;
+  int _sessionsToday = 0;
+  int _localStreak = 0;
   bool _hapticEnabled = true;
   String _firstName = '';
 
@@ -165,7 +166,8 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
       id: 'ayatul_kursi',
       arabic: 'اللَّهُ لَا إِلَٰهَ إِلَّا هُوَ الْحَيُّ الْقَيُّومُ...',
       transliteration: 'Ayat al-Kursi (2:255)',
-      meaning: 'Allah! There is no deity except Him, the Ever-Living, the Sustainer of all.',
+      meaning:
+          'Allah! There is no deity except Him, the Ever-Living, the Sustainer of all.',
       defaultTarget: 1,
       reference: 'Morning & Evening Protection',
       category: 'morning',
@@ -174,7 +176,8 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
       id: 'ikhlas_falaq_nas',
       arabic: 'قُلْ هُوَ اللَّهُ أَحَدٌ • الفلق • الناس',
       transliteration: 'Al-Ikhlas, Al-Falaq, An-Nas (3x)',
-      meaning: 'Recite each Surah 3 times in morning and evening for sufficient protection.',
+      meaning:
+          'Recite each Surah 3 times in morning and evening for sufficient protection.',
       defaultTarget: 3,
       reference: 'Sunan Abu Dawud 5082',
       category: 'morning',
@@ -183,7 +186,8 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
       id: 'asbahna',
       arabic: 'أَصْبَحْنَا وَأَصْبَحَ الْمُلْكُ لِلَّهِ، وَالْحَمْدُ لِلَّهِ',
       transliteration: 'Asbahna wa asbahal mulku lillah',
-      meaning: 'We have entered a new day and with it all dominion belongs to Allah.',
+      meaning:
+          'We have entered a new day and with it all dominion belongs to Allah.',
       defaultTarget: 1,
       reference: 'Sahih Muslim 2723',
       category: 'morning',
@@ -192,7 +196,8 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
       id: 'sayyid_istighfar',
       arabic: 'اللَّهُمَّ أَنْتَ رَبِّي لَا إِلَٰهَ إِلَّا أَنْتَ...',
       transliteration: 'Sayyid al-Istighfar',
-      meaning: 'Master Supplication for Forgiveness — guaranteed Jannah if recited with faith.',
+      meaning:
+          'Master Supplication for Forgiveness — guaranteed Jannah if recited with faith.',
       defaultTarget: 1,
       reference: 'Sahih al-Bukhari 6306',
       category: 'morning',
@@ -201,7 +206,8 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
       id: 'bismillahillazi',
       arabic: 'بِسْمِ اللَّهِ الَّذِي لَا يَضُرُّ مَعَ اسْمِهِ شَيْءٌ',
       transliteration: 'Bismillahil-lazi la yadurru...',
-      meaning: 'In the Name of Allah, with Whose Name nothing can cause harm in earth or heaven.',
+      meaning:
+          'In the Name of Allah, with Whose Name nothing can cause harm in earth or heaven.',
       defaultTarget: 3,
       reference: 'Sunan Abu Dawud 5088',
       category: 'morning',
@@ -210,7 +216,8 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
       id: 'raditu_billah',
       arabic: 'رَضِيتُ بِاللَّهِ رَبًّا، وَبِالْإِسْلَامِ دِينًا',
       transliteration: 'Raditu billahi Rabba...',
-      meaning: 'I am pleased with Allah as my Lord, Islam as my religion, and Muhammad as my Prophet.',
+      meaning:
+          'I am pleased with Allah as my Lord, Islam as my religion, and Muhammad as my Prophet.',
       defaultTarget: 3,
       reference: 'Sunan Abu Dawud 5072',
       category: 'morning',
@@ -223,16 +230,19 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
       id: 'custom_hasbunallah',
       arabic: 'حَسْبُنَا اللَّهُ وَنِعْمَ الْوَكِيلُ',
       transliteration: "Hasbunallahu wa ni'mal wakeel",
-      meaning: 'Allah is sufficient for us, and He is the best disposer of affairs.',
+      meaning:
+          'Allah is sufficient for us, and He is the best disposer of affairs.',
       defaultTarget: 100,
       reference: 'Surah Ali \'Imran 3:173',
       category: 'custom',
     ),
     const DhikrModel(
       id: 'custom_yunus',
-      arabic: 'لَا إِلَٰهَ إِلَّا أَنْتَ سُبْحَانَكَ إِنِّي كُنْتُ مِنَ الظَّالِمِينَ',
+      arabic:
+          'لَا إِلَٰهَ إِلَّا أَنْتَ سُبْحَانَكَ إِنِّي كُنْتُ مِنَ الظَّالِمِينَ',
       transliteration: 'Dua of Prophet Yunus (A.S)',
-      meaning: 'There is no deity except You; exalted are You. Indeed, I have been of the wrongdoers.',
+      meaning:
+          'There is no deity except You; exalted are You. Indeed, I have been of the wrongdoers.',
       defaultTarget: 40,
       reference: 'Surah Al-Anbiya 21:87',
       category: 'custom',
@@ -240,21 +250,7 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
   ];
 
   // Track progress for other dhikrs
-  final Map<String, int> _countsMap = {
-    'subhanallah': 27,
-    'alhamdulillah': 33,
-    'allahuakbar': 21,
-    'lailahaillallah': 0,
-    'astaghfirullah': 45,
-    'ayatul_kursi': 1,
-    'ikhlas_falaq_nas': 2,
-    'asbahna': 1,
-    'sayyid_istighfar': 0,
-    'bismillahillazi': 3,
-    'raditu_billah': 3,
-    'custom_hasbunallah': 50,
-    'custom_yunus': 15,
-  };
+  final Map<String, int> _countsMap = {};
 
   @override
   void initState() {
@@ -275,11 +271,11 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
       );
       _activeDhikr = match;
       _target = _activeDhikr.defaultTarget;
-      _count = _countsMap[_activeDhikr.id] ?? 27;
+      _count = _countsMap[_activeDhikr.id] ?? 0;
     } else {
       _activeDhikr = _tasbihDhikrs[0];
       _target = _activeDhikr.defaultTarget;
-      _count = _countsMap[_activeDhikr.id] ?? 27;
+      _count = _countsMap[_activeDhikr.id] ?? 0;
     }
 
     _bounceController = AnimationController(
@@ -302,6 +298,8 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
     final savedCounts = await NoorStore.getTasbihCounts();
     final customList = await NoorStore.getCustomDhikrs();
     final total = await NoorStore.getTasbihTotalToday(_today);
+    final streak = await NoorStore.activityStreak('Dhikr');
+    final sessions = await NoorStore.getTasbihSessions(_today);
 
     if (mounted) {
       setState(() {
@@ -314,9 +312,9 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
             _customDhikrs.add(customDhikr);
           }
         }
-        if (total > 0) {
-          _totalToday = total;
-        }
+        _localStreak = streak;
+        _totalToday = total;
+        _sessionsToday = sessions;
         if (_countsMap.containsKey(_activeDhikr.id)) {
           _count = _countsMap[_activeDhikr.id]!;
         }
@@ -364,12 +362,8 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
     }
 
     setState(() {
-      if (_count < _target) {
-        _count++;
-      } else {
-        // Lap completion: either cap or loop based on preference
-        _count = _target;
-      }
+      if (_count >= _target) _count = 0;
+      _count++;
       _totalToday++;
       _countsMap[_activeDhikr.id] = _count;
     });
@@ -378,22 +372,10 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
     NoorStore.setTasbihTotalToday(_today, _totalToday);
     UserDataService.instance.saveTasbihTotal(_today, _totalToday);
 
-    if (mounted) {
-      SemanticsService.sendAnnouncement(
-        View.of(context),
-        '$_count',
-        Directionality.of(context),
-      );
-    }
 
     if (_count == _target) {
-      if (mounted) {
-        SemanticsService.sendAnnouncement(
-          View.of(context),
-          'Target of $_target completed for ${_activeDhikr.transliteration}. MashaAllah.',
-          Directionality.of(context),
-        );
-      }
+      _sessionsToday++;
+      NoorStore.setTasbihSessions(_today, _sessionsToday);
       _showCompletionNotice();
     }
   }
@@ -402,6 +384,10 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
     if (_count > 0) {
       if (_hapticEnabled) HapticFeedback.selectionClick();
       setState(() {
+        if (_count == _target && _sessionsToday > 0) {
+          _sessionsToday--;
+          NoorStore.setTasbihSessions(_today, _sessionsToday);
+        }
         _count--;
         if (_totalToday > 0) _totalToday--;
         _countsMap[_activeDhikr.id] = _count;
@@ -409,13 +395,6 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
       NoorStore.setTasbihCount(_activeDhikr.id, _count);
       NoorStore.setTasbihTotalToday(_today, _totalToday);
       UserDataService.instance.saveTasbihTotal(_today, _totalToday);
-      if (mounted) {
-        SemanticsService.sendAnnouncement(
-          View.of(context),
-          'Undone to $_count',
-          Directionality.of(context),
-        );
-      }
     }
   }
 
@@ -429,26 +408,38 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
         title: Row(
           children: [
-            Icon(Icons.refresh, color: isDark ? NoorColors.darkGold : NoorColors.emeraldDark),
+            Icon(Icons.refresh,
+                color: isDark ? NoorColors.darkGold : NoorColors.emeraldDark),
             const SizedBox(width: 8),
-            Text('Reset Counter?', style: NoorType.section.copyWith(color: isDark ? NoorColors.darkTextPrimary : NoorColors.emeraldDark)),
+            Text('Reset Counter?',
+                style: NoorType.section.copyWith(
+                    color: isDark
+                        ? NoorColors.darkTextPrimary
+                        : NoorColors.emeraldDark)),
           ],
         ),
         content: Text(
           'Are you sure you want to reset your count of $_count for "${_activeDhikr.transliteration}" back to 0?',
-          style: NoorType.body.copyWith(color: isDark ? NoorColors.darkTextSecondary : NoorColors.mutedDark),
+          style: NoorType.body.copyWith(
+              color:
+                  isDark ? NoorColors.darkTextSecondary : NoorColors.mutedDark),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: Text('Cancel', style: TextStyle(color: isDark ? NoorColors.darkTextSecondary : NoorColors.mutedDark)),
+            child: Text('Cancel',
+                style: TextStyle(
+                    color: isDark
+                        ? NoorColors.darkTextSecondary
+                        : NoorColors.mutedDark)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: NoorColors.error,
               foregroundColor: Colors.white,
               elevation: 0,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
             ),
             onPressed: () {
               Navigator.of(ctx).pop();
@@ -468,13 +459,6 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
       _countsMap[_activeDhikr.id] = 0;
     });
     NoorStore.setTasbihCount(_activeDhikr.id, 0);
-    if (mounted) {
-      SemanticsService.sendAnnouncement(
-        View.of(context),
-        'Counter reset to 0',
-        Directionality.of(context),
-      );
-    }
   }
 
   void _selectDhikr(DhikrModel dhikr) {
@@ -507,7 +491,8 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
             Expanded(
               child: Text(
                 'Target of $_target reached! MashaAllah.',
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                style: const TextStyle(
+                    color: Colors.white, fontWeight: FontWeight.w600),
               ),
             ),
             TextButton(
@@ -515,7 +500,8 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
                 ScaffoldMessenger.of(context).hideCurrentSnackBar();
                 _reset();
               },
-              child: const Text('Reset', style: TextStyle(color: NoorColors.gold)),
+              child:
+                  const Text('Reset', style: TextStyle(color: NoorColors.gold)),
             ),
           ],
         ),
@@ -528,28 +514,31 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: Colors.white,
+        backgroundColor: NoorTheme.surface(context),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Row(
           children: [
-            const Icon(Icons.tune, color: NoorColors.emeraldDark),
+            const Icon(Icons.tune, color: null),
             const SizedBox(width: 10),
-            Text('Custom Target', style: NoorType.section.copyWith(color: NoorColors.emeraldDark)),
+            Text('Custom Target',
+                style: NoorType.section.copyWith(color: null)),
           ],
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Set your preferred remembrance count:', style: NoorType.body.copyWith(color: NoorColors.mutedDark)),
+            Text('Set your preferred remembrance count:',
+                style: NoorType.body.copyWith(color: null)),
             const SizedBox(height: 14),
             TextField(
               controller: controller,
               keyboardType: TextInputType.number,
               autofocus: true,
-              style: NoorType.display.copyWith(fontSize: 26, color: NoorColors.emeraldDark),
+              style: NoorType.display.copyWith(fontSize: 26, color: null),
               decoration: InputDecoration(
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: const BorderSide(color: NoorColors.emeraldMid),
@@ -558,7 +547,7 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
               ),
             ),
             const SizedBox(height: 16),
-            Text('Quick Presets', style: NoorType.meta.copyWith(color: NoorColors.muted)),
+            Text('Quick Presets', style: NoorType.meta.copyWith(color: null)),
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
@@ -566,8 +555,9 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
               children: [50, 70, 500, 1000].map((preset) {
                 return ActionChip(
                   label: Text('$preset'),
-                  backgroundColor: NoorColors.emeraldSoft,
-                  labelStyle: const TextStyle(color: NoorColors.emeraldDark, fontWeight: FontWeight.w700),
+                  backgroundColor: NoorTheme.softSurface(context),
+                  labelStyle:
+                      const TextStyle(color: null, fontWeight: FontWeight.w700),
                   onPressed: () {
                     controller.text = '$preset';
                   },
@@ -579,13 +569,14 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Cancel', style: TextStyle(color: NoorColors.mutedDark)),
+            child: const Text('Cancel', style: TextStyle(color: null)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: NoorColors.emeraldDark,
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
             ),
             onPressed: () {
               final parsed = int.tryParse(controller.text.trim());
@@ -604,7 +595,7 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
   void _openSettingsSheet() {
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.white,
+      backgroundColor: NoorTheme.surface(context),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -620,36 +611,43 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
                   width: 44,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: NoorColors.hairline,
+                    color: NoorTheme.border(context),
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
               ),
               const SizedBox(height: 16),
-              Text('Tasbih Preferences', style: NoorType.section.copyWith(color: NoorColors.emeraldDark)),
+              Text('Tasbih Preferences',
+                  style: NoorType.section.copyWith(color: null)),
               const SizedBox(height: 16),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
                 activeThumbColor: NoorColors.emeraldDark,
-                title: const Text('Haptic Vibration Feedback', style: NoorType.body),
-                subtitle: Text('Subtle buzz on each bead tap and completion', style: NoorType.meta.copyWith(color: NoorColors.muted)),
+                title: const Text('Haptic Vibration Feedback',
+                    style: NoorType.body),
+                subtitle: Text('Subtle buzz on each bead tap and completion',
+                    style: NoorType.meta.copyWith(color: null)),
                 value: _hapticEnabled,
                 onChanged: (val) {
                   setSheetState(() => _hapticEnabled = val);
                   setState(() => _hapticEnabled = val);
                 },
               ),
-              const Divider(color: NoorColors.hairlineSoft),
+              Divider(color: NoorTheme.border(context)),
               ListTile(
                 contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.refresh, color: NoorColors.emeraldDark),
-                title: const Text('Reset Counter to Zero', style: NoorType.body),
+                leading: const Icon(Icons.refresh, color: null),
+                title:
+                    const Text('Reset Counter to Zero', style: NoorType.body),
                 trailing: TextButton(
                   onPressed: () {
                     Navigator.of(ctx).pop();
                     _confirmReset();
                   },
-                  child: const Text('Reset Now', style: TextStyle(color: NoorColors.error, fontWeight: FontWeight.w700)),
+                  child: const Text('Reset Now',
+                      style: TextStyle(
+                          color: NoorColors.error,
+                          fontWeight: FontWeight.w700)),
                 ),
               ),
               const SizedBox(height: 10),
@@ -663,7 +661,7 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
   void _openHistorySheet() {
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.white,
+      backgroundColor: NoorTheme.surface(context),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -678,7 +676,7 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
                 width: 44,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: NoorColors.hairline,
+                  color: NoorTheme.border(context),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -686,16 +684,18 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
             const SizedBox(height: 16),
             Row(
               children: [
-                const Icon(Icons.history, color: NoorColors.emeraldDark),
+                const Icon(Icons.history, color: null),
                 const SizedBox(width: 8),
-                Text('Today\'s Remembrance Log', style: NoorType.section.copyWith(color: NoorColors.emeraldDark)),
+                Text('Today\'s Remembrance Log',
+                    style: NoorType.section.copyWith(color: null)),
               ],
             ),
             const SizedBox(height: 14),
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: NoorColors.emeraldSoft,
+                color:
+                    NoorTheme.surface(context, light: NoorColors.emeraldSoft),
                 borderRadius: BorderRadius.circular(14),
               ),
               child: Row(
@@ -703,12 +703,14 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
                 children: [
                   _statCol('$_totalToday', 'Total Zikr'),
                   _statCol('$_sessionsToday', 'Sessions'),
-                  _statCol('8 Days', 'Current Streak'),
+                  _statCol(
+                      '${NoorScope.of(context)?.streaks['Dhikr'] ?? _localStreak} Days',
+                      'Current Streak'),
                 ],
               ),
             ),
             const SizedBox(height: 14),
-            Text('Active Adhkar', style: NoorType.meta.copyWith(color: NoorColors.muted)),
+            Text('Active Adhkar', style: NoorType.meta.copyWith(color: null)),
             const SizedBox(height: 8),
             ..._tasbihDhikrs.take(4).map((d) {
               final cnt = _countsMap[d.id] ?? 0;
@@ -716,12 +718,17 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
                 padding: const EdgeInsets.symmetric(vertical: 4),
                 child: Row(
                   children: [
-                    Text(d.arabic, style: NoorType.arabic(size: 18, color: NoorColors.emeraldDark)),
+                    Text(d.arabic,
+                        style: NoorType.arabic(
+                            size: 18,
+                            color: NoorTheme.foreground(context,
+                                light: NoorColors.emeraldDark))),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(d.transliteration, style: NoorType.secondary),
                     ),
-                    Text('$cnt / ${d.defaultTarget}', style: NoorType.meta.copyWith(color: NoorColors.emeraldDark)),
+                    Text('$cnt / ${d.defaultTarget}',
+                        style: NoorType.meta.copyWith(color: null)),
                   ],
                 ),
               );
@@ -735,9 +742,11 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
   Widget _statCol(String value, String label) {
     return Column(
       children: [
-        Text(value, style: NoorType.section.copyWith(color: NoorColors.emeraldDark, fontWeight: FontWeight.w800)),
+        Text(value,
+            style: NoorType.section
+                .copyWith(color: null, fontWeight: FontWeight.w800)),
         const SizedBox(height: 3),
-        Text(label, style: NoorType.meta.copyWith(color: NoorColors.mutedDark)),
+        Text(label, style: NoorType.meta.copyWith(color: null)),
       ],
     );
   }
@@ -751,9 +760,10 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: Colors.white,
+        backgroundColor: NoorTheme.surface(context),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text('Add Custom Zikr', style: NoorType.section.copyWith(color: NoorColors.emeraldDark)),
+        title: Text('Add Custom Zikr',
+            style: NoorType.section.copyWith(color: null)),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -797,7 +807,7 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Cancel', style: TextStyle(color: NoorColors.mutedDark)),
+            child: const Text('Cancel', style: TextStyle(color: null)),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
@@ -809,7 +819,9 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
                 final targetVal = int.tryParse(targetCtrl.text.trim()) ?? 33;
                 final newDhikr = DhikrModel(
                   id: 'custom_${DateTime.now().millisecondsSinceEpoch}',
-                  arabic: arabicCtrl.text.trim().isNotEmpty ? arabicCtrl.text.trim() : 'ذِكْر',
+                  arabic: arabicCtrl.text.trim().isNotEmpty
+                      ? arabicCtrl.text.trim()
+                      : 'ذِكْر',
                   transliteration: transCtrl.text.trim(),
                   meaning: meaningCtrl.text.trim(),
                   defaultTarget: targetVal,
@@ -835,7 +847,7 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
   Widget build(BuildContext context) {
     // Crucial: Must be wrapped in Scaffold to avoid un-themed black canvas & yellow underlines
     return Scaffold(
-      backgroundColor: NoorColors.cream,
+      backgroundColor: NoorTheme.background(context, light: NoorColors.cream),
       body: SafeArea(
         child: Column(
           children: [
@@ -883,7 +895,8 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
                 child: Text(
                   'Zikr & Tasbih',
                   textAlign: TextAlign.center,
-                  style: NoorType.section.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
+                  style: NoorType.section.copyWith(
+                      color: Colors.white, fontWeight: FontWeight.w700),
                 ),
               ),
               IconButton(
@@ -912,7 +925,8 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
           // Zikr Streak Card
           Container(
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.12),
+              color: NoorTheme.surface(context, light: Colors.white)
+                  .withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(NoorRadius.card),
               border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
             ),
@@ -931,56 +945,29 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
                     children: [
                       Text(
                         'Zikr Streak',
-                        style: NoorType.meta.copyWith(color: Colors.white70, fontSize: 11),
+                        style: NoorType.meta
+                            .copyWith(color: Colors.white70, fontSize: 12),
                       ),
                       Text(
-                        '8 Days',
-                        style: NoorType.section.copyWith(color: NoorColors.gold, fontWeight: FontWeight.w800),
+                        '${NoorScope.of(context)?.streaks['Dhikr'] ?? _localStreak} Days',
+                        style: NoorType.section.copyWith(
+                            color: NoorColors.gold,
+                            fontWeight: FontWeight.w800),
                       ),
                       Text(
-                        _firstName.isNotEmpty ? 'Keep going, $_firstName!' : 'Keep going, consistency brings light!',
+                        _firstName.isNotEmpty
+                            ? 'Keep going, $_firstName!'
+                            : 'Keep going, consistency brings light!',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: NoorType.meta.copyWith(color: Colors.white70, fontSize: 11.5),
+                        style: NoorType.meta
+                            .copyWith(color: Colors.white70, fontSize: 12.5),
                       ),
                     ],
                   ),
                 ),
-                Flexible(
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerRight,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: ['M', 'T', 'W', 'T', 'F', 'S', 'S']
-                          .asMap()
-                          .entries
-                          .map((e) => Padding(
-                                padding: const EdgeInsetsDirectional.only(start: 3),
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text(
-                                      e.value,
-                                      textAlign: TextAlign.center,
-                                      style: NoorType.meta.copyWith(
-                                        color: Colors.white70,
-                                        fontSize: 10,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 3),
-                                    Icon(
-                                      e.key < 6 ? Icons.check_circle : Icons.radio_button_unchecked,
-                                      size: 14,
-                                      color: e.key < 6 ? NoorColors.success : Colors.white38,
-                                    ),
-                                  ],
-                                ),
-                              ))
-                          .toList(),
-                    ),
-                  ),
-                ),
+                const Icon(Icons.spa_outlined,
+                    color: NoorColors.gold, size: 34),
               ],
             ),
           ),
@@ -998,7 +985,8 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
         Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            _smallIconButton(Icons.tune, onTap: _openSettingsSheet, tooltip: 'Settings'),
+            _smallIconButton(Icons.tune,
+                onTap: _openSettingsSheet, tooltip: 'Settings'),
             const SizedBox(width: 8),
             Expanded(
               child: Column(
@@ -1007,7 +995,10 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
                     _activeDhikr.arabic,
                     textAlign: TextAlign.center,
                     textDirection: TextDirection.rtl,
-                    style: NoorType.arabic(size: 26, color: NoorColors.emeraldDark),
+                    style: NoorType.arabic(
+                        size: 26,
+                        color: NoorTheme.foreground(context,
+                            light: NoorColors.emeraldDark)),
                   ),
                   const SizedBox(height: 2),
                   Text(
@@ -1015,7 +1006,8 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
                     textAlign: TextAlign.center,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: NoorType.section.copyWith(color: NoorColors.ink, fontWeight: FontWeight.w700),
+                    style: NoorType.section
+                        .copyWith(color: null, fontWeight: FontWeight.w700),
                   ),
                   const SizedBox(height: 2),
                   Text(
@@ -1023,65 +1015,50 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
                     textAlign: TextAlign.center,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: NoorType.secondary.copyWith(color: NoorColors.mutedDark, fontSize: 13),
+                    style:
+                        NoorType.secondary.copyWith(color: null, fontSize: 13),
                   ),
                 ],
               ),
             ),
             const SizedBox(width: 8),
-            _smallIconButton(Icons.refresh, onTap: _confirmReset, tooltip: 'Reset'),
+            _smallIconButton(Icons.refresh,
+                onTap: _confirmReset, tooltip: 'Reset'),
           ],
         ),
 
         const SizedBox(height: 18),
 
         // Tasbih Counter with Outer Beads Ring and Undo / Add Controls
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            // Undo Button
+        Column(children: [
+          _buildTasbihCounterRing(),
+          const SizedBox(height: 16),
+          Row(mainAxisAlignment: MainAxisAlignment.center, children: [
             Semantics(
-              button: true,
-              label: 'Undo previous count. Current count is $_count.',
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
+                button: true,
+                label: 'Undo previous count. Current count is $_count.',
+                child: Column(children: [
                   _roundBtn(Icons.remove, _undo, tooltip: 'Undo (-1)'),
                   const SizedBox(height: 6),
-                  Text('Undo', style: NoorType.meta.copyWith(color: NoorColors.mutedDark)),
-                ],
-              ),
-            ),
-
-            const SizedBox(width: 14),
-
-            // Central Bead Counter
-            _buildTasbihCounterRing(),
-
-            const SizedBox(width: 14),
-
-            // Add Button
+                  const Text('Undo', style: NoorType.meta)
+                ])),
+            const SizedBox(width: 36),
             Semantics(
-              button: true,
-              label: 'Add to count. Current count is $_count of $_target.',
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
+                button: true,
+                label: 'Add to count. Current count is $_count of $_target.',
+                child: Column(children: [
                   _roundBtn(Icons.add, _tap, tooltip: 'Add (+1)'),
                   const SizedBox(height: 6),
-                  Text('Add', style: NoorType.meta.copyWith(color: NoorColors.mutedDark)),
-                ],
-              ),
-            ),
-          ],
-        ),
+                  const Text('Add', style: NoorType.meta)
+                ])),
+          ]),
+        ]),
 
         const SizedBox(height: 12),
         Center(
           child: Text(
             'Tap the circle to count',
-            style: NoorType.meta.copyWith(color: NoorColors.mutedDark),
+            style: NoorType.meta.copyWith(color: null),
           ),
         ),
 
@@ -1113,7 +1090,8 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
                 child: Text(
                   'View All',
                   style: NoorType.secondary.copyWith(
-                    color: NoorColors.emerald,
+                    color: NoorTheme.foreground(context,
+                        light: NoorColors.emerald),
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -1147,9 +1125,13 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
       liveRegion: true,
       label: 'Tasbih counter, $_count of $_target. Tap to count.',
       value: '$_count of $_target',
-      child: GestureDetector(
-        onTap: _tap,
-        child: ScaleTransition(
+      child: Material(
+        color: Colors.transparent,
+        shape: const CircleBorder(),
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: _tap,
+          child: ScaleTransition(
           scale: _scaleAnimation,
           child: SizedBox(
             width: outerSize,
@@ -1207,7 +1189,8 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
                           ),
                           const SizedBox(height: 3),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 2),
                             decoration: BoxDecoration(
                               color: Colors.black26,
                               borderRadius: BorderRadius.circular(10),
@@ -1223,7 +1206,8 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
                           ),
                           if (_count >= _target) ...[
                             const SizedBox(height: 4),
-                            const Icon(Icons.check_circle, color: NoorColors.gold, size: 16),
+                            const Icon(Icons.check_circle,
+                                color: NoorColors.gold, size: 16),
                           ],
                         ],
                       ),
@@ -1233,6 +1217,7 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
               ],
             ),
           ),
+        ),
         ),
       ),
     );
@@ -1245,28 +1230,32 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
       selected: isSelected,
       label: 'Target $t',
       child: Material(
-        color: isSelected ? NoorColors.emeraldDark : Colors.white,
+        color: isSelected
+            ? NoorColors.emeraldDark
+            : NoorTheme.surface(context, light: Colors.white),
         borderRadius: BorderRadius.circular(NoorRadius.chip),
         elevation: isSelected ? 2 : 0,
         child: InkWell(
           onTap: () => _setTarget(t),
           borderRadius: BorderRadius.circular(NoorRadius.chip),
           child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 10),
+            constraints: const BoxConstraints(minHeight: 44),
+            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
             alignment: Alignment.center,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(NoorRadius.chip),
-              border: isSelected ? null : Border.all(color: NoorColors.hairline),
+              border: isSelected
+                  ? null
+                  : Border.all(color: NoorTheme.border(context)),
             ),
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Text(
-                '$t',
-                style: TextStyle(
-                  color: isSelected ? Colors.white : NoorColors.ink,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 14,
-                ),
+            child: Text(
+              '$t',
+              style: TextStyle(
+                color: isSelected
+                    ? Colors.white
+                    : NoorTheme.foreground(context),
+                fontWeight: FontWeight.w700,
+                fontSize: 14,
               ),
             ),
           ),
@@ -1278,42 +1267,49 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
   Widget _buildCustomChip() {
     final bool isCustom = ![33, 66, 99, 100].contains(_target);
     return Material(
-      color: isCustom ? NoorColors.emeraldDark : Colors.white,
+      color: isCustom
+          ? NoorColors.emeraldDark
+          : NoorTheme.surface(context, light: Colors.white),
       borderRadius: BorderRadius.circular(NoorRadius.chip),
       elevation: isCustom ? 2 : 0,
       child: InkWell(
         onTap: _openCustomTargetDialog,
         borderRadius: BorderRadius.circular(NoorRadius.chip),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 10),
+          constraints: const BoxConstraints(minHeight: 44),
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 10),
           alignment: Alignment.center,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(NoorRadius.chip),
-            border: isCustom ? null : Border.all(color: NoorColors.hairline),
+            border:
+                isCustom ? null : Border.all(color: NoorTheme.border(context)),
           ),
-          child: FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Flexible(
+                child: Text(
                   isCustom ? 'Custom ($_target)' : 'Custom',
                   maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    color: isCustom ? Colors.white : NoorColors.ink,
+                    color:
+                        isCustom ? Colors.white : NoorTheme.foreground(context),
                     fontWeight: FontWeight.w700,
                     fontSize: 13,
                   ),
                 ),
-                const SizedBox(width: 3),
-                Icon(
-                  Icons.edit,
-                  size: 13,
-                  color: isCustom ? NoorColors.goldPale : NoorColors.muted,
-                ),
-              ],
-            ),
+              ),
+              const SizedBox(width: 3),
+              Icon(
+                Icons.edit,
+                size: 13,
+                color: isCustom
+                    ? NoorColors.goldPale
+                    : NoorTheme.muted(context),
+              ),
+            ],
           ),
         ),
       ),
@@ -1322,7 +1318,7 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
 
   Widget _buildOtherDhikrList() {
     return SizedBox(
-      height: 142,
+      height: 142 * MediaQuery.textScalerOf(context).scale(1).clamp(1, 2),
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         physics: const BouncingScrollPhysics(),
@@ -1335,19 +1331,22 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
           final bool isCurrent = _activeDhikr.id == d.id;
 
           return Material(
-            color: Colors.white,
+            color: NoorTheme.surface(context, light: Colors.white),
             borderRadius: BorderRadius.circular(NoorRadius.card),
             elevation: isCurrent ? 3 : 1,
             child: InkWell(
               onTap: () => _selectDhikr(d),
               borderRadius: BorderRadius.circular(NoorRadius.card),
               child: Container(
-                width: 154,
+                width: 154 *
+                    MediaQuery.textScalerOf(context).scale(1).clamp(1, 1.8),
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(NoorRadius.card),
                   border: Border.all(
-                    color: isCurrent ? NoorColors.emerald : NoorColors.hairlineSoft,
+                    color: isCurrent
+                        ? NoorColors.emerald
+                        : NoorColors.hairlineSoft,
                     width: isCurrent ? 1.8 : 1.0,
                   ),
                 ),
@@ -1362,11 +1361,17 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
                             textDirection: TextDirection.rtl,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: NoorType.arabic(size: 16, color: NoorColors.emeraldDark),
+                            style: NoorType.arabic(
+                                size: 16,
+                                color: NoorTheme.foreground(context,
+                                    light: NoorColors.emeraldDark)),
                           ),
                         ),
                         if (pct >= 1.0)
-                          const Icon(Icons.check_circle, color: NoorColors.emerald, size: 16),
+                          Icon(Icons.check_circle,
+                              color: NoorTheme.foreground(context,
+                                  light: NoorColors.emerald),
+                              size: 16),
                       ],
                     ),
                     const SizedBox(height: 2),
@@ -1374,20 +1379,25 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
                       d.transliteration,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: NoorType.secondary.copyWith(fontWeight: FontWeight.w700),
+                      style: NoorType.secondary
+                          .copyWith(fontWeight: FontWeight.w700),
                     ),
                     Text(
                       d.meaning,
-                      maxLines: 1,
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: NoorType.meta.copyWith(color: NoorColors.muted, fontSize: 11),
+                      style: NoorType.compactMeta.copyWith(
+                          color: NoorTheme.muted(context)),
                     ),
                     const Spacer(),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text('$currentCount / ${d.defaultTarget}', style: NoorType.meta.copyWith(fontSize: 11)),
-                        Text('${(pct * 100).toInt()}%', style: NoorType.meta.copyWith(color: NoorColors.emeraldDark, fontSize: 11)),
+                        Text('$currentCount / ${d.defaultTarget}',
+                            style: NoorType.meta.copyWith(fontSize: 12)),
+                        Text('${(pct * 100).toInt()}%',
+                            style: NoorType.meta
+                                .copyWith(color: null, fontSize: 12)),
                       ],
                     ),
                     const SizedBox(height: 4),
@@ -1397,7 +1407,7 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
                         value: pct,
                         minHeight: 5,
                         color: NoorColors.emerald,
-                        backgroundColor: NoorColors.sand,
+                        backgroundColor: NoorTheme.softSurface(context),
                       ),
                     ),
                   ],
@@ -1410,37 +1420,25 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
     );
   }
 
-  Widget _buildTodayProgressCard() {
-    return NoorCard(
-      child: Column(
-        children: [
-          Row(
-            children: [
-              const Expanded(child: NoorSectionLabel("Today's Progress")),
-              Text(
-                'Total: $_totalToday Zikr',
-                style: NoorType.meta.copyWith(color: NoorColors.emeraldDark, fontWeight: FontWeight.w700),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          const Row(
-            children: [
-              Expanded(child: _ProgItem(Icons.sync, '3', 'Sessions')),
-              Expanded(child: _ProgItem(Icons.calendar_month, '12 min', 'Duration')),
-              Expanded(child: _ProgItem(Icons.bar_chart, '85%', 'Completion')),
-              Expanded(child: _ProgItem(Icons.auto_awesome, 'Great', 'MashaAllah!')),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
+  Widget _buildTodayProgressCard() => NoorCard(
+          child:
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const Text("Today's progress", style: NoorType.cardTitle),
+        const SizedBox(height: 18),
+        Row(children: [
+          Expanded(
+              child:
+                  _ProgItem(Icons.spa_outlined, '$_totalToday', 'Total zikr')),
+          Expanded(
+              child: _ProgItem(
+                  Icons.sync, '$_sessionsToday', 'Completed sessions'))
+        ]),
+      ]));
 
   Widget _buildDailyTipCard() {
     return Container(
       decoration: BoxDecoration(
-        color: NoorColors.emeraldSoft,
+        color: NoorTheme.surface(context, light: NoorColors.emeraldSoft),
         borderRadius: BorderRadius.circular(NoorRadius.heroCard),
         border: Border.all(color: NoorColors.emerald.withValues(alpha: 0.12)),
       ),
@@ -1452,25 +1450,28 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
+                Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
-                    const Icon(Icons.lightbulb_outline, color: NoorColors.emeraldDark, size: 18),
+                    const Icon(Icons.lightbulb_outline, color: null, size: 18),
                     const SizedBox(width: 6),
                     Text(
                       'Daily Tip',
-                      style: NoorType.cardTitle.copyWith(color: NoorColors.emeraldDark, fontWeight: FontWeight.w800),
+                      style: NoorType.cardTitle
+                          .copyWith(color: null, fontWeight: FontWeight.w800),
                     ),
                   ],
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  'The best of people are those who remember Allah the most.',
-                  style: NoorType.secondary.copyWith(height: 1.45, color: NoorColors.ink),
+                  'Make space for a few moments of remembrance in your daily routine.',
+                  style: NoorType.secondary.copyWith(height: 1.45, color: null),
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  "Sunan An-Nasa'i 8",
-                  style: NoorType.meta.copyWith(color: NoorColors.emeraldDark, fontWeight: FontWeight.w700),
+                  'Small steps, practiced consistently.',
+                  style: NoorType.meta
+                      .copyWith(color: null, fontWeight: FontWeight.w700),
                 ),
               ],
             ),
@@ -1487,10 +1488,11 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
                 width: 72,
                 height: 72,
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: NoorTheme.surface(context, light: Colors.white),
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: const Icon(Icons.wb_sunny_outlined, color: NoorColors.emeraldDark, size: 32),
+                child:
+                    const Icon(Icons.wb_sunny_outlined, color: null, size: 32),
               ),
             ),
           ),
@@ -1510,13 +1512,15 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Daily Adhkar Routine', style: NoorType.section.copyWith(color: NoorColors.emeraldDark)),
+                Text('Daily Adhkar Routine',
+                    style: NoorType.section.copyWith(color: null)),
                 const SizedBox(height: 2),
-                Text('Authentic Morning & Evening Remembrances', style: NoorType.meta.copyWith(color: NoorColors.mutedDark)),
+                Text('Authentic Morning & Evening Remembrances',
+                    style: NoorType.meta.copyWith(color: null)),
               ],
             ),
             IconButton(
-              icon: const Icon(Icons.library_books, color: NoorColors.emeraldDark),
+              icon: const Icon(Icons.library_books, color: null),
               tooltip: 'Browse Library',
               onPressed: () => Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const DuaLibraryScreen()),
@@ -1525,7 +1529,6 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
           ],
         ),
         const SizedBox(height: 14),
-
         ..._dailyAdhkarList.map((d) {
           final count = _countsMap[d.id] ?? 0;
           final bool isComplete = count >= d.defaultTarget;
@@ -1534,10 +1537,12 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
             margin: const EdgeInsets.only(bottom: 12),
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: NoorTheme.surface(context, light: Colors.white),
               borderRadius: BorderRadius.circular(NoorRadius.card),
               border: Border.all(
-                color: isComplete ? NoorColors.success.withValues(alpha: 0.5) : NoorColors.hairlineSoft,
+                color: isComplete
+                    ? NoorColors.success.withValues(alpha: 0.5)
+                    : NoorColors.hairlineSoft,
               ),
               boxShadow: NoorShadows.card,
             ),
@@ -1551,7 +1556,10 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
                       child: Text(
                         d.arabic,
                         textDirection: TextDirection.rtl,
-                        style: NoorType.arabic(size: 20, color: NoorColors.emeraldDark),
+                        style: NoorType.arabic(
+                            size: 20,
+                            color: NoorTheme.foreground(context,
+                                light: NoorColors.emeraldDark)),
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -1559,20 +1567,28 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
                       onTap: () {
                         if (_hapticEnabled) HapticFeedback.lightImpact();
                         final current = _countsMap[d.id] ?? 0;
-                        final next = current + 1 > d.defaultTarget ? d.defaultTarget : current + 1;
+                        if (current >= d.defaultTarget) return;
+                        final next = current + 1 > d.defaultTarget
+                            ? d.defaultTarget
+                            : current + 1;
                         setState(() {
                           _countsMap[d.id] = next;
                           _totalToday++;
                         });
                         NoorStore.setTasbihCount(d.id, next);
                         NoorStore.setTasbihTotalToday(_today, _totalToday);
-                        UserDataService.instance.saveTasbihTotal(_today, _totalToday);
+                        UserDataService.instance
+                            .saveTasbihTotal(_today, _totalToday);
                       },
                       borderRadius: BorderRadius.circular(20),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 8),
                         decoration: BoxDecoration(
-                          color: isComplete ? NoorColors.emeraldDark : NoorColors.emeraldSoft,
+                          color: isComplete
+                              ? NoorColors.emeraldDark
+                              : NoorTheme.surface(context,
+                                  light: NoorColors.emeraldSoft),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Row(
@@ -1580,14 +1596,20 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
                           children: [
                             Icon(
                               isComplete ? Icons.check : Icons.touch_app,
-                              color: isComplete ? Colors.white : NoorColors.emeraldDark,
+                              color: NoorTheme.foreground(context,
+                                  light: isComplete
+                                      ? Colors.white
+                                      : NoorColors.emeraldDark),
                               size: 16,
                             ),
                             const SizedBox(width: 4),
                             Text(
                               '$count / ${d.defaultTarget}',
                               style: TextStyle(
-                                color: isComplete ? Colors.white : NoorColors.emeraldDark,
+                                color: NoorTheme.foreground(context,
+                                    light: isComplete
+                                        ? Colors.white
+                                        : NoorColors.emeraldDark),
                                 fontWeight: FontWeight.w800,
                                 fontSize: 13,
                               ),
@@ -1599,12 +1621,19 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
                   ],
                 ),
                 const SizedBox(height: 6),
-                Text(d.transliteration, style: NoorType.secondary.copyWith(fontWeight: FontWeight.w700)),
+                Text(d.transliteration,
+                    style: NoorType.secondary
+                        .copyWith(fontWeight: FontWeight.w700)),
                 const SizedBox(height: 3),
-                Text(d.meaning, style: NoorType.meta.copyWith(color: NoorColors.mutedDark, height: 1.3)),
+                Text(d.meaning,
+                    style: NoorType.meta.copyWith(color: null, height: 1.3)),
                 if (d.reference != null) ...[
                   const SizedBox(height: 6),
-                  Text(d.reference!, style: NoorType.meta.copyWith(color: NoorColors.emerald, fontSize: 11)),
+                  Text(d.reference!,
+                      style: NoorType.meta.copyWith(
+                          color: NoorTheme.foreground(context,
+                              light: NoorColors.emerald),
+                          fontSize: 12)),
                 ],
               ],
             ),
@@ -1626,9 +1655,11 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('My Custom Zikr', style: NoorType.section.copyWith(color: NoorColors.emeraldDark)),
+                  Text('My Custom Zikr',
+                      style: NoorType.section.copyWith(color: null)),
                   const SizedBox(height: 2),
-                  Text('Personal goals & custom remembrances', style: NoorType.meta.copyWith(color: NoorColors.mutedDark)),
+                  Text('Personal goals & custom remembrances',
+                      style: NoorType.meta.copyWith(color: null)),
                 ],
               ),
             ),
@@ -1637,8 +1668,10 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
               style: ElevatedButton.styleFrom(
                 backgroundColor: NoorColors.emeraldDark,
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
               ),
               icon: const Icon(Icons.add, size: 18),
               label: const Text('New Zikr'),
@@ -1647,22 +1680,25 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
           ],
         ),
         const SizedBox(height: 14),
-
         if (_customDhikrs.isEmpty) ...[
           Container(
             padding: const EdgeInsets.all(28),
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: NoorTheme.surface(context, light: Colors.white),
               borderRadius: BorderRadius.circular(16),
             ),
             child: Column(
               children: [
-                const Icon(Icons.favorite_border, color: NoorColors.emerald, size: 40),
+                Icon(Icons.favorite_border,
+                    color: NoorTheme.foreground(context,
+                        light: NoorColors.emerald),
+                    size: 40),
                 const SizedBox(height: 10),
                 const Text('No custom dhikr yet', style: NoorType.cardTitle),
                 const SizedBox(height: 4),
-                Text('Add your personal wirid or favorite tasbih!', style: NoorType.meta.copyWith(color: NoorColors.muted)),
+                Text('Add your personal wirid or favorite tasbih!',
+                    style: NoorType.meta.copyWith(color: null)),
               ],
             ),
           ),
@@ -1675,10 +1711,12 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
               margin: const EdgeInsets.only(bottom: 12),
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: NoorTheme.surface(context, light: Colors.white),
                 borderRadius: BorderRadius.circular(NoorRadius.card),
                 border: Border.all(
-                  color: isComplete ? NoorColors.success.withValues(alpha: 0.5) : NoorColors.hairlineSoft,
+                  color: isComplete
+                      ? NoorColors.success.withValues(alpha: 0.5)
+                      : NoorColors.hairlineSoft,
                 ),
                 boxShadow: NoorShadows.card,
               ),
@@ -1692,7 +1730,10 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
                         child: Text(
                           d.arabic,
                           textDirection: TextDirection.rtl,
-                          style: NoorType.arabic(size: 20, color: NoorColors.emeraldDark),
+                          style: NoorType.arabic(
+                              size: 20,
+                              color: NoorTheme.foreground(context,
+                                  light: NoorColors.emeraldDark)),
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -1700,26 +1741,37 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
                         onTap: () {
                           if (_hapticEnabled) HapticFeedback.lightImpact();
                           final current = _countsMap[d.id] ?? 0;
-                          final next = current + 1 > d.defaultTarget ? d.defaultTarget : current + 1;
+                          if (current >= d.defaultTarget) return;
+                          final next = current + 1 > d.defaultTarget
+                              ? d.defaultTarget
+                              : current + 1;
                           setState(() {
                             _countsMap[d.id] = next;
                             _totalToday++;
                           });
                           NoorStore.setTasbihCount(d.id, next);
                           NoorStore.setTasbihTotalToday(_today, _totalToday);
-                          UserDataService.instance.saveTasbihTotal(_today, _totalToday);
+                          UserDataService.instance
+                              .saveTasbihTotal(_today, _totalToday);
                         },
                         borderRadius: BorderRadius.circular(20),
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 8),
                           decoration: BoxDecoration(
-                            color: isComplete ? NoorColors.emeraldDark : NoorColors.emeraldSoft,
+                            color: isComplete
+                                ? NoorColors.emeraldDark
+                                : NoorTheme.surface(context,
+                                    light: NoorColors.emeraldSoft),
                             borderRadius: BorderRadius.circular(20),
                           ),
                           child: Text(
                             '$count / ${d.defaultTarget}',
                             style: TextStyle(
-                              color: isComplete ? Colors.white : NoorColors.emeraldDark,
+                              color: NoorTheme.foreground(context,
+                                  light: isComplete
+                                      ? Colors.white
+                                      : NoorColors.emeraldDark),
                               fontWeight: FontWeight.w800,
                             ),
                           ),
@@ -1728,20 +1780,24 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
                     ],
                   ),
                   const SizedBox(height: 6),
-                  Text(d.transliteration, style: NoorType.secondary.copyWith(fontWeight: FontWeight.w700)),
+                  Text(d.transliteration,
+                      style: NoorType.secondary
+                          .copyWith(fontWeight: FontWeight.w700)),
                   if (d.meaning.isNotEmpty) ...[
                     const SizedBox(height: 3),
-                    Text(d.meaning, style: NoorType.meta.copyWith(color: NoorColors.mutedDark)),
+                    Text(d.meaning, style: NoorType.meta.copyWith(color: null)),
                   ],
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       IconButton(
-                        icon: const Icon(Icons.delete_outline, size: 18, color: NoorColors.mutedDark),
+                        icon: const Icon(Icons.delete_outline,
+                            size: 18, color: null),
                         tooltip: 'Delete custom zikr',
                         onPressed: () async {
                           setState(() {
-                            _customDhikrs.removeWhere((item) => item.id == d.id);
+                            _customDhikrs
+                                .removeWhere((item) => item.id == d.id);
                             _countsMap.remove(d.id);
                           });
                           await NoorStore.deleteCustomDhikr(d.id);
@@ -1767,12 +1823,13 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
   }
 
   // Round Action Button (Undo / Add)
-  Widget _roundBtn(IconData icon, VoidCallback onTap, {required String tooltip}) {
+  Widget _roundBtn(IconData icon, VoidCallback onTap,
+      {required String tooltip}) {
     return Semantics(
       button: true,
       label: tooltip,
       child: Material(
-        color: Colors.white,
+        color: NoorTheme.surface(context, light: Colors.white),
         shape: const CircleBorder(),
         elevation: 2,
         child: InkWell(
@@ -1785,7 +1842,7 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
             decoration: const BoxDecoration(
               shape: BoxShape.circle,
             ),
-            child: Icon(icon, color: NoorColors.ink, size: 22),
+            child: Icon(icon, color: null, size: 22),
           ),
         ),
       ),
@@ -1793,12 +1850,13 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
   }
 
   // Small Square Icon Button (Tune / Refresh)
-  Widget _smallIconButton(IconData icon, {required VoidCallback onTap, required String tooltip}) {
+  Widget _smallIconButton(IconData icon,
+      {required VoidCallback onTap, required String tooltip}) {
     return Semantics(
       button: true,
       label: tooltip,
       child: Material(
-        color: Colors.white,
+        color: NoorTheme.surface(context, light: Colors.white),
         borderRadius: BorderRadius.circular(12),
         elevation: 1,
         child: InkWell(
@@ -1810,9 +1868,9 @@ class _ZikrTasbihScreenState extends State<ZikrTasbihScreen>
             alignment: Alignment.center,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: NoorColors.hairline),
+              border: Border.all(color: NoorTheme.border(context)),
             ),
-            child: Icon(icon, color: NoorColors.emeraldDark, size: 20),
+            child: Icon(icon, color: null, size: 20),
           ),
         ),
       ),
@@ -1862,7 +1920,8 @@ class _TasbihBeadsPainter extends CustomPainter {
           final paint = Paint()
             ..color = goldColor
             ..style = PaintingStyle.fill;
-          canvas.drawCircle(beadCenter, isCurrentHead ? beadRadius + 1.5 : beadRadius, paint);
+          canvas.drawCircle(
+              beadCenter, isCurrentHead ? beadRadius + 1.5 : beadRadius, paint);
 
           // Subtle inner gleam
           final gleamPaint = Paint()
@@ -1965,24 +2024,20 @@ class _ProgItem extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: NoorColors.emeraldDark, size: 20),
+          Icon(icon, color: null, size: 20),
           const SizedBox(height: 6),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              value,
-              textAlign: TextAlign.center,
-              style: NoorType.section.copyWith(fontSize: 14, fontWeight: FontWeight.w700),
-            ),
+          Text(
+            value,
+            textAlign: TextAlign.center,
+            style: NoorType.secondary
+                .copyWith(fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 2),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              label,
-              textAlign: TextAlign.center,
-              style: NoorType.meta.copyWith(color: NoorColors.mutedDark, fontSize: 11),
-            ),
+          Text(
+            label,
+            textAlign: TextAlign.center,
+            style: NoorType.compactMeta.copyWith(
+                color: NoorTheme.muted(context)),
           ),
         ],
       ),

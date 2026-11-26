@@ -1,879 +1,333 @@
 import 'package:flutter/material.dart';
-import '../../data/firebase_rest_service.dart';
-import '../../data/location_service.dart';
 import '../../data/noor_controller.dart';
 import '../../data/noor_store.dart';
-import '../../data/sample_data.dart';
+import '../../data/location_service.dart';
+import '../../data/daily_content_actions.dart';
+import '../../theme/noor_theme.dart';
 import '../../widgets/noor_components.dart';
 import '../auth/login_screen.dart';
 import '../onboarding/language_selection_screen.dart';
+import '../quran/quran_audio_player_screen.dart';
+import '../worship/prayer_settings_screen.dart';
 import '../worship/reminder_center_screen.dart';
-import '../../theme/noor_theme.dart';
-import 'profile_screen.dart';
 
-/// Page 13 — Settings. Dark emerald header with the lantern
-/// crop from the user's design, overlapping profile card
-/// (user name + email), then Account / App Preferences /
-/// Support & About grouped rows with right-side values, Log Out.
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
-
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  String _userName = '';
-  String _userEmail = '';
-  String _textSize = 'Medium';
-
+  String _language = 'English';
+  double _scale = 1;
+  final _speech = DailyContentPlayback();
   @override
   void initState() {
     super.initState();
-    _loadProfile();
+    _load();
+    _speech.addListener(_speechChanged);
   }
 
-  Future<void> _loadProfile() async {
-    try {
-      final savedName = await NoorStore.getUserName();
-      final savedEmail = await NoorStore.getUserEmail();
-      if (savedName != null && savedName.isNotEmpty && mounted) {
-        setState(() {
-          _userName = savedName;
-          _userEmail = savedEmail ?? '';
-        });
-        return;
-      }
-      final profile = await FirebaseRestService().currentProfile();
-      if (profile != null && mounted) {
-        setState(() {
-          _userName = profile.name;
-          _userEmail = profile.email;
-        });
-      }
-    } catch (_) {
-      // Keep fallback
+  @override
+  void dispose() {
+    _speech.removeListener(_speechChanged);
+    _speech.dispose();
+    super.dispose();
+  }
+
+  void _speechChanged() {
+    if (mounted && _speech.error != null) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(_speech.error!)));
+      _speech.error = null;
     }
   }
 
-  static const _iconsA = [
-    Icons.person_outline,
-    Icons.shield_outlined,
-    Icons.notifications_none,
-    Icons.language,
-  ];
-  static const _iconsP = [
-    Icons.location_on_outlined,
-    Icons.dark_mode_outlined,
-    Icons.format_size, // Replaced by custom 'Aa' widget in builder
-    Icons.headphones_outlined,
-    Icons.cloud_outlined,
-  ];
-  static const _iconsS = [
-    Icons.help_outline,
-    Icons.chat_bubble_outline,
-    Icons.info_outline,
-    Icons.star_border,
-  ];
+  Future<void> _load() async {
+    final language = await NoorStore.getLanguage();
+    final scale = await NoorStore.getTextScale();
+    if (mounted) {
+      setState(() {
+        _language = language;
+        _scale = scale;
+      });
+    }
+  }
+
+  Future<void> _open(Widget page) async {
+    await Navigator.of(context).push(MaterialPageRoute(builder: (_) => page));
+    if (mounted) await _load();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final controller = NoorScope.of(context);
-    final currentName = (controller?.userName.isNotEmpty == true)
-        ? controller!.userName
-        : (_userName.isNotEmpty ? _userName : '');
-    final currentEmail = (controller?.userEmail.isNotEmpty == true)
-        ? controller!.userEmail
-        : _userEmail;
-    final isGuest = controller?.isGuest ?? (currentName.isEmpty || currentName == 'Guest');
-    final displayName = currentName.isNotEmpty ? currentName : (isGuest ? 'Guest User' : 'Believer');
-    final displayEmail = currentEmail.isNotEmpty ? currentEmail : (isGuest ? 'Tap to sign in or create account' : 'Personal Profile');
-
+    final scale = controller?.textScale ?? _scale;
+    final theme = controller?.themePreferenceLabel ?? 'Light';
     return Scaffold(
-      backgroundColor: isDark ? NoorColors.darkBg : NoorColors.cream,
-      body: SafeArea(
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            Stack(
-              clipBehavior: Clip.none,
-              children: [
-                Container(
-                  height: 148,
-                  color: NoorColors.emeraldDark,
-                  padding: const EdgeInsets.fromLTRB(6, 6, 6, 0),
-                  child: Stack(
-                    children: [
-                      Positioned(
-                        right: 0,
-                        top: 0,
-                        bottom: 0,
-                        child: ShaderMask(
-                          shaderCallback: (rect) => const LinearGradient(
-                            begin: Alignment.centerLeft,
-                            end: Alignment.centerRight,
-                            colors: [Colors.transparent, Colors.white],
-                            stops: [0, 0.3],
-                          ).createShader(rect),
-                          blendMode: BlendMode.dstIn,
-                          child: Image.asset(
-                            NoorAssets.settingsLanterns,
-                            width: 140,
-                            cacheWidth: 420,
-                            height: 148,
-                            fit: BoxFit.cover,
-                            alignment: Alignment.topCenter,
-                            errorBuilder: (_, __, ___) => const SizedBox.shrink(),
-                          ),
-                        ),
-                      ),
-                      Row(
-                        children: [
-                          IconButton(
-                            icon: const Icon(
-                              Icons.arrow_back,
-                              color: Colors.white,
-                              size: 22,
-                            ),
-                            onPressed: () => Navigator.of(context).maybePop(),
-                          ),
-                          const Expanded(
-                            child: Text(
-                              'Settings',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 18,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 48),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                Positioned(
-                  left: 20,
-                  right: 20,
-                  bottom: -32,
-                  child: Material(
-                    color: isDark ? NoorColors.darkCard : Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(16),
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (_) => isGuest ? const LoginScreen() : const ProfileScreen(),
-                        ),
-                      ),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                        decoration: BoxDecoration(
-                          color: isDark ? NoorColors.darkCard : Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: isDark ? NoorColors.darkBorder : NoorColors.hairline,
-                          ),
-                          boxShadow: isDark ? null : NoorShadows.card,
-                        ),
-                        child: Row(
-                          children: [
-                            NoorAvatar(
-                              size: 52,
-                              name: displayName,
-                            ),
-                            const SizedBox(width: 14),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    displayName,
-                                    style: TextStyle(
-                                      fontSize: 16.5,
-                                      fontWeight: FontWeight.w700,
-                                      color: isDark ? NoorColors.darkTextPrimary : NoorColors.ink,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                  const SizedBox(height: 3),
-                                  Text(
-                                    displayEmail,
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w400,
-                                      color: isDark ? NoorColors.darkTextSecondary : NoorColors.muted,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ],
-                              ),
-                            ),
-                            Icon(
-                              Icons.chevron_right,
-                              color: isDark ? NoorColors.darkTextSecondary : NoorColors.iconMuted,
-                              size: 20,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 44),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+        appBar: AppBar(title: const Text('Settings')),
+        body: SafeArea(
+            child: ListView(
+                padding: const EdgeInsets.fromLTRB(20, 10, 20, 28),
                 children: [
-                  _group(context, 'Account', SampleData.settingsAccount, _iconsA),
-                  _group(context, 'App Preferences', SampleData.settingsPrefs, _iconsP),
-                  _group(context, 'Support & About', SampleData.settingsSupport, _iconsS),
-                  const SizedBox(height: 8),
-                  Container(
-                    width: double.infinity,
-                    height: 50,
-                    decoration: BoxDecoration(
-                      color: isDark ? NoorColors.darkSurface : Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: isDark ? NoorColors.darkBorder : NoorColors.emeraldMid,
-                        width: 1.2,
-                      ),
-                    ),
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(16),
-                        onTap: () async {
-                          await controller?.logout();
-                          if (!context.mounted) return;
-                          Navigator.of(context).pushAndRemoveUntil(
-                            MaterialPageRoute(builder: (_) => const LoginScreen()),
-                            (_) => false,
-                          );
-                        },
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.logout_rounded,
-                              size: 20,
-                              color: isDark ? NoorColors.darkGold : NoorColors.emeraldMid,
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              'Log Out',
-                              style: TextStyle(
-                                color: isDark ? NoorColors.darkTextPrimary : NoorColors.emeraldMid,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-      bottomNavigationBar: NavigationBar(
-        backgroundColor: isDark ? NoorColors.darkSurface : Colors.white,
-        selectedIndex: 3,
-        onDestinationSelected: (idx) {
-          Navigator.of(context).maybePop();
-        },
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home),
-            label: 'Home',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.menu_book_outlined),
-            selectedIcon: Icon(Icons.menu_book),
-            label: 'Quran',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.auto_awesome_outlined),
-            selectedIcon: Icon(Icons.auto_awesome),
-            label: 'AI',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.mosque_outlined),
-            selectedIcon: Icon(Icons.mosque),
-            label: 'Worship',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.library_books_outlined),
-            selectedIcon: Icon(Icons.library_books),
-            label: 'Library',
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showThemeSheet(BuildContext context) {
-    final controller = NoorScope.of(context);
-    if (controller == null) return;
-    final currentPref = controller.themePreference;
-
-    showModalBottomSheet<void>(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (sheetContext) {
-        final isDark = Theme.of(sheetContext).brightness == Brightness.dark;
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Container(
-                    width: 44,
-                    height: 5,
-                    decoration: BoxDecoration(
-                      color: isDark ? NoorColors.darkBorder : NoorColors.hairline,
-                      borderRadius: BorderRadius.circular(99),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'App Theme',
-                  style: NoorType.screenTitle.copyWith(
-                    color: isDark ? NoorColors.darkTextPrimary : NoorColors.ink,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Choose how MuslimGo adjusts its display. Automatic Solar switches to Midnight Emerald between Maghrib and Fajr.',
-                  style: NoorType.secondary.copyWith(
-                    color: isDark ? NoorColors.darkTextSecondary : NoorColors.mutedDark,
-                  ),
-                ),
-                const SizedBox(height: 18),
-                NoorOptionTile(
-                  label: 'Solar (Auto post-Maghrib)',
-                  sublabel: 'Midnight Emerald at night (sunset to dawn); cream in daylight',
-                  leading: const Icon(Icons.wb_twilight, color: NoorColors.amber, size: 22),
-                  selected: currentPref == NoorThemePreference.solar,
-                  onTap: () {
-                    controller.setThemePreference(NoorThemePreference.solar);
-                    Navigator.of(sheetContext).pop();
-                  },
-                ),
-                const SizedBox(height: 10),
-                NoorOptionTile(
-                  label: 'Midnight Emerald (Dark)',
-                  sublabel: 'Always deep forest dark mode (#061812 / #0D271E)',
-                  leading: const Icon(Icons.dark_mode, color: NoorColors.gold, size: 22),
-                  selected: currentPref == NoorThemePreference.dark,
-                  onTap: () {
-                    controller.setThemePreference(NoorThemePreference.dark);
-                    Navigator.of(sheetContext).pop();
-                  },
-                ),
-                const SizedBox(height: 10),
-                NoorOptionTile(
-                  label: 'Light (Cream & Emerald)',
-                  sublabel: 'Classic warm cream background and crisp white cards',
-                  leading: const Icon(Icons.light_mode, color: NoorColors.amber, size: 22),
-                  selected: currentPref == NoorThemePreference.light,
-                  onTap: () {
-                    controller.setThemePreference(NoorThemePreference.light);
-                    Navigator.of(sheetContext).pop();
-                  },
-                ),
-                const SizedBox(height: 10),
-                NoorOptionTile(
-                  label: 'System Default',
-                  sublabel: 'Follow your device operating system theme setting',
-                  leading: const Icon(Icons.settings_brightness, color: NoorColors.mutedDark, size: 22),
-                  selected: currentPref == NoorThemePreference.system,
-                  onTap: () {
-                    controller.setThemePreference(NoorThemePreference.system);
-                    Navigator.of(sheetContext).pop();
-                  },
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  void _showTextSizeSheet(BuildContext context) {
-    showModalBottomSheet<void>(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (sheetContext) {
-        final isDark = Theme.of(sheetContext).brightness == Brightness.dark;
-        return StatefulBuilder(
-          builder: (ctx, setModalState) => SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 44,
-                      height: 5,
-                      decoration: BoxDecoration(
-                        color: isDark ? NoorColors.darkBorder : NoorColors.hairline,
-                        borderRadius: BorderRadius.circular(99),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Text Size',
-                    style: NoorType.screenTitle.copyWith(
-                      color: isDark ? NoorColors.darkTextPrimary : NoorColors.ink,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Adjust typography size for Quran reading and app navigation.',
-                    style: NoorType.secondary.copyWith(
-                      color: isDark ? NoorColors.darkTextSecondary : NoorColors.mutedDark,
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-                  for (final size in ['Small', 'Medium', 'Large', 'Extra Large']) ...[
-                    NoorOptionTile(
-                      label: size,
-                      sublabel: size == 'Medium' ? 'Default application scale (100%)' : 'Custom typography scale',
-                      leading: const Icon(Icons.format_size, color: NoorColors.emeraldDark, size: 22),
-                      selected: _textSize == size,
-                      onTap: () {
-                        setState(() => _textSize = size);
-                        setModalState(() {
-                          /* refresh modal sheet */
-                        });
-                        Navigator.of(sheetContext).pop();
-                      },
-                    ),
-                    const SizedBox(height: 10),
-                  ],
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  void _showSimpleSheet(BuildContext context, String title, String description, IconData icon) {
-    showModalBottomSheet<void>(
-      context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (sheetContext) {
-        final isDark = Theme.of(sheetContext).brightness == Brightness.dark;
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(24, 16, 24, 28),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Container(
-                    width: 44,
-                    height: 5,
-                    decoration: BoxDecoration(
-                      color: isDark ? NoorColors.darkBorder : NoorColors.hairline,
-                      borderRadius: BorderRadius.circular(99),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                Row(
-                  children: [
-                    CircleAvatar(
-                      radius: 22,
-                      backgroundColor: NoorColors.emeraldSoft,
-                      child: Icon(icon, color: NoorColors.emeraldDark, size: 22),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Text(
-                        title,
-                        style: NoorType.screenTitle.copyWith(
-                          fontSize: 20,
-                          color: isDark ? NoorColors.darkTextPrimary : NoorColors.ink,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  description,
-                  style: NoorType.secondary.copyWith(
-                    color: isDark ? NoorColors.darkTextSecondary : NoorColors.mutedDark,
-                    height: 1.5,
-                  ),
-                ),
-                const SizedBox(height: 20),
-                SizedBox(
-                  width: double.infinity,
-                  height: 48,
-                  child: FilledButton(
-                    onPressed: () => Navigator.of(sheetContext).pop(),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: NoorColors.emerald,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                    ),
-                    child: const Text('Done', style: TextStyle(fontWeight: FontWeight.w700)),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  VoidCallback _settingsTarget(BuildContext c, String label) => switch (label) {
-        'Profile' => () => Navigator.of(c).push(MaterialPageRoute(builder: (_) => const ProfileScreen())),
-        'Privacy & Security' => () => _showSimpleSheet(
-              c,
-              'Privacy & Security',
-              'Your data is stored securely on your device and encrypted in cloud transit. Offline authentication tokens are obfuscated using local cryptographic seeds.',
-              Icons.shield_outlined,
-            ),
-        'Notifications' => () => Navigator.of(c).push(
-              MaterialPageRoute(builder: (_) => const ReminderCenterScreen()),
-            ),
-        'Language' => () => Navigator.of(c).push(
-              MaterialPageRoute(builder: (_) => const LanguageSelectionScreen()),
-            ),
-        'Location' => () async {
-              final controller = NoorScope.read(c);
-              final picked = await LocationService.showLocationPicker(context: c);
-              if (picked != null) {
-                await controller?.updateLocation(picked);
-              }
-            },
-        'Theme' => () => _showThemeSheet(c),
-        'Text Size' => () => _showTextSizeSheet(c),
-        'Audio Settings' => () => _showSimpleSheet(
-              c,
-              'Audio Settings',
-              'Configure high-bitrate Quran reciters, background playback, and auto-pause intervals for contemplative listening.',
-              Icons.headphones_outlined,
-            ),
-        'Data & Storage' => () => _showSimpleSheet(
-              c,
-              'Data & Storage',
-              'Hadith books and Quran audio are cached directly in app files to prevent system bloat. Storage can be purged without losing bookmarks.',
-              Icons.cloud_outlined,
-            ),
-        'Help Center' => () => _showSimpleSheet(
-              c,
-              'Help Center',
-              'Explore guides on using Noor AI Companion, Qibla compass calibration, Salah prayer tracking, and voice features.',
-              Icons.help_outline,
-            ),
-        'Send Feedback' => () => _showSimpleSheet(
-              c,
-              'Send Feedback',
-              'We value your suggestions and bug reports. Thank you for helping us improve Noor AI Companion for the Ummah.',
-              Icons.chat_bubble_outline,
-            ),
-        'About MuslimGo' => () => _showSimpleSheet(
-              c,
-              'About MuslimGo',
-              'Version 1.2.0 (Build 42). Built with reverence, authentic sources (Bukhari, Muslim, Tirmidhi), and state-of-the-art mobile engineering.',
-              Icons.info_outline,
-            ),
-        'Rate MuslimGo' => () => _showSimpleSheet(
-              c,
-              'Rate MuslimGo',
-              'If MuslimGo has enriched your daily spiritual journey, please leave a 5-star review on the App Store or Google Play.',
-              Icons.star_border,
-            ),
-        _ => () => _showSimpleSheet(
-              c,
-              label,
-              'Configuration options for $label.',
-              Icons.tune_outlined,
-            ),
-      };
-
-  Widget _buildLeading(String label, IconData defaultIcon, bool isDark) {
-    if (label == 'Text Size') {
-      return Container(
-        width: 24,
-        height: 24,
-        alignment: Alignment.center,
-        child: Text(
-          'Aa',
-          style: TextStyle(
-            fontSize: 17,
-            fontWeight: FontWeight.w700,
-            color: isDark ? NoorColors.darkGold : NoorColors.emeraldDark,
-          ),
-        ),
-      );
-    }
-    return Icon(
-      defaultIcon,
-      size: 22,
-      color: isDark ? NoorColors.darkGold : NoorColors.emeraldDark,
-    );
-  }
-
-  Widget _group(
-    BuildContext c,
-    String title,
-    List<(String, String, String)> rows,
-    List<IconData> icons,
-  ) {
-    final isDark = Theme.of(c).brightness == Brightness.dark;
-    final controller = NoorScope.of(c);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: TextStyle(
-            fontSize: 15.5,
-            fontWeight: FontWeight.w700,
-            color: isDark ? NoorColors.darkTextPrimary : NoorColors.ink,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Container(
-          decoration: BoxDecoration(
-            color: isDark ? NoorColors.darkSurface : Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: isDark ? NoorColors.darkBorder : NoorColors.hairline,
-            ),
-          ),
-          child: Column(
-            children: [
-              for (var i = 0; i < rows.length; i++) ...[
-                if (i > 0)
-                  Divider(
-                    height: 1,
-                    thickness: 1,
-                    indent: 52,
-                    color: isDark ? NoorColors.darkBorder : NoorColors.hairline,
-                  ),
-                Builder(
-                  builder: (context) {
-                    final label = rows[i].$1;
-                    final subtitle = rows[i].$2;
-                    String? rowValue;
-
-                    if (label == 'Location') {
-                      rowValue = controller?.locationLabel ?? 'Karachi, Pakistan';
-                    } else if (label == 'Language') {
-                      rowValue = rows[i].$3.isNotEmpty ? rows[i].$3 : 'English';
-                    } else if (label == 'Theme') {
-                      rowValue = controller?.themePreferenceLabel ?? 'System';
-                    } else if (label == 'Text Size') {
-                      rowValue = _textSize;
-                    } else if (label == 'About MuslimGo') {
-                      rowValue = rows[i].$3.isNotEmpty ? rows[i].$3 : 'v1.2.0';
-                    }
-
-                    return Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        borderRadius: i == 0
-                            ? const BorderRadius.vertical(top: Radius.circular(16))
-                            : (i == rows.length - 1
-                                ? const BorderRadius.vertical(bottom: Radius.circular(16))
-                                : BorderRadius.zero),
-                        onTap: _settingsTarget(c, label),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                          child: Row(
+              const Text('Make MuslimGo yours', style: NoorType.screenTitle),
+              const SizedBox(height: 6),
+              const Text('Reading, prayer times and daily reminders.',
+                  style: NoorType.secondary),
+              const SizedBox(height: 24),
+              _group('Appearance', [
+                _row(Icons.light_mode_outlined, 'Theme', theme,
+                    () => _themePicker(controller)),
+                _row(Icons.text_fields_outlined, 'Text size',
+                    '${(scale * 100).round()}%', () => _textPicker(controller)),
+              ]),
+              _group('Reading & audio', [
+                _row(Icons.language_outlined, 'Reading language', _language,
+                    () => _open(const LanguageSelectionScreen(editing: true))),
+                _row(Icons.headphones_outlined, 'Quran recitation',
+                    'Reciter, speed and playback range', () async {
+                  final position = await NoorStore.getReadingPosition();
+                  if (mounted) {
+                    await _open(QuranAudioPlayerScreen(
+                        surah: position?.$1 ?? 1,
+                        initialAyah: position?.$2 ?? 1));
+                  }
+                }),
+                _row(
+                    Icons.record_voice_over_outlined,
+                    'Daily male narrator',
+                    'Preview and choose a voice for Hadith & Dua',
+                    () => _speech.selectNarrator(context)),
+              ]),
+              _group('Prayer & reminders', [
+                _row(
+                    Icons.location_on_outlined,
+                    'Location',
+                    controller?.locationLabel ??
+                        LocationModel.defaultLocation.label, () async {
+                  final selected = await LocationService.showLocationPicker(
+                      context: context, current: controller?.currentLocation);
+                  if (selected != null) {
+                    await controller?.updateLocation(selected);
+                  }
+                }),
+                _row(
+                    Icons.mosque_outlined,
+                    'Prayer settings',
+                    'Calculation method and Asr convention',
+                    () => _open(const PrayerSettingsScreen())),
+                _row(
+                    Icons.notifications_none_outlined,
+                    'Notifications',
+                    'Azan, prayer and daily-content alerts',
+                    () => _open(const ReminderCenterScreen())),
+              ]),
+              _group('Help & information', [
+                _row(
+                    Icons.offline_bolt_outlined,
+                    'Offline content',
+                    'What is available without internet',
+                    () => _info('Offline content',
+                        'The complete Arabic Quran, English and Urdu translations, and 548-page 16-line Mushaf are included. Opened Hadith editions cache on this device. Recorded Quran audio streams need an internet connection.')),
+                _row(
+                    Icons.shield_outlined,
+                    'Privacy & security',
+                    'Your account and saved data',
+                    () => _info('Privacy & security',
+                        'Your account session uses platform secure storage. Bookmarks, settings and worship progress are saved on this device. Keep your device protected and sign out before sharing it.')),
+                _row(
+                    Icons.help_outline,
+                    'Help',
+                    'Prayer times, notifications and reading',
+                    () => _info('Help',
+                        'Prayer times: choose your location, calculation method and Asr convention.\n\nNotifications: allow notifications and exact alarms, then use the tests in Notifications.\n\nReading: use the language tabs in the Quran Reader. Your reading position is saved.')),
+                _row(
+                    Icons.info_outline,
+                    'About MuslimGo',
+                    'Version 1.0.4',
+                    () => showAboutDialog(
+                            context: context,
+                            applicationName: 'MuslimGo',
+                            applicationVersion: '1.0.4',
                             children: [
-                              _buildLeading(label, icons[i], isDark),
-                              const SizedBox(width: 14),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text(
-                                      label,
-                                      style: TextStyle(
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.w600,
-                                        color: isDark ? NoorColors.darkTextPrimary : NoorColors.ink,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      subtitle,
-                                      style: TextStyle(
-                                        fontSize: 12.5,
-                                        fontWeight: FontWeight.w400,
-                                        color: isDark ? NoorColors.darkTextSecondary : NoorColors.muted,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              if (rowValue != null) ...[
-                                const SizedBox(width: 8),
-                                Flexible(
-                                  child: Text(
-                                    rowValue,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    textAlign: TextAlign.end,
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                      color: isDark ? NoorColors.darkGold : NoorColors.emeraldMid,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 4),
-                              ],
-                              Icon(
-                                Icons.chevron_right,
-                                size: 18,
-                                color: isDark ? NoorColors.darkTextSecondary : NoorColors.iconMuted,
-                              ),
-                            ],
-                          ),
-                        ),
+                              const Text(
+                                  'Quran, worship, duas and Hadith in one daily companion.')
+                            ])),
+              ]),
+              if (controller?.isGuest != false)
+                FilledButton(
+                    onPressed: () => _open(const LoginScreen()),
+                    child: const Text('Sign in / Create account'))
+              else
+                OutlinedButton.icon(
+                    onPressed: () async {
+                      final confirmed = await showDialog<bool>(
+                          context: context,
+                          builder: (c) => AlertDialog(
+                                  title: const Text('Sign out?'),
+                                  content: const Text(
+                                      'Your saved items and worship log stay on this device.'),
+                                  actions: [
+                                    TextButton(
+                                        onPressed: () =>
+                                            Navigator.pop(c, false),
+                                        child: const Text('Cancel')),
+                                    FilledButton(
+                                        onPressed: () => Navigator.pop(c, true),
+                                        child: const Text('Sign out'))
+                                  ]));
+                      if (confirmed != true) return;
+                      await controller?.logout();
+                      if (context.mounted) {
+                        Navigator.of(context).pushAndRemoveUntil(
+                            MaterialPageRoute(
+                                builder: (_) => const LoginScreen()),
+                            (_) => false);
+                      }
+                    },
+                    icon: const Icon(Icons.logout),
+                    label: const Text('Sign out')),
+            ])));
+  }
+
+  Widget _group(String title, List<Widget> rows) => Padding(
+      padding: const EdgeInsets.only(bottom: 24),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(title, style: NoorType.eyebrow),
+        const SizedBox(height: 10),
+        NoorCard(
+            padding: EdgeInsets.zero,
+            radius: 18,
+            child: Column(children: [
+              for (int i = 0; i < rows.length; i++) ...[
+                if (i > 0) const Divider(height: 1, indent: 54),
+                rows[i]
+              ]
+            ])),
+      ]));
+  Widget _row(
+          IconData icon, String title, String detail, VoidCallback onTap) =>
+      ListTile(
+          onTap: onTap,
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
+          leading: Icon(icon,
+              size: 22, color: Theme.of(context).colorScheme.primary),
+          title: Text(title, style: NoorType.body),
+          subtitle: Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(detail, style: NoorType.meta)),
+          trailing: const Icon(Icons.chevron_right, size: 20));
+  void _info(String title, String description) => showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => SafeArea(
+          child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title, style: NoorType.screenTitle),
+                    const SizedBox(height: 14),
+                    Text(description, style: NoorType.body),
+                    const SizedBox(height: 20),
+                    Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton(
+                            onPressed: () => Navigator.pop(context),
+                            child: const Text('Done')))
+                  ]))));
+  void _themePicker(NoorController? controller) => showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (sheetContext) => SafeArea(
+          child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Appearance', style: NoorType.screenTitle),
+                    const SizedBox(height: 6),
+                    const Text('Bright mode is the default.',
+                        style: NoorType.secondary),
+                    const SizedBox(height: 18),
+                    for (final option in [
+                      (
+                        NoorThemePreference.light,
+                        'Bright',
+                        'Cream, white and emerald'
                       ),
-                    );
-                  },
-                ),
-              ],
-            ],
-          ),
-        ),
-        const SizedBox(height: 16),
-      ],
-    );
-  }
-}
-
-/// Geometric pointed-arch emblem matching the MuslimGo brand icon on Page 13.
-class NoorLogoBadge extends StatelessWidget {
-  final double size;
-  final Color color;
-
-  const NoorLogoBadge({
-    super.key,
-    this.size = 28,
-    this.color = NoorColors.goldSoft,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: size,
-      height: size * 1.15,
-      child: CustomPaint(
-        painter: _NoorLogoPainter(color: color),
-      ),
-    );
-  }
-}
-
-class _NoorLogoPainter extends CustomPainter {
-  final Color color;
-  const _NoorLogoPainter({required this.color});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final stroke = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.4
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round;
-
-    final w = size.width;
-    final h = size.height;
-
-    // Draw 3 concentric pointed arches (ogival mihrab)
-    final layers = [
-      (w, h, 0.0, 0.0),
-      (w * 0.72, h * 0.72, w * 0.14, h * 0.28),
-      (w * 0.44, h * 0.44, w * 0.28, h * 0.56),
-    ];
-
-    for (final layer in layers) {
-      final lw = layer.$1;
-      final lh = layer.$2;
-      final ox = layer.$3;
-      final oy = layer.$4;
-
-      final p = Path();
-      p.moveTo(ox, oy + lh);
-      p.lineTo(ox, oy + lh * 0.45);
-      p.cubicTo(
-        ox,
-        oy + lh * 0.15,
-        ox + lw * 0.35,
-        oy,
-        ox + lw * 0.5,
-        oy,
-      );
-      p.cubicTo(
-        ox + lw * 0.65,
-        oy,
-        ox + lw,
-        oy + lh * 0.15,
-        ox + lw,
-        oy + lh * 0.45,
-      );
-      p.lineTo(ox + lw, oy + lh);
-      p.close();
-      canvas.drawPath(p, stroke);
-    }
-
-    // Central spire / finial line
-    canvas.drawLine(
-      Offset(w * 0.5, h * 0.3),
-      Offset(w * 0.5, h),
-      stroke..strokeWidth = 1.2,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant _NoorLogoPainter oldDelegate) =>
-      oldDelegate.color != color;
+                      (
+                        NoorThemePreference.dark,
+                        'Dark',
+                        'Deep emerald and light text'
+                      ),
+                      (
+                        NoorThemePreference.system,
+                        'System',
+                        'Follow your device'
+                      ),
+                      (
+                        NoorThemePreference.solar,
+                        'Sunset to dawn',
+                        'Optional automatic night mode'
+                      )
+                    ])
+                      Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: NoorOptionTile(
+                              label: option.$2,
+                              sublabel: option.$3,
+                              selected: (controller?.themePreference ??
+                                      NoorThemePreference.light) ==
+                                  option.$1,
+                              onTap: () async {
+                                await controller?.setThemePreference(option.$1);
+                                if (sheetContext.mounted) {
+                                  Navigator.pop(sheetContext);
+                                }
+                              })),
+                  ]))));
+  void _textPicker(NoorController? controller) => showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (sheetContext) => SafeArea(
+          child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Text size', style: NoorType.screenTitle),
+                    const SizedBox(height: 8),
+                    const Text(
+                        'Adjusts the app in addition to your device’s text-size setting.',
+                        style: NoorType.secondary),
+                    const SizedBox(height: 18),
+                    for (final option in [
+                      (0.9, 'Small'),
+                      (1.0, 'Standard'),
+                      (1.15, 'Large'),
+                      (1.3, 'Extra large')
+                    ])
+                      Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: NoorOptionTile(
+                              label: option.$2,
+                              selected: (controller?.textScale ?? _scale) ==
+                                  option.$1,
+                              onTap: () async {
+                                if (controller != null) {
+                                  await controller.setTextScale(option.$1);
+                                } else {
+                                  await NoorStore.setTextScale(option.$1);
+                                }
+                                if (sheetContext.mounted) {
+                                  Navigator.pop(sheetContext);
+                                }
+                                await _load();
+                              })),
+                  ]))));
 }

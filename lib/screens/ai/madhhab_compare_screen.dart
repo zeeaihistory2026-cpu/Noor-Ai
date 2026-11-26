@@ -12,7 +12,7 @@ class MadhhabCompareScreen extends StatelessWidget {
   const MadhhabCompareScreen({super.key});
   @override
   Widget build(BuildContext context) => Scaffold(
-        backgroundColor: NoorColors.cream,
+        backgroundColor: NoorTheme.background(context, light: NoorColors.cream),
         body: SafeArea(
             child: Column(children: [
           Container(
@@ -20,6 +20,7 @@ class MadhhabCompareScreen extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(6, 10, 6, 22),
             child: Row(children: [
               IconButton(
+                  tooltip: 'Back',
                   icon: const Icon(Icons.arrow_back_ios_new,
                       color: Colors.white, size: 19),
                   onPressed: () => Navigator.of(context).maybePop()),
@@ -37,37 +38,37 @@ class MadhhabCompareScreen extends StatelessWidget {
                   // Phase 16 audit: copies the on-screen comparison
                   // text verbatim; "Ask AI" opens the real chat.
                   onPressed: () => showNoorOverflowSheet(context,
-                      title: 'Madhhab compare',
-                      info: const [
-                        'Descriptive summaries of recognized positions only — not rulings. For personal rulings, consult a scholar.',
-                      ],
-                      actions: [
-                        (
-                          Icons.copy_outlined,
-                          'Copy comparison',
-                          () async {
-                            final text = StringBuffer(
-                                '${SampleData.madhhabQuestion}\n');
-                            for (final r in SampleData.madhhabRows) {
-                              text.writeln('\n${r.$1}: ${r.$3}');
-                            }
-                            await Clipboard.setData(
-                                ClipboardData(text: text.toString()));
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                      content:
-                                          Text('Comparison copied')));
-                            }
-                          }
-                        ),
-                        (
-                          Icons.chat_outlined,
-                          'Ask AI about this',
-                          () => Navigator.of(context).push(MaterialPageRoute(
-                              builder: (_) => const AiChatScreen()))
-                        ),
-                      ])),
+                          title: 'Madhhab compare',
+                          info: const [
+                            'Descriptive summaries of recognized positions only — not rulings. For personal rulings, consult a scholar.',
+                          ],
+                          actions: [
+                            (
+                              Icons.copy_outlined,
+                              'Copy comparison',
+                              () async {
+                                final text = StringBuffer(
+                                    '${SampleData.madhhabQuestion}\n');
+                                for (final r in SampleData.madhhabRows) {
+                                  text.writeln('\n${r.$1}: ${r.$3}');
+                                }
+                                await Clipboard.setData(
+                                    ClipboardData(text: text.toString()));
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                          content: Text('Comparison copied')));
+                                }
+                              }
+                            ),
+                            (
+                              Icons.chat_outlined,
+                              'Ask AI about this',
+                              () => Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                      builder: (_) => const AiChatScreen()))
+                            ),
+                          ])),
             ]),
           ),
           Expanded(
@@ -78,7 +79,7 @@ class MadhhabCompareScreen extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 18, vertical: 16),
                     decoration: BoxDecoration(
-                        color: NoorColors.emeraldSoft,
+                        color: NoorTheme.softSurface(context),
                         borderRadius: BorderRadius.circular(16)),
                     child: const Text(SampleData.madhhabQuestion,
                         style: NoorType.cardTitle)),
@@ -87,38 +88,47 @@ class MadhhabCompareScreen extends StatelessWidget {
                   Container(
                       padding: const EdgeInsets.all(18),
                       decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: NoorTheme.surface(context),
                           borderRadius: BorderRadius.circular(NoorRadius.card),
-                          border: Border.all(color: NoorColors.hairline)),
+                          border: Border.all(color: NoorTheme.border(context))),
                       child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Row(children: [
                               Expanded(
                                   child: Text(r.$1,
-                                      style: NoorType.cardTitle.copyWith(color: NoorColors.emeraldDark))),
+                                      style: NoorType.cardTitle)),
                               Container(
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 12, vertical: 6),
                                   decoration: BoxDecoration(
-                                      color: NoorColors.emeraldSoft,
+                                      color: NoorTheme.softSurface(context),
                                       borderRadius: BorderRadius.circular(999)),
                                   child: Text(r.$2,
-                                      style: NoorType.meta.copyWith(color: NoorColors.emeraldDark)))
+                                      style: NoorType.meta.copyWith(color: NoorTheme.muted(context))))
                             ]),
                             const SizedBox(height: 10),
-                            Text(r.$3,
-                                style: NoorType.body),
+                            Text(r.$3, style: NoorType.body),
                             const SizedBox(height: 14),
-                            Text('View evidence ›',
-                                style: NoorType.secondary.copyWith(color: NoorColors.emerald)),
+                            TextButton.icon(
+                                onPressed: () => Navigator.of(context).push(
+                                    MaterialPageRoute(
+                                        builder: (_) => AiChatScreen(
+                                            initialQuery:
+                                                '${SampleData.madhhabQuestion} (${r.$1})'))),
+                                style: TextButton.styleFrom(
+                                    minimumSize: const Size(48, 48),
+                                    padding: EdgeInsets.zero,
+                                    foregroundColor: NoorTheme.accent(context)),
+                                icon: const Icon(Icons.menu_book_outlined,
+                                    size: 16),
+                                label: const Text('View evidence ›')),
                           ])),
                   const SizedBox(height: 12),
                 ],
                 Text(
                     'Recognized differences are shown descriptively. For personal rulings, please consult a qualified scholar.',
-                    style: NoorType.meta.copyWith(color: NoorColors.mutedDark,
-                        height: 1.5)),
+                    style: NoorType.meta.copyWith(color: NoorTheme.muted(context), height: 1.5)),
               ])),
         ])),
       );

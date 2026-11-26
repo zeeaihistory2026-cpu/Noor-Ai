@@ -11,7 +11,8 @@ import 'package:noor_ai_companion/theme/noor_theme.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  Widget wrapWithResponsiveMedia(Widget child, {double textScale = 2.0, Size size = const Size(320, 568)}) {
+  Widget wrapWithResponsiveMedia(Widget child,
+      {double textScale = 2.0, Size size = const Size(320, 568)}) {
     final controller = NoorController();
     return NoorScope(
       controller: controller,
@@ -29,8 +30,11 @@ void main() {
   }
 
   group('Phase 5 — Accessibility (TalkBack Live Regions & Semantics)', () {
-    testWidgets('Tasbih bead counter exposes live region semantics and accessible controls', (tester) async {
-      await tester.pumpWidget(wrapWithResponsiveMedia(const ZikrTasbihScreen(), textScale: 1.0));
+    testWidgets(
+        'Tasbih bead counter exposes live region semantics and accessible controls',
+        (tester) async {
+      await tester.pumpWidget(
+          wrapWithResponsiveMedia(const ZikrTasbihScreen(), textScale: 1.0));
       await tester.pumpAndSettle();
 
       // Verify live region exists for the Tasbih counter
@@ -44,12 +48,16 @@ void main() {
       expect(liveRegionFinder, findsOneWidget);
 
       // Verify Undo and Add buttons have clear semantic labels
-      expect(find.bySemanticsLabel(RegExp(r'Undo previous count')), findsOneWidget);
+      expect(find.bySemanticsLabel(RegExp(r'Undo previous count')),
+          findsOneWidget);
       expect(find.bySemanticsLabel(RegExp(r'Add to count')), findsOneWidget);
     });
 
-    testWidgets('Qibla Compass exposes live region semantics and directional alignment toggle', (tester) async {
-      await tester.pumpWidget(wrapWithResponsiveMedia(const QiblaFinderScreen(), textScale: 1.0));
+    testWidgets(
+        'Qibla never claims alignment without a sensor reading',
+        (tester) async {
+      await tester.pumpWidget(
+          wrapWithResponsiveMedia(const QiblaFinderScreen(), textScale: 1.0));
       await tester.pumpAndSettle();
 
       // Verify live region semantics on compass
@@ -62,19 +70,18 @@ void main() {
       });
       expect(compassSemanticsFinder, findsOneWidget);
 
-      // Verify sensor accuracy status indicator
-      expect(find.text('Sensor: Calibrated (High Accuracy)'), findsOneWidget);
-
-      // Tap compass to test directional alignment feedback
+      expect(find.text('Sensor active • True north'), findsNothing);
+      expect(find.text('Aligned with Qibla (±5°)'), findsNothing);
       await tester.tap(compassSemanticsFinder);
       await tester.pumpAndSettle();
-
-      // Should now show aligned badge and updated live region announcement
-      expect(find.text('ALIGNED WITH TRUE QIBLA'), findsOneWidget);
+      expect(find.text('Aligned with Qibla (±5°)'), findsNothing);
     });
 
-    testWidgets('Salah Tracker prayer items provide state semantics and >=48x48 touch targets', (tester) async {
-      await tester.pumpWidget(wrapWithResponsiveMedia(const SalahTrackerScreen(), textScale: 1.0));
+    testWidgets(
+        'Salah Tracker prayer items provide state semantics and >=48x48 touch targets',
+        (tester) async {
+      await tester.pumpWidget(
+          wrapWithResponsiveMedia(const SalahTrackerScreen(), textScale: 1.0));
       await tester.pumpAndSettle();
 
       // Check for checked semantics on prayer rows
@@ -89,33 +96,50 @@ void main() {
     });
   });
 
-  group('Phase 5 — 200% Font Scale Responsiveness (Zero RenderFlex Overflows)', () {
-    testWidgets('HomeDashboardScreen renders cleanly at 200% text scale without overflow', (tester) async {
-      await tester.pumpWidget(wrapWithResponsiveMedia(const HomeDashboardScreen(), textScale: 2.0));
+  group('Phase 5 — 200% Font Scale Responsiveness (Zero RenderFlex Overflows)',
+      () {
+    testWidgets(
+        'HomeDashboardScreen renders cleanly at 200% text scale without overflow',
+        (tester) async {
+      await tester.pumpWidget(
+          wrapWithResponsiveMedia(const HomeDashboardScreen(), textScale: 2.0));
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('SalahTrackerScreen renders cleanly at 200% text scale without overflow', (tester) async {
-      await tester.pumpWidget(wrapWithResponsiveMedia(const SalahTrackerScreen(), textScale: 2.0));
+    testWidgets(
+        'SalahTrackerScreen renders cleanly at 200% text scale without overflow',
+        (tester) async {
+      await tester.pumpWidget(
+          wrapWithResponsiveMedia(const SalahTrackerScreen(), textScale: 2.0));
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('WorshipDashboardScreen renders cleanly at 200% text scale without overflow', (tester) async {
-      await tester.pumpWidget(wrapWithResponsiveMedia(const WorshipDashboardScreen(), textScale: 2.0));
+    testWidgets(
+        'WorshipDashboardScreen renders cleanly at 200% text scale without overflow',
+        (tester) async {
+      await tester.pumpWidget(wrapWithResponsiveMedia(
+          const WorshipDashboardScreen(),
+          textScale: 2.0));
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('ZikrTasbihScreen renders cleanly at 200% text scale without overflow', (tester) async {
-      await tester.pumpWidget(wrapWithResponsiveMedia(const ZikrTasbihScreen(), textScale: 2.0));
+    testWidgets(
+        'ZikrTasbihScreen renders cleanly at 200% text scale without overflow',
+        (tester) async {
+      await tester.pumpWidget(
+          wrapWithResponsiveMedia(const ZikrTasbihScreen(), textScale: 2.0));
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
     });
 
-    testWidgets('QiblaFinderScreen renders cleanly at 200% text scale without overflow', (tester) async {
-      await tester.pumpWidget(wrapWithResponsiveMedia(const QiblaFinderScreen(), textScale: 2.0));
+    testWidgets(
+        'QiblaFinderScreen renders cleanly at 200% text scale without overflow',
+        (tester) async {
+      await tester.pumpWidget(
+          wrapWithResponsiveMedia(const QiblaFinderScreen(), textScale: 2.0));
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
     });

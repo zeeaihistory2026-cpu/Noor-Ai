@@ -338,11 +338,31 @@ class SampleData {
   // Page 35 — Notifications (title, body, initial) grouped as drawn.
   static const notifToday = [
     ('Fajr reminder', 'Fajr begins in 15 minutes. Prepare for prayer.', 'F'),
-    ('Ayat of the Day', '“Verily, in the remembrance of Allah do hearts find rest.” (13:28)', 'A'),
-    ('Daily Zikr', 'Take a peaceful moment for SubhanAllah, Alhamdulillah & Allahu Akbar.', 'Z'),
-    ('Daily Dua', 'Your Dua of the Day is ready: “Rabbana atina fid-dunya hasanah...”', 'D'),
-    ('Hadith of the Day', '“The best among you are those who have the best manners.”', 'H'),
-    ('Quote of the Day', '“Patience is not the ability to wait, but how you act while waiting.”', 'Q'),
+    (
+      'Ayat of the Day',
+      '“Verily, in the remembrance of Allah do hearts find rest.” (13:28)',
+      'A'
+    ),
+    (
+      'Daily Zikr',
+      'Take a peaceful moment for SubhanAllah, Alhamdulillah & Allahu Akbar.',
+      'Z'
+    ),
+    (
+      'Daily Dua',
+      'Your Dua of the Day is ready: “Rabbana atina fid-dunya hasanah...”',
+      'D'
+    ),
+    (
+      'Hadith of the Day',
+      '“The best among you are those who have the best manners.”',
+      'H'
+    ),
+    (
+      'Quote of the Day',
+      '“Patience is not the ability to wait, but how you act while waiting.”',
+      'Q'
+    ),
     ('Quran', 'Continue Surah Al-Kahf from Ayah 18.', 'Q'),
   ];
   static const notifEarlier = [
@@ -359,6 +379,7 @@ class SampleData {
   ];
   static const settingsPrefs = [
     ('Location', 'Change your city & prayer calculation location', ''),
+    ('Prayer Settings', 'Calculation method and Asr convention', ''),
     ('Theme', 'Choose your app theme', 'System'),
     ('Text Size', 'Adjust text size for better reading', 'Medium'),
     ('Audio Settings', 'Manage audio playback preferences', ''),
@@ -367,7 +388,7 @@ class SampleData {
   static const settingsSupport = [
     ('Help Center', 'Get help and FAQ', ''),
     ('Send Feedback', 'Share your thoughts with us', ''),
-    ('About MuslimGo', 'App info, version and updates', 'v1.2.0'),
+    ('About MuslimGo', 'App info, version and updates', 'v1.0.2'),
     ('Rate MuslimGo', 'Rate us on the app store', ''),
   ];
   static const settingsEmail = 'abdullah.khan@email.com';

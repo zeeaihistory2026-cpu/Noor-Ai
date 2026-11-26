@@ -1,6 +1,5 @@
 allprojects {
     repositories {
-        maven { url = uri("file:///home/hatch/workspace/gradle-local-repo") }
         google()
         mavenCentral()
     }

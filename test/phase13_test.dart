@@ -7,17 +7,17 @@ import 'package:noor_ai_companion/data/prayer_service.dart';
 
 void main() {
   group('Phase 13 — app-wide reactive state', () {
-    test('controller starts on the canonical demo snapshot', () {
-      final c = NoorController();
+    test('controller starts with real calculations instead of demo times', () {
+      final c = NoorController(autoInit: false);
       expect(c.isLive, isFalse);
-      expect(c.nextPrayerLabel, 'ASR 3:58 PM');
-      expect(c.sourceLabel, 'Demo data');
-      expect(c.userName, 'Abdullah');
-      expect(c.streaks['Salah'], 12);
+      expect(c.activeDay.source, PrayerSource.calculated);
+      expect(c.activeDay.timings.length, 6);
+      expect(c.sourceLabel, 'Calculated for selected city');
+      expect(c.userName, '');
+      expect(c.streaks['Salah'], 0);
     });
 
-    test('setLiveDay propagates: label + source flip, listeners fire',
-        () {
+    test('setLiveDay propagates: label + source flip, listeners fire', () {
       final c = NoorController();
       var notifications = 0;
       c.addListener(() => notifications++);
@@ -65,7 +65,7 @@ void main() {
           ),
         ),
       ));
-      expect(find.text('ASR 3:58 PM'), findsOneWidget);
+      expect(find.text(c.nextPrayerLabel), findsOneWidget);
       c.setUserName('Yusuf');
       c.setStreak('Salah', 13);
       await tester.pump();
@@ -89,8 +89,7 @@ void main() {
         if (f.path.endsWith('noor_theme.dart')) continue;
         if (readLib(f).contains('Color(0x')) offenders.add(f.path);
       }
-      expect(offenders, isEmpty,
-          reason: 'hardcoded colors in: $offenders');
+      expect(offenders, isEmpty, reason: 'hardcoded colors in: $offenders');
     });
 
     test('ad-hoc fontSize only in documented exception sites', () {

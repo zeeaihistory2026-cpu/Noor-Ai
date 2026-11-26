@@ -29,7 +29,8 @@ class NoorRosetteBadge extends StatelessWidget {
                 style: TextStyle(
                     fontWeight: FontWeight.w800,
                     fontSize: size * 0.36,
-                    color: filled ? Colors.white : NoorColors.ink)),
+                    color: NoorTheme.foreground(context,
+                        light: filled ? Colors.white : NoorColors.ink))),
           ),
         ),
       );
@@ -83,8 +84,8 @@ class NoorScaffold extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      backgroundColor: backgroundColor ??
-          (isDark ? NoorColors.darkBg : NoorColors.cream),
+      backgroundColor:
+          backgroundColor ?? (isDark ? NoorColors.darkBg : NoorColors.cream),
       body: SafeArea(
         child: Column(children: [
           Expanded(child: child),
@@ -102,8 +103,11 @@ class NoorSectionLabel extends StatelessWidget {
   const NoorSectionLabel(this.text, {super.key});
   final String text;
   @override
-  Widget build(BuildContext context) =>
-      Text(text.toUpperCase(), style: NoorType.eyebrow);
+  Widget build(BuildContext context) => Semantics(
+        header: true,
+        child: Text(text.toUpperCase(),
+            style: NoorType.eyebrow.copyWith(color: NoorTheme.muted(context))),
+      );
 }
 
 /// Emerald primary button (Phase 3 design system):
@@ -120,38 +124,41 @@ class NoorPrimaryButton extends StatelessWidget {
   final Widget? icon;
 
   @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.fromLTRB(28, 8, 28, 24),
-        child: SizedBox(
-          width: double.infinity,
-          height: NoorSizes.buttonHeight,
-          child: FilledButton(
-            onPressed: onPressed,
-            style: FilledButton.styleFrom(
-              backgroundColor: NoorColors.emeraldDark,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(NoorRadius.button)),
-              // No textStyle here: overriding it drops the theme's
-              // label font (Manrope). Size/weight go on the child.
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (icon != null) ...[icon!, const SizedBox(width: 8)],
-                Flexible(
-                  child: Text(
-                    label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: NoorType.cardTitle.copyWith(color: Colors.white),
-                  ),
+  Widget build(BuildContext context) {
+    final isDark = NoorTheme.isDark(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(28, 8, 28, 24),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(
+            minWidth: double.infinity, minHeight: NoorSizes.buttonHeight),
+        child: FilledButton(
+          onPressed: onPressed,
+          style: FilledButton.styleFrom(
+            backgroundColor:
+                isDark ? NoorColors.emeraldMid : NoorColors.emeraldDark,
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(NoorRadius.button)),
+            // No textStyle here: overriding it drops the theme's
+            // label font (Manrope). Size/weight go on the child.
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (icon != null) ...[icon!, const SizedBox(width: 8)],
+              Flexible(
+                child: Text(
+                  label,
+                  textAlign: TextAlign.center,
+                  style: NoorType.cardTitle.copyWith(color: Colors.white),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
-      );
+      ),
+    );
+  }
 }
 
 /// Standardized secondary outlined button (Phase 3 design system):
@@ -168,38 +175,39 @@ class NoorSecondaryButton extends StatelessWidget {
   final Widget? icon;
 
   @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.fromLTRB(28, 8, 28, 24),
-        child: SizedBox(
-          width: double.infinity,
-          height: NoorSizes.buttonHeight,
-          child: OutlinedButton(
-            onPressed: onPressed,
-            style: OutlinedButton.styleFrom(
-              side: const BorderSide(color: NoorColors.emeraldDark, width: 1.5),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(NoorRadius.button)),
-              foregroundColor: NoorColors.emeraldDark,
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (icon != null) ...[icon!, const SizedBox(width: 8)],
-                Flexible(
-                  child: Text(
-                    label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: NoorType.cardTitle
-                        .copyWith(color: NoorColors.emeraldDark),
-                  ),
+  Widget build(BuildContext context) {
+    final fg = NoorTheme.accent(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(28, 8, 28, 24),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(
+            minWidth: double.infinity, minHeight: NoorSizes.buttonHeight),
+        child: OutlinedButton(
+          onPressed: onPressed,
+          style: OutlinedButton.styleFrom(
+            side: BorderSide(color: fg, width: 1.5),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(NoorRadius.button)),
+            foregroundColor: fg,
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (icon != null) ...[icon!, const SizedBox(width: 8)],
+              Flexible(
+                child: Text(
+                  label,
+                  textAlign: TextAlign.center,
+                  style: NoorType.cardTitle.copyWith(color: fg),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
-      );
+      ),
+    );
+  }
 }
 
 /// White card with the design's soft shadow + 20px radius (Tier 1 content card).
@@ -224,23 +232,22 @@ class NoorCard extends StatelessWidget {
     final r = radius ?? NoorRadius.card;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final cardBg = color ?? (isDark ? NoorColors.darkCard : Colors.white);
-    final card = Container(
-      decoration: BoxDecoration(
-          color: cardBg,
-          borderRadius: BorderRadius.circular(r),
-          border: isDark ? Border.all(color: NoorColors.darkBorder, width: 1) : null,
-          boxShadow: isDark ? null : NoorShadows.card),
-      padding: padding ?? NoorSpacing.card,
-      child: child,
+    final shape = RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(r),
+      side: BorderSide(
+          color: isDark ? NoorColors.darkBorder : NoorColors.hairlineSoft),
     );
-    return onTap == null
-        ? card
-        : Material(
-            color: Colors.transparent,
-            child: InkWell(
-                onTap: onTap,
-                borderRadius: BorderRadius.circular(r),
-                child: card));
+    return Material(
+      color: cardBg,
+      shape: shape,
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: padding ?? NoorSpacing.card,
+            child: child,
+          )),
+    );
   }
 }
 
@@ -269,11 +276,17 @@ class NoorOptionTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final unselectedBg = isDark ? NoorColors.darkSurface : Colors.white;
-    final unselectedBorder = isDark ? NoorColors.darkBorder : NoorColors.hairline;
-    final unselectedTextColor = isDark ? NoorColors.darkTextPrimary : NoorColors.ink;
-    final unselectedSubtextColor = isDark ? NoorColors.darkTextSecondary : NoorColors.mutedDark;
+    final unselectedBorder =
+        isDark ? NoorColors.darkBorder : NoorColors.hairline;
+    final unselectedTextColor =
+        isDark ? NoorColors.darkTextPrimary : NoorColors.ink;
+    final unselectedSubtextColor =
+        isDark ? NoorColors.darkTextSecondary : NoorColors.mutedDark;
 
-    return Material(
+    return Semantics(
+      button: true,
+      selected: selected,
+      child: Material(
       color: selected ? NoorColors.emeraldDark : unselectedBg,
       borderRadius: BorderRadius.circular(NoorRadius.cardSmall),
       child: InkWell(
@@ -283,8 +296,7 @@ class NoorOptionTile extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(NoorRadius.cardSmall),
-            border:
-                selected ? null : Border.all(color: unselectedBorder),
+            border: selected ? null : Border.all(color: unselectedBorder),
           ),
           child: Row(children: [
             if (leading != null) ...[leading!, const SizedBox(width: 12)],
@@ -293,9 +305,9 @@ class NoorOptionTile extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(label,
-                        maxLines: 2,
                         style: (labelStyle ?? NoorType.cardTitle).copyWith(
-                            color: selected ? Colors.white : unselectedTextColor)),
+                            color:
+                                selected ? Colors.white : unselectedTextColor)),
                     if (sublabel != null)
                       Text(sublabel!,
                           style: NoorType.meta.copyWith(
@@ -308,7 +320,7 @@ class NoorOptionTile extends StatelessWidget {
           ]),
         ),
       ),
-    );
+    ));
   }
 }
 
@@ -323,7 +335,9 @@ class NoorRadioDot extends StatelessWidget {
         height: 22,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: selected ? Colors.white : Colors.transparent,
+          color: selected
+              ? NoorTheme.surface(context, light: Colors.white)
+              : Colors.transparent,
           border: Border.all(
               color: selected ? Colors.white : NoorColors.emerald, width: 2),
         ),
@@ -355,12 +369,15 @@ class NoorInitialBadge extends StatelessWidget {
         alignment: Alignment.center,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: selected ? Colors.white24 : NoorColors.emeraldSoft,
+          color: selected
+              ? Colors.white24
+              : NoorTheme.surface(context, light: NoorColors.emeraldSoft),
         ),
         child: Text(letter,
             style: TextStyle(
                 fontWeight: FontWeight.w800,
-                color: selected ? Colors.white : NoorColors.emeraldDark)),
+                color: NoorTheme.foreground(context,
+                    light: selected ? Colors.white : NoorColors.emeraldDark))),
       );
 }
 
@@ -388,42 +405,46 @@ class NoorFormField extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label,
-              style: NoorType.secondary.copyWith(
-                  color: isDark ? NoorColors.darkTextSecondary : NoorColors.mutedDark)),
-          const SizedBox(height: 8),
-          TextField(
-            controller: controller,
-            obscureText: obscure,
-            keyboardType: keyboardType,
-            style: TextStyle(
-                color: isDark ? NoorColors.darkTextPrimary : NoorColors.ink),
-            decoration: InputDecoration(
-              suffixIcon: suffixIcon,
-              errorText: errorText,
-              hintText: hint,
-              hintStyle: NoorType.body.copyWith(
-                  color: isDark ? NoorColors.darkTextSecondary : NoorColors.mutedDark),
-              filled: true,
-              fillColor: isDark ? NoorColors.darkSurface : Colors.white,
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(NoorRadius.cardSmall),
-                borderSide: BorderSide(
-                    color: isDark ? NoorColors.darkBorder : NoorColors.hairline),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(NoorRadius.cardSmall),
-                borderSide: BorderSide(
-                    color: isDark ? NoorColors.darkGold : NoorColors.emerald),
-              ),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label,
+            style: NoorType.secondary.copyWith(
+                color: isDark
+                    ? NoorColors.darkTextSecondary
+                    : NoorColors.mutedDark)),
+        const SizedBox(height: 8),
+        TextField(
+          controller: controller,
+          obscureText: obscure,
+          keyboardType: keyboardType,
+          style: TextStyle(
+              color: isDark ? NoorColors.darkTextPrimary : NoorColors.ink),
+          decoration: InputDecoration(
+            suffixIcon: suffixIcon,
+            errorText: errorText,
+            hintText: hint,
+            hintStyle: NoorType.body.copyWith(
+                color: isDark
+                    ? NoorColors.darkTextSecondary
+                    : NoorColors.mutedDark),
+            filled: true,
+            fillColor: isDark ? NoorColors.darkSurface : Colors.white,
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(NoorRadius.cardSmall),
+              borderSide: BorderSide(
+                  color: isDark ? NoorColors.darkBorder : NoorColors.hairline),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(NoorRadius.cardSmall),
+              borderSide: BorderSide(
+                  color: isDark ? NoorColors.darkGold : NoorColors.emerald),
             ),
           ),
-        ],
-      );
+        ),
+      ],
+    );
   }
 }
 
@@ -471,9 +492,13 @@ class NoorDarkHeader extends StatelessWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(title,
-                      textAlign: TextAlign.center,
-                      style: NoorType.screenTitle.copyWith(color: Colors.white)),
+                  Semantics(
+                    header: true,
+                    child: Text(title,
+                        textAlign: TextAlign.center,
+                        style:
+                            NoorType.screenTitle.copyWith(color: Colors.white)),
+                  ),
                   if (subtitle != null) ...[
                     const SizedBox(height: 2),
                     Text(subtitle!,
@@ -511,7 +536,7 @@ class NoorPillTabs extends StatelessWidget {
           children: List.generate(tabs.length, (i) {
             final on = i == selected;
             return Expanded(
-              // Phase 12: Material ink + semantics + a >=44dp target
+              // Phase 12 / 18: Material ink + semantics + a >=48dp target
               // (the old GestureDetector tabs were ~36dp, unlabelled,
               // and had no pressed feedback).
               child: Semantics(
@@ -519,18 +544,25 @@ class NoorPillTabs extends StatelessWidget {
                 selected: on,
                 label: tabs[i],
                 child: Material(
-                  color: on ? Colors.white : Colors.transparent,
+                  color: on
+                      ? NoorTheme.surface(context, light: Colors.white)
+                      : Colors.transparent,
                   borderRadius: BorderRadius.circular(NoorRadius.chip),
                   child: InkWell(
                     onTap: () => onSelect(i),
                     borderRadius: BorderRadius.circular(NoorRadius.chip),
                     child: Container(
-                      constraints: const BoxConstraints(minHeight: 44),
+                      constraints: const BoxConstraints(minHeight: 48),
                       alignment: Alignment.center,
-                      child: Text(tabs[i],
-                          textAlign: TextAlign.center,
-                          style: NoorType.secondary.copyWith(color:
-                                  on ? NoorColors.emeraldDark : Colors.white)),
+                      child: ExcludeSemantics(
+                        child: Text(tabs[i],
+                            textAlign: TextAlign.center,
+                            style: NoorType.secondary.copyWith(
+                                color: NoorTheme.foreground(context,
+                                    light: on
+                                        ? NoorColors.emeraldDark
+                                        : Colors.white))),
+                      ),
                     ),
                   ),
                 ),
@@ -579,14 +611,18 @@ class NoorListRow extends StatelessWidget {
               children: [
                 Text(title,
                     style: NoorType.cardTitle.copyWith(
-                        color: isDark ? NoorColors.darkTextPrimary : NoorColors.ink),
-                    maxLines: 1,
+                        color: isDark
+                            ? NoorColors.darkTextPrimary
+                            : NoorColors.ink),
+                    maxLines: 2,
                     overflow: TextOverflow.ellipsis),
                 if (subtitle != null)
                   Text(subtitle!,
                       style: NoorType.secondary.copyWith(
-                          color: isDark ? NoorColors.darkTextSecondary : NoorColors.mutedDark),
-                      maxLines: 2,
+                          color: isDark
+                              ? NoorColors.darkTextSecondary
+                              : NoorColors.mutedDark),
+                      maxLines: 3,
                       overflow: TextOverflow.ellipsis),
               ]),
         ),
@@ -594,7 +630,9 @@ class NoorListRow extends StatelessWidget {
           Flexible(
             child: Text(value!,
                 style: NoorType.meta.copyWith(
-                    color: isDark ? NoorColors.darkTextSecondary : NoorColors.mutedDark),
+                    color: isDark
+                        ? NoorColors.darkTextSecondary
+                        : NoorColors.mutedDark),
                 textAlign: TextAlign.end,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis),
@@ -605,7 +643,10 @@ class NoorListRow extends StatelessWidget {
       ]),
     );
     final labelled = Semantics(
-        button: onTap != null, label: semanticLabel ?? title, child: row);
+        button: onTap != null,
+        label: semanticLabel ?? title,
+        excludeSemantics: semanticLabel != null,
+        child: row);
     return onTap == null
         ? labelled
         : Material(
@@ -631,29 +672,23 @@ class NoorProgressRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Semantics(
         label: '$label, $percent percent. $detail',
-        child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(label, style: NoorType.cardTitle),
-                    Text('$percent%',
-                        style: NoorType.tabular(
-                            NoorType.body.copyWith(
-                                color: NoorColors.emeraldDark))),
-                  ]),
-              const SizedBox(height: 8),
-              ClipRRect(
-                  borderRadius: BorderRadius.circular(99),
-                  child: LinearProgressIndicator(
-                      value: percent / 100,
-                      minHeight: 11,
-                      color: NoorColors.emeraldDark,
-                      backgroundColor: NoorColors.hairlineSoft)),
-              const SizedBox(height: 6),
-              Text(detail, style: NoorType.meta),
-            ]),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+            Text(label, style: NoorType.cardTitle),
+            Text('$percent%',
+                style: NoorType.tabular(NoorType.body.copyWith(color: null))),
+          ]),
+          const SizedBox(height: 8),
+          ClipRRect(
+              borderRadius: BorderRadius.circular(99),
+              child: LinearProgressIndicator(
+                  value: percent / 100,
+                  minHeight: 11,
+                  color: NoorColors.emeraldDark,
+                  backgroundColor: NoorColors.hairlineSoft)),
+          const SizedBox(height: 6),
+          Text(detail, style: NoorType.meta),
+        ]),
       );
 }
 
@@ -675,7 +710,8 @@ class NoorAvatar extends StatelessWidget {
     final n = (name ?? '').trim();
     final parts = n.split(RegExp(r'\s+'));
     if (parts.length == 1) return parts[0].substring(0, 1).toUpperCase();
-    return (parts[0].substring(0, 1) + parts[parts.length - 1].substring(0, 1)).toUpperCase();
+    return (parts[0].substring(0, 1) + parts[parts.length - 1].substring(0, 1))
+        .toUpperCase();
   }
 
   @override
@@ -693,8 +729,7 @@ class NoorAvatar extends StatelessWidget {
                       color: Colors.white,
                       fontWeight: FontWeight.w800,
                       fontSize: size * 0.36))
-              : Icon(Icons.person,
-                  color: Colors.white, size: size * 0.55),
+              : Icon(Icons.person, color: Colors.white, size: size * 0.55),
         ),
       );
 }
@@ -734,12 +769,15 @@ Future<void> showNoorOverflowSheet(
                     width: 44,
                     height: 5,
                     decoration: BoxDecoration(
-                        color: isDark ? NoorColors.darkBorder : NoorColors.hairline,
+                        color: isDark
+                            ? NoorColors.darkBorder
+                            : NoorColors.hairline,
                         borderRadius: BorderRadius.circular(99)))),
             const SizedBox(height: 14),
             Text(title,
                 style: NoorType.cardTitle.copyWith(
-                    color: isDark ? NoorColors.darkTextPrimary : NoorColors.ink)),
+                    color:
+                        isDark ? NoorColors.darkTextPrimary : NoorColors.ink)),
             if (info != null) ...[
               const SizedBox(height: 10),
               for (final line in info)
@@ -747,19 +785,25 @@ Future<void> showNoorOverflowSheet(
                     padding: const EdgeInsets.only(bottom: 8),
                     child: Text(line,
                         style: NoorType.secondary.copyWith(
-                            color: isDark ? NoorColors.darkTextSecondary : NoorColors.mutedDark,
+                            color: isDark
+                                ? NoorColors.darkTextSecondary
+                                : NoorColors.mutedDark,
                             height: 1.5))),
             ],
             const SizedBox(height: 6),
-            for (final a in actions ?? const <(IconData, String, VoidCallback)>[])
+            for (final a
+                in actions ?? const <(IconData, String, VoidCallback)>[])
               ListTile(
                 contentPadding: EdgeInsets.zero,
                 leading: Icon(a.$1,
-                    color: isDark ? NoorColors.darkGold : NoorColors.emeraldDark,
+                    color:
+                        isDark ? NoorColors.darkGold : NoorColors.emeraldDark,
                     size: 21),
                 title: Text(a.$2,
                     style: NoorType.body.copyWith(
-                        color: isDark ? NoorColors.darkTextPrimary : NoorColors.ink)),
+                        color: isDark
+                            ? NoorColors.darkTextPrimary
+                            : NoorColors.ink)),
                 onTap: () {
                   Navigator.of(sheetContext).pop();
                   a.$3();

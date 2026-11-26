@@ -48,14 +48,16 @@ class _DuaLibraryScreenState extends State<DuaLibraryScreen> {
       AuthenticDua(
         arabic: 'بِاسْمِكَ رَبِّي وَضَعْتُ جَنْبِي وَبِكَ أَرْفَعُهُ',
         transliteration: 'Bismika Rabbi wada\'tu janbi wa bika arfa\'uh',
-        translation: 'In Your name my Lord, I lie down and in Your name I rise.',
+        translation:
+            'In Your name my Lord, I lie down and in Your name I rise.',
         reference: 'Sahih al-Bukhari 6320',
         count: 1,
       ),
       AuthenticDua(
         arabic: 'اللَّهُمَّ قِنِي عَذَابَكَ يَوْمَ تَبْعَثُ عِبَادَكَ',
         transliteration: 'Allahumma qini \'adhabaka yawma tab\'athu \'ibadak',
-        translation: 'O Allah, protect me from Your punishment on the Day You resurrect Your slaves.',
+        translation:
+            'O Allah, protect me from Your punishment on the Day You resurrect Your slaves.',
         reference: 'Sunan Abu Dawud 5045',
         count: 3,
       ),
@@ -69,55 +71,106 @@ class _DuaLibraryScreenState extends State<DuaLibraryScreen> {
         count: 3,
       ),
       AuthenticDua(
-        arabic: 'اللَّهُمَّ انْفَعْنِي بِمَا عَلَّمْتَنِي وَعَلِّمْنِي مَا يَنْفَعُنِي',
-        transliteration: 'Allahumma infa\'ni bima \'allamtani wa \'allimni ma yanfa\'uni',
-        translation: 'O Allah, benefit me with what You taught me and teach me what benefits me.',
+        arabic:
+            'اللَّهُمَّ انْفَعْنِي بِمَا عَلَّمْتَنِي وَعَلِّمْنِي مَا يَنْفَعُنِي',
+        transliteration:
+            'Allahumma infa\'ni bima \'allamtani wa \'allimni ma yanfa\'uni',
+        translation:
+            'O Allah, benefit me with what You taught me and teach me what benefits me.',
         reference: 'Sunan Ibn Majah 251',
         count: 1,
       ),
     ],
     'For Protection': [
       AuthenticDua(
-        arabic: 'أَعُوذُ بِكَلِمَاتِ اللَّهِ التَّامَّاتِ مِنْ شَرِّ مَا خَلَقَ',
-        transliteration: 'A\'udhu bi kalimatil-lahit-tammati min sharri ma khalaq',
-        translation: 'I seek refuge in the perfect words of Allah from the evil of what He has created.',
+        arabic:
+            'أَعُوذُ بِكَلِمَاتِ اللَّهِ التَّامَّاتِ مِنْ شَرِّ مَا خَلَقَ',
+        transliteration:
+            'A\'udhu bi kalimatil-lahit-tammati min sharri ma khalaq',
+        translation:
+            'I seek refuge in the perfect words of Allah from the evil of what He has created.',
         reference: 'Sahih Muslim 2708',
         count: 3,
       ),
       AuthenticDua(
-        arabic: 'بِسْمِ اللَّهِ الَّذِي لَا يَضُرُّ مَعَ اسْمِهِ شَيْءٌ فِي الْأَرْضِ وَلَا فِي السَّمَاءِ',
-        transliteration: 'Bismillahil-lazi la yadurru ma\'as-mihi shay\'un fil-ardi wa la fis-sama\'',
-        translation: 'In the Name of Allah, with Whose Name nothing can cause harm in earth or heaven.',
+        arabic:
+            'بِسْمِ اللَّهِ الَّذِي لَا يَضُرُّ مَعَ اسْمِهِ شَيْءٌ فِي الْأَرْضِ وَلَا فِي السَّمَاءِ',
+        transliteration:
+            'Bismillahil-lazi la yadurru ma\'as-mihi shay\'un fil-ardi wa la fis-sama\'',
+        translation:
+            'In the Name of Allah, with Whose Name nothing can cause harm in earth or heaven.',
         reference: 'Sunan Abu Dawud 5088',
         count: 3,
       ),
     ],
     'Travel': [
       AuthenticDua(
-        arabic: 'سُبْحَانَ الَّذِي سَخَّرَ لَنَا هَٰذَا وَمَا كُنَّا لَهُ مُقْرِنِينَ وَإِنَّا إِلَىٰ رَبِّنَا لَمُنقَلِبُونَ',
-        transliteration: 'Subhanal-lazi sakh-khara lana hadha wa ma kunna lahu muqrinin',
-        translation: 'Glory be to Him Who has subjected this to us, and we could never have achieved it by ourselves.',
+        arabic:
+            'سُبْحَانَ الَّذِي سَخَّرَ لَنَا هَٰذَا وَمَا كُنَّا لَهُ مُقْرِنِينَ وَإِنَّا إِلَىٰ رَبِّنَا لَمُنقَلِبُونَ',
+        transliteration:
+            'Subhanal-lazi sakh-khara lana hadha wa ma kunna lahu muqrinin',
+        translation:
+            'Glory be to Him Who has subjected this to us, and we could never have achieved it by ourselves.',
         reference: 'Surah Az-Zukhruf 43:13-14',
         count: 1,
       ),
     ],
     'Forgiveness': [
       AuthenticDua(
-        arabic: 'أَسْتَغْفِرُ اللَّهَ الْعَظِيمَ الَّذِي لَا إِلَٰهَ إِلَّا هُوَ الْحَيَّ الْقَيُّومَ وَأَتُوبُ إِلَيْهِ',
-        transliteration: 'Astaghfirullahal-\'Adheem al-lazi la ilaha illa Huwal-Hayyul-Qayyum wa atubu ilayh',
-        translation: 'I seek forgiveness from Allah the Magnificent, besides Whom there is no deity, the Ever-Living, and I repent to Him.',
+        arabic:
+            'أَسْتَغْفِرُ اللَّهَ الْعَظِيمَ الَّذِي لَا إِلَٰهَ إِلَّا هُوَ الْحَيَّ الْقَيُّومَ وَأَتُوبُ إِلَيْهِ',
+        transliteration:
+            'Astaghfirullahal-\'Adheem al-lazi la ilaha illa Huwal-Hayyul-Qayyum wa atubu ilayh',
+        translation:
+            'I seek forgiveness from Allah the Magnificent, besides Whom there is no deity, the Ever-Living, and I repent to Him.',
         reference: 'Sunan Abi Dawud 1517',
         count: 3,
       ),
       AuthenticDua(
-        arabic: 'رَبِّ اغْفِرْ لِي وَتُبْ عَلَيَّ إِنَّكَ أَنْتَ التَّوَّابُ الرَّحِيمُ',
-        transliteration: 'Rabbighfir li wa tub \'alayya innaka Antat-Tawwabur-Rahim',
-        translation: 'My Lord, forgive me and accept my repentance, You are the Accepter of Repentance, the Most Merciful.',
+        arabic:
+            'رَبِّ اغْفِرْ لِي وَتُبْ عَلَيَّ إِنَّكَ أَنْتَ التَّوَّابُ الرَّحِيمُ',
+        transliteration:
+            'Rabbighfir li wa tub \'alayya innaka Antat-Tawwabur-Rahim',
+        translation:
+            'My Lord, forgive me and accept my repentance, You are the Accepter of Repentance, the Most Merciful.',
         reference: 'Sunan Abi Dawud 1516',
         count: 100,
       ),
     ],
+    'Quranic Duas': [
+      AuthenticDua(
+        arabic: 'رَبَّنَا آتِنَا فِي الدُّنْيَا حَسَنَةً وَفِي الْآخِرَةِ حَسَنَةً وَقِنَا عَذَابَ النَّارِ',
+        transliteration: 'Rabbana atina fid-dunya hasanatan wa fil-akhirati hasanatan wa qina adhaban-nar',
+        translation: 'Our Lord, give us in this world that which is good and in the Hereafter that which is good and protect us from the punishment of the Fire.',
+        reference: 'Surah Al-Baqarah 2:201',
+        count: 1,
+      ),
+    ],
+    'Anxiety & Relief': [
+      AuthenticDua(
+        arabic: 'لَا إِلَٰهَ إِلَّا أَنْتَ سُبْحَانَكَ إِنِّي كُنْتُ مِنَ الظَّالِمِينَ',
+        transliteration: 'La ilaha illa Anta subhanaka inni kuntu minaz-zalimin',
+        translation: 'There is no deity except You; exalted are You. Indeed, I have been of the wrongdoers.',
+        reference: 'Surah Al-Anbiya 21:87',
+        count: 3,
+      ),
+    ],
   };
+
+  Set<String> _doneAdhkarIds = {};
+  String get _todayKey => DateTime.now().toIso8601String().split('T').first;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAdhkarProgress();
+  }
+
+  Future<void> _loadAdhkarProgress() async {
+    final done = await NoorStore.getAdhkarDoneIds(_todayKey);
+    if (!mounted) return;
+    setState(() => _doneAdhkarIds = done.toSet());
+  }
 
   @override
   void dispose() {
@@ -130,9 +183,10 @@ class _DuaLibraryScreenState extends State<DuaLibraryScreen> {
     if (categoryName == 'Morning Adhkar' ||
         categoryName == 'Evening Adhkar' ||
         categoryName == 'After Salah') {
-      Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => const ZikrTasbihScreen(initialTab: 1)),
-      );
+      Navigator.of(context)
+          .push(MaterialPageRoute(
+              builder: (_) => const ZikrTasbihScreen(initialTab: 1)))
+          .then((_) => _loadAdhkarProgress());
       return;
     }
 
@@ -142,7 +196,7 @@ class _DuaLibraryScreenState extends State<DuaLibraryScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
+      backgroundColor: NoorTheme.surface(context),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
@@ -162,7 +216,7 @@ class _DuaLibraryScreenState extends State<DuaLibraryScreen> {
                     width: 44,
                     height: 4,
                     decoration: BoxDecoration(
-                      color: NoorColors.hairline,
+                      color: NoorTheme.border(context),
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
@@ -175,8 +229,12 @@ class _DuaLibraryScreenState extends State<DuaLibraryScreen> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(categoryName, style: NoorType.section.copyWith(color: NoorColors.emeraldDark)),
-                          Text('${duas.length} Authentic Supplications', style: NoorType.meta.copyWith(color: NoorColors.mutedDark)),
+                          Text(categoryName,
+                              style: NoorType.section
+                                  .copyWith(color: null)),
+                          Text('${duas.length} Authentic Supplications',
+                              style: NoorType.meta
+                                  .copyWith(color: null)),
                         ],
                       ),
                     ),
@@ -184,15 +242,19 @@ class _DuaLibraryScreenState extends State<DuaLibraryScreen> {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: NoorColors.emeraldDark,
                         foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 8),
                       ),
                       icon: const Icon(Icons.touch_app, size: 16),
                       label: const Text('Open Tasbih'),
                       onPressed: () {
                         Navigator.of(ctx).pop();
                         Navigator.of(context).push(
-                          MaterialPageRoute(builder: (_) => const ZikrTasbihScreen(initialTab: 0)),
+                          MaterialPageRoute(
+                              builder: (_) =>
+                                  const ZikrTasbihScreen(initialTab: 0)),
                         );
                       },
                     ),
@@ -202,16 +264,21 @@ class _DuaLibraryScreenState extends State<DuaLibraryScreen> {
 
                 // Font Size Selector Bar
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
-                    color: NoorColors.emeraldSoft,
+                    color: NoorTheme.surface(context, light: NoorColors.emeraldSoft),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Row(
                     children: [
-                      const Icon(Icons.format_size, size: 16, color: NoorColors.emeraldDark),
+                      const Icon(Icons.format_size,
+                          size: 16, color: null),
                       const SizedBox(width: 8),
-                      Text('Arabic Text Size:', style: NoorType.meta.copyWith(color: NoorColors.emeraldDark, fontWeight: FontWeight.w600)),
+                      Text('Arabic Text Size:',
+                          style: NoorType.meta.copyWith(
+                              color: null,
+                              fontWeight: FontWeight.w600)),
                       const Spacer(),
                       for (final sizeOption in [
                         ('Small', 20.0),
@@ -219,23 +286,33 @@ class _DuaLibraryScreenState extends State<DuaLibraryScreen> {
                         ('Large', 28.0),
                       ]) ...[
                         GestureDetector(
-                          onTap: () => setModalState(() => arabicFontSize = sizeOption.$2),
+                          onTap: () => setModalState(
+                              () => arabicFontSize = sizeOption.$2),
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 9, vertical: 4),
                             margin: const EdgeInsets.only(left: 6),
                             decoration: BoxDecoration(
-                              color: arabicFontSize == sizeOption.$2 ? NoorColors.emeraldDark : Colors.white,
+                              color: arabicFontSize == sizeOption.$2
+                                  ? NoorColors.emeraldDark
+                                  : NoorTheme.surface(context, light: Colors.white),
                               borderRadius: BorderRadius.circular(8),
                               border: Border.all(
-                                color: arabicFontSize == sizeOption.$2 ? NoorColors.emeraldDark : NoorColors.hairlineSoft,
+                                color: arabicFontSize == sizeOption.$2
+                                    ? NoorColors.emeraldDark
+                                    : NoorColors.hairlineSoft,
                               ),
                             ),
                             child: Text(
                               sizeOption.$1,
                               style: NoorType.meta.copyWith(
-                                color: arabicFontSize == sizeOption.$2 ? Colors.white : NoorColors.ink,
+                                color: NoorTheme.foreground(context, light: arabicFontSize == sizeOption.$2
+                                    ? Colors.white
+                                    : NoorColors.ink),
                                 fontSize: 11,
-                                fontWeight: arabicFontSize == sizeOption.$2 ? FontWeight.w700 : FontWeight.w500,
+                                fontWeight: arabicFontSize == sizeOption.$2
+                                    ? FontWeight.w700
+                                    : FontWeight.w500,
                               ),
                             ),
                           ),
@@ -250,7 +327,8 @@ class _DuaLibraryScreenState extends State<DuaLibraryScreen> {
                   const Padding(
                     padding: EdgeInsets.symmetric(vertical: 24),
                     child: Center(
-                      child: Text('Dua text will be loaded from authenticated sources.'),
+                      child: Text(
+                          'Dua text will be loaded from authenticated sources.'),
                     ),
                   ),
                 ] else ...[
@@ -258,9 +336,9 @@ class _DuaLibraryScreenState extends State<DuaLibraryScreen> {
                         margin: const EdgeInsets.only(bottom: 14),
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: NoorColors.cream,
+                          color: NoorTheme.surface(context, light: NoorColors.cream),
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: NoorColors.hairlineSoft),
+                          border: Border.all(color: NoorTheme.border(context)),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -271,13 +349,19 @@ class _DuaLibraryScreenState extends State<DuaLibraryScreen> {
                               child: Text(
                                 d.arabic,
                                 textDirection: TextDirection.rtl,
-                                style: NoorType.arabic(size: arabicFontSize, color: NoorColors.emeraldDark),
+                                style: NoorType.arabic(
+                                    size: arabicFontSize,
+                                    color: NoorTheme.foreground(context, light: NoorColors.emeraldDark)),
                               ),
                             ),
                             const SizedBox(height: 8),
-                            Text(d.transliteration, style: NoorType.secondary.copyWith(fontWeight: FontWeight.w700)),
+                            Text(d.transliteration,
+                                style: NoorType.secondary
+                                    .copyWith(fontWeight: FontWeight.w700)),
                             const SizedBox(height: 4),
-                            Text(d.translation, style: NoorType.meta.copyWith(color: NoorColors.mutedDark, height: 1.4)),
+                            Text(d.translation,
+                                style: NoorType.meta.copyWith(
+                                    color: null, height: 1.4)),
                             const SizedBox(height: 10),
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -285,33 +369,47 @@ class _DuaLibraryScreenState extends State<DuaLibraryScreen> {
                                 Expanded(
                                   child: Text(
                                     d.reference,
-                                    style: NoorType.meta.copyWith(color: NoorColors.emerald, fontSize: 11),
+                                    style: NoorType.meta.copyWith(
+                                        color: NoorTheme.accent(context)),
                                   ),
                                 ),
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 2),
                                   decoration: BoxDecoration(
-                                    color: NoorColors.emeraldSoft,
+                                    color: NoorTheme.surface(context, light: NoorColors.emeraldSoft),
                                     borderRadius: BorderRadius.circular(8),
                                   ),
-                                  child: Text('${d.count}x', style: NoorType.meta.copyWith(color: NoorColors.emeraldDark, fontWeight: FontWeight.w800)),
+                                  child: Text('${d.count}x',
+                                      style: NoorType.meta.copyWith(
+                                          color: null,
+                                          fontWeight: FontWeight.w800)),
                                 ),
                               ],
                             ),
-                            const Divider(height: 20, color: NoorColors.hairlineSoft),
+                            Divider(
+                                height: 20, color: NoorTheme.border(context)),
                             // Action buttons row
                             Row(
                               children: [
                                 Expanded(
                                   child: OutlinedButton.icon(
                                     style: OutlinedButton.styleFrom(
-                                      side: const BorderSide(color: NoorColors.emeraldDark),
-                                      foregroundColor: NoorColors.emeraldDark,
-                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                                      padding: const EdgeInsets.symmetric(vertical: 8),
+                                      side: BorderSide(
+                                          color: NoorTheme.accent(context)),
+                                      foregroundColor: NoorTheme.accent(context),
+                                      minimumSize: const Size(0, 44),
+                                      shape: RoundedRectangleBorder(
+                                          borderRadius:
+                                              BorderRadius.circular(10)),
+                                      padding: const EdgeInsets.symmetric(
+                                          vertical: 8),
                                     ),
-                                    icon: const Icon(Icons.touch_app_outlined, size: 16),
-                                    label: const Text('Practice in Tasbih', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                                    icon: const Icon(Icons.touch_app_outlined,
+                                        size: 16),
+                                    label: const Text('Practice in Tasbih',
+                                        style: TextStyle(
+                                            fontWeight: FontWeight.w700)),
                                     onPressed: () {
                                       Navigator.of(ctx).pop();
                                       final dhikr = DhikrModel(
@@ -319,7 +417,8 @@ class _DuaLibraryScreenState extends State<DuaLibraryScreen> {
                                         arabic: d.arabic,
                                         transliteration: d.transliteration,
                                         meaning: d.translation,
-                                        defaultTarget: d.count > 0 ? d.count : 33,
+                                        defaultTarget:
+                                            d.count > 0 ? d.count : 33,
                                         reference: d.reference,
                                         category: 'custom',
                                       );
@@ -337,21 +436,25 @@ class _DuaLibraryScreenState extends State<DuaLibraryScreen> {
                                 const SizedBox(width: 8),
                                 IconButton(
                                   tooltip: 'Copy Dua',
-                                  icon: const Icon(Icons.copy, size: 18, color: NoorColors.emeraldDark),
+                                  icon: const Icon(Icons.copy,
+                                      size: 18, color: null),
                                   style: IconButton.styleFrom(
-                                    backgroundColor: Colors.white,
+                                    backgroundColor: NoorTheme.surface(context),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(10),
-                                      side: const BorderSide(color: NoorColors.hairlineSoft),
+                                      side: BorderSide(
+                                          color: NoorTheme.border(context)),
                                     ),
                                   ),
                                   onPressed: () {
                                     Clipboard.setData(ClipboardData(
-                                      text: '${d.arabic}\n\n${d.transliteration}\n\n${d.translation}\n\nReference: ${d.reference}',
+                                      text:
+                                          '${d.arabic}\n\n${d.transliteration}\n\n${d.translation}\n\nReference: ${d.reference}',
                                     ));
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       const SnackBar(
-                                        content: Text('Dua copied to clipboard'),
+                                        content:
+                                            Text('Dua copied to clipboard'),
                                         duration: Duration(seconds: 2),
                                         backgroundColor: NoorColors.emeraldDark,
                                       ),
@@ -361,16 +464,19 @@ class _DuaLibraryScreenState extends State<DuaLibraryScreen> {
                                 const SizedBox(width: 6),
                                 IconButton(
                                   tooltip: 'Save to Bookmarks',
-                                  icon: const Icon(Icons.bookmark_add_outlined, size: 18, color: NoorColors.emeraldDark),
+                                  icon: const Icon(Icons.bookmark_add_outlined,
+                                      size: 18, color: null),
                                   style: IconButton.styleFrom(
-                                    backgroundColor: Colors.white,
+                                    backgroundColor: NoorTheme.surface(context),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(10),
-                                      side: const BorderSide(color: NoorColors.hairlineSoft),
+                                      side: BorderSide(
+                                          color: NoorTheme.border(context)),
                                     ),
                                   ),
                                   onPressed: () async {
-                                    final duaId = 'dua_${d.transliteration.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '_')}';
+                                    final duaId =
+                                        'dua_${d.transliteration.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '_')}';
                                     await NoorStore.saveRichItem(
                                       id: duaId,
                                       title: d.transliteration,
@@ -378,11 +484,13 @@ class _DuaLibraryScreenState extends State<DuaLibraryScreen> {
                                       tag: 'Dua',
                                     );
                                     if (mounted) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
+                                      ScaffoldMessenger.of(context)
+                                          .showSnackBar(
                                         const SnackBar(
                                           content: Text('Saved to Bookmarks'),
                                           duration: Duration(seconds: 2),
-                                          backgroundColor: NoorColors.emeraldDark,
+                                          backgroundColor:
+                                              NoorColors.emeraldDark,
                                         ),
                                       );
                                     }
@@ -391,20 +499,48 @@ class _DuaLibraryScreenState extends State<DuaLibraryScreen> {
                                 const SizedBox(width: 6),
                                 IconButton(
                                   tooltip: 'Share Dua',
-                                  icon: const Icon(Icons.share_outlined, size: 18, color: NoorColors.emeraldDark),
+                                  icon: const Icon(Icons.share_outlined,
+                                      size: 18, color: null),
                                   style: IconButton.styleFrom(
-                                    backgroundColor: Colors.white,
+                                    backgroundColor: NoorTheme.surface(context),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(10),
-                                      side: const BorderSide(color: NoorColors.hairlineSoft),
+                                      side: BorderSide(
+                                          color: NoorTheme.border(context)),
                                     ),
                                   ),
                                   onPressed: () {
                                     SharePlus.instance.share(ShareParams(
-                                      text: '${d.arabic}\n\n${d.transliteration}\n\n${d.translation}\n\nReference: ${d.reference}\n\nShared via Noor AI Companion',
+                                      text:
+                                          '${d.arabic}\n\n${d.transliteration}\n\n${d.translation}\n\nReference: ${d.reference}\n\nShared via Noor AI Companion',
                                     ));
                                   },
                                 ),
+                                const SizedBox(width: 6),
+                                Builder(builder: (_) {
+                                  final duaItemId = '$categoryName:${d.transliteration}';
+                                  final done = _doneAdhkarIds.contains(duaItemId);
+                                  return IconButton(
+                                    tooltip: done ? 'Completed today' : 'Mark completed today',
+                                    icon: Icon(
+                                      done ? Icons.check_circle : Icons.check_circle_outline,
+                                      size: 20,
+                                      color: done ? NoorTheme.accent(ctx) : NoorTheme.muted(ctx),
+                                    ),
+                                    style: IconButton.styleFrom(
+                                      backgroundColor: NoorTheme.surface(ctx),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                        side: BorderSide(color: NoorTheme.border(ctx)),
+                                      ),
+                                    ),
+                                    onPressed: () async {
+                                      await NoorStore.toggleAdhkarDone(_todayKey, duaItemId);
+                                      await _loadAdhkarProgress();
+                                      if (ctx.mounted) setModalState(() {});
+                                    },
+                                  );
+                                }),
                               ],
                             ),
                           ],
@@ -421,7 +557,14 @@ class _DuaLibraryScreenState extends State<DuaLibraryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final rows = SampleData.duaCategories
+    const allCategories = [
+      ...SampleData.duaCategories,
+      ('Quranic Duas', 'Comprehensive Rabbana prayers from the Quran', 'Situations'),
+      ('Anxiety & Relief', 'Duas of Prophet Yunus & comfort in distress', 'Situations'),
+    ];
+    final totalDailyDuas = _categoryDuas.values.fold<int>(0, (s, l) => s + l.length);
+    final doneCount = _doneAdhkarIds.length;
+    final rows = allCategories
         .where((c) =>
             (_chip == 0 || c.$3 == _chips[_chip]) &&
             (c.$1.toLowerCase().contains(_q.toLowerCase()) ||
@@ -429,7 +572,7 @@ class _DuaLibraryScreenState extends State<DuaLibraryScreen> {
         .toList();
 
     return Scaffold(
-      backgroundColor: NoorColors.cream,
+      backgroundColor: NoorTheme.background(context, light: NoorColors.cream),
       body: SafeArea(
         child: Column(
           children: [
@@ -453,18 +596,21 @@ class _DuaLibraryScreenState extends State<DuaLibraryScreen> {
                 children: [
                   // Daily Adhkar Progress Banner
                   Material(
-                    color: NoorColors.emeraldSoft,
+                    color: NoorTheme.surface(context, light: NoorColors.emeraldSoft),
                     borderRadius: BorderRadius.circular(NoorRadius.card),
                     child: InkWell(
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute(builder: (_) => const ZikrTasbihScreen(initialTab: 1)),
-                      ),
+                      onTap: () => Navigator.of(context)
+                          .push(MaterialPageRoute(
+                              builder: (_) =>
+                                  const ZikrTasbihScreen(initialTab: 1)))
+                          .then((_) => _loadAdhkarProgress()),
                       borderRadius: BorderRadius.circular(NoorRadius.card),
                       child: Container(
                         padding: const EdgeInsets.all(18),
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(NoorRadius.card),
-                          border: Border.all(color: NoorColors.emerald.withValues(alpha: 0.15)),
+                          border: Border.all(
+                              color: NoorTheme.border(context)),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -472,26 +618,35 @@ class _DuaLibraryScreenState extends State<DuaLibraryScreen> {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Text(
-                                  'Daily Adhkar Practice',
-                                  style: NoorType.section.copyWith(color: NoorColors.emeraldDark, fontWeight: FontWeight.w700),
+                                Expanded(
+                                  child: Text(
+                                    'Daily Adhkar & Dua Practice',
+                                    style: NoorType.section.copyWith(
+                                        fontWeight: FontWeight.w700),
+                                  ),
                                 ),
-                                const Icon(Icons.arrow_forward_ios, size: 14, color: NoorColors.emeraldDark),
+                                ExcludeSemantics(
+                                    child: Icon(Icons.chevron_right,
+                                        size: 19,
+                                        color: NoorTheme.muted(context))),
                               ],
                             ),
                             const SizedBox(height: 6),
                             Text(
-                              'Morning set • 8 of 15 completed',
-                              style: NoorType.meta.copyWith(color: NoorColors.mutedDark),
+                              'Today: $doneCount of $totalDailyDuas completed',
+                              style: NoorType.meta
+                                  .copyWith(color: NoorTheme.muted(context)),
                             ),
                             const SizedBox(height: 12),
                             ClipRRect(
                               borderRadius: BorderRadius.circular(99),
-                              child: const LinearProgressIndicator(
-                                value: 8 / 15,
+                              child: LinearProgressIndicator(
+                                value: totalDailyDuas > 0
+                                    ? (doneCount / totalDailyDuas).clamp(0.0, 1.0)
+                                    : 0.0,
                                 minHeight: 7,
-                                backgroundColor: Colors.white,
-                                color: NoorColors.emeraldDark,
+                                backgroundColor: NoorTheme.border(context),
+                                color: NoorTheme.accent(context),
                               ),
                             ),
                           ],
@@ -506,22 +661,24 @@ class _DuaLibraryScreenState extends State<DuaLibraryScreen> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: NoorTheme.surface(context),
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: NoorColors.hairline),
+                      border: Border.all(color: NoorTheme.border(context)),
                     ),
                     child: TextField(
                       controller: _searchCtrl,
                       onChanged: (v) {
                         _debounceTimer?.cancel();
-                        _debounceTimer = Timer(const Duration(milliseconds: 250), () {
+                        _debounceTimer =
+                            Timer(const Duration(milliseconds: 250), () {
                           if (mounted) setState(() => _q = v);
                         });
                       },
                       decoration: InputDecoration(
                         border: InputBorder.none,
                         hintText: 'Search duas, categories...',
-                        hintStyle: NoorType.secondary.copyWith(color: NoorColors.muted),
+                        hintStyle: NoorType.secondary
+                            .copyWith(color: null),
                         suffixIcon: _q.isNotEmpty
                             ? IconButton(
                                 icon: const Icon(Icons.clear, size: 18),
@@ -531,7 +688,8 @@ class _DuaLibraryScreenState extends State<DuaLibraryScreen> {
                                   setState(() => _q = '');
                                 },
                               )
-                            : const Icon(Icons.search, size: 20, color: NoorColors.emeraldDark),
+                            : const Icon(Icons.search,
+                                size: 20, color: null),
                       ),
                     ),
                   ),
@@ -547,19 +705,34 @@ class _DuaLibraryScreenState extends State<DuaLibraryScreen> {
                         for (var i = 0; i < _chips.length; i++) ...[
                           Semantics(
                             button: true,
-                            child: GestureDetector(
-                              onTap: () => setState(() => _chip = i),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
-                                decoration: BoxDecoration(
-                                  color: _chip == i ? NoorColors.emeraldDark : NoorColors.emeraldSoft,
-                                  borderRadius: BorderRadius.circular(99),
-                                ),
-                                child: Text(
-                                  _chips[i],
-                                  style: NoorType.meta.copyWith(
-                                    color: _chip == i ? Colors.white : NoorColors.ink,
-                                    fontWeight: _chip == i ? FontWeight.w700 : FontWeight.w500,
+                            selected: _chip == i,
+                            child: Material(
+                              color: _chip == i
+                                  ? NoorColors.emeraldDark
+                                  : NoorTheme.softSurface(context),
+                              borderRadius: BorderRadius.circular(99),
+                              child: InkWell(
+                                onTap: () => setState(() => _chip = i),
+                                borderRadius: BorderRadius.circular(99),
+                                child: ConstrainedBox(
+                                  constraints: const BoxConstraints(minHeight: 44),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 18, vertical: 10),
+                                    child: Center(
+                                      widthFactor: 1,
+                                      child: Text(
+                                        _chips[i],
+                                        style: NoorType.meta.copyWith(
+                                          color: _chip == i
+                                              ? Colors.white
+                                              : NoorTheme.foreground(context),
+                                          fontWeight: _chip == i
+                                              ? FontWeight.w700
+                                              : FontWeight.w500,
+                                        ),
+                                      ),
+                                    ),
                                   ),
                                 ),
                               ),
@@ -576,17 +749,18 @@ class _DuaLibraryScreenState extends State<DuaLibraryScreen> {
                   // Category Rows
                   for (var i = 0; i < rows.length; i++) ...[
                     Material(
-                      color: Colors.white,
+                      color: NoorTheme.surface(context),
                       borderRadius: BorderRadius.circular(16),
                       elevation: 1,
                       child: InkWell(
                         onTap: () => _openCategoryDetail(rows[i].$1),
                         borderRadius: BorderRadius.circular(16),
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 15),
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: NoorColors.hairlineSoft),
+                            border: Border.all(color: NoorTheme.border(context)),
                           ),
                           child: Row(
                             children: [
@@ -594,14 +768,14 @@ class _DuaLibraryScreenState extends State<DuaLibraryScreen> {
                                 width: 38,
                                 height: 38,
                                 alignment: Alignment.center,
-                                decoration: const BoxDecoration(
-                                  color: NoorColors.emeraldSoft,
+                                decoration: BoxDecoration(
+                                  color: NoorTheme.surface(context, light: NoorColors.emeraldSoft),
                                   shape: BoxShape.circle,
                                 ),
                                 child: Text(
                                   '${i + 1}',
                                   style: NoorType.secondary.copyWith(
-                                    color: NoorColors.emeraldDark,
+                                    color: null,
                                     fontWeight: FontWeight.w700,
                                   ),
                                 ),
@@ -613,21 +787,25 @@ class _DuaLibraryScreenState extends State<DuaLibraryScreen> {
                                   children: [
                                     Text(
                                       rows[i].$1,
-                                      style: NoorType.body.copyWith(fontWeight: FontWeight.w600),
-                                      maxLines: 1,
+                                      style: NoorType.body.copyWith(
+                                          fontWeight: FontWeight.w600),
+                                      maxLines: 2,
                                       overflow: TextOverflow.ellipsis,
                                     ),
                                     const SizedBox(height: 2),
                                     Text(
                                       rows[i].$2,
-                                      style: NoorType.meta.copyWith(color: NoorColors.muted),
-                                      maxLines: 1,
+                                      style: NoorType.meta.copyWith(
+                                          color: NoorTheme.muted(context)),
+                                      maxLines: 2,
                                       overflow: TextOverflow.ellipsis,
                                     ),
                                   ],
                                 ),
                               ),
-                              const Icon(Icons.chevron_right, size: 20, color: NoorColors.mutedDark),
+                              ExcludeSemantics(
+                                  child: Icon(Icons.chevron_right,
+                                      size: 20, color: NoorTheme.muted(context))),
                             ],
                           ),
                         ),
@@ -642,9 +820,12 @@ class _DuaLibraryScreenState extends State<DuaLibraryScreen> {
                       child: Center(
                         child: Column(
                           children: [
-                            const Icon(Icons.search_off, size: 36, color: NoorColors.mutedDark),
+                            const Icon(Icons.search_off,
+                                size: 36, color: null),
                             const SizedBox(height: 8),
-                            Text('No categories match your search.', style: NoorType.secondary.copyWith(color: NoorColors.mutedDark)),
+                            Text('No categories match your search.',
+                                style: NoorType.secondary
+                                    .copyWith(color: null)),
                           ],
                         ),
                       ),

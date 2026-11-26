@@ -1,31 +1,23 @@
-// Phase 12 — recaptured with the bundled Amiri Quran +
-// Noto Nastaliq Urdu fonts loaded (see _loadCaptureFonts).
-// Phase 10 — VISUAL PREVIEW CAPTURES (separate from the normal suite;
-// run explicitly: flutter test test/previews_test.dart --update-goldens)
-// Pumps key MuslimGo screens at 390x844@2x and writes PNGs to ../previews/
-// for side-by-side comparison with the user's design PNGs.
-//
-// Important capture setup (learned in Phase 10): flutter_test replaces
-// fonts with a boxy test font and does not finish decoding asset
-// images on its own, which made the first captures useless (text as
-// blocks, images as colour bars). So here we (a) load the SDK's real
-// Roboto + MaterialIcons fonts and apply Roboto as the capture font
-// (the app's Manrope is a runtime Google Font and cannot load in the
-// test binding), and (b) precache every NoorAssets image inside
-// tester.runAsync before capturing. Layout/artwork comparison stays
-// valid; typeface in captures is Roboto, not Manrope.
+// Actual Flutter screen captures at 390×844 logical pixels using bundled
+// Manrope, Arabic, Urdu and Material icon fonts. Run explicitly with
+// flutter test test/previews_test.dart --update-goldens.
 import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:noor_ai_companion/data/noor_store.dart';
 
 import 'package:noor_ai_companion/app.dart';
+import 'package:noor_ai_companion/data/offline_quran.dart';
+import 'package:noor_ai_companion/data/quran_service.dart';
 import 'package:noor_ai_companion/theme/noor_theme.dart';
 import 'package:noor_ai_companion/screens/onboarding/splash_screen.dart';
 import 'package:noor_ai_companion/screens/onboarding/onboarding_screen.dart';
 import 'package:noor_ai_companion/screens/home/my_journey_screen.dart';
+import 'package:noor_ai_companion/screens/home/home_dashboard_screen.dart';
 import 'package:noor_ai_companion/screens/home/profile_screen.dart';
 import 'package:noor_ai_companion/screens/home/settings_screen.dart';
 import 'package:noor_ai_companion/screens/quran/quran_home_screen.dart';
@@ -96,12 +88,15 @@ Future<void> _loadCaptureFonts() async {
     await loader.load();
   }
 
+  await loadApp('IndopakNastaleeq', 'IndopakNastaleeq-Regular.ttf');
+  await loadApp('Manrope', 'Manrope-Variable.ttf');
   await loadApp('AmiriQuran', 'AmiriQuran-Regular.ttf');
   await loadApp('NotoNastaliqUrdu', 'NotoNastaliqUrdu-Regular.ttf');
   await loadApp('NotoNastaliqUrdu', 'NotoNastaliqUrdu-Bold.ttf');
 }
 
 const _assetPaths = <String>[
+  'assets/images/app_logo.png',
   NoorAssets.nextPrayerMosque,
   NoorAssets.aiHeaderMosque,
   NoorAssets.splashMotif,
@@ -171,8 +166,31 @@ class _FailingHttpClient extends http.BaseClient {
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
+  setUp(() async {
+    SharedPreferences.setMockInitialValues({});
+    await NoorStore.init();
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(const MethodChannel('com.noorai.com/compass'),
+            (call) async => null);
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+            const MethodChannel('com.ryanheise.just_audio.methods'),
+            (call) async {
+      if (call.method == 'init') {
+        throw PlatformException(
+            code: 'AUDIO_UNAVAILABLE',
+            message: 'Audio hardware is unavailable in a render test');
+      }
+      return <String, dynamic>{};
+    });
+  });
+
   setUpAll(() async {
     await _loadCaptureFonts();
+    await OfflineQuran.load('quran-uthmani');
+    await OfflineQuran.load('en.sahih');
+    await OfflineQuran.load('ur.jalandhry');
+    await OfflineQuran.load('mushaf16');
   });
 
   const size = Size(390, 844);
@@ -203,6 +221,8 @@ void main() {
     // Second pass (2026-10-07): the remaining 22 design pages, so all
     // 42 pages now have a real app capture for one-pass review.
     'mushaf04': const HifzMushafScreen(),
+    'mushaf04_page3': const HifzMushafScreen(initialPage: 3),
+    'mushaf04_last': const HifzMushafScreen(initialPage: 548),
     'dua_day08': const DuaOfTheDayScreen(),
     'hadith_day09': const HadithOfTheDayScreen(),
     'hadith_library15': const HadithLibraryScreen(),
@@ -251,6 +271,26 @@ void main() {
     'login42': const LoginScreen(),
   };
 
+  screens.addAll({
+    'home_dark': const HomeDashboardScreen(),
+    'home_cards': const HomeDashboardScreen(),
+    'home_cards_dark': const HomeDashboardScreen(),
+    'audio_nas': const QuranAudioPlayerScreen(surah: 114),
+    'quran_dark': const QuranHomeScreen(),
+    'profile_dark': const ProfileScreen(),
+    'settings_dark': const SettingsScreen(),
+    'audio_dark': const QuranAudioPlayerScreen(surah: 1),
+    'audio_fatiha': const QuranAudioPlayerScreen(surah: 1),
+    'share_dark': const ShareCardStudioScreen(),
+    'library_dark': const LibraryHomeScreen(),
+    'worship_dark': const WorshipDashboardScreen(),
+    'salah_dark': const SalahTrackerScreen(),
+    'language_dark': const LanguageSelectionScreen(editing: true),
+    'reader_tools': const QuranReaderScreen(surah: 1),
+    'reader_dark': const QuranReaderScreen(surah: 1),
+    'dua_dark': const DuaOfTheDayScreen(),
+    'hadith_dark': const HadithOfTheDayScreen(),
+  });
   for (final entry in screens.entries) {
     testWidgets('preview ${entry.key}', (tester) async {
       Future<void> runCapture() async {
@@ -265,7 +305,12 @@ void main() {
         await _capturePreview(tester, entry, size);
       }
 
-      if (entry.key == 'hadith_library15' ||
+      if (entry.key.endsWith('_dark') ||
+          (entry.key == 'audio_fatiha' ||
+              entry.key == 'audio_nas' ||
+              entry.key == 'home_cards' ||
+              entry.key == 'reader_tools') ||
+          entry.key == 'hadith_library15' ||
           entry.key == 'hadith_chapters16' ||
           entry.key == 'hadith_detail17') {
         // Deterministic capture: package:http's zone client makes
@@ -297,99 +342,70 @@ Future<void> _capturePreview(
   Size size, {
   bool scrollToBottom = false,
 }) async {
-  tester.view.physicalSize = Size(size.width * 2, size.height * 2);
-  tester.view.devicePixelRatio = 2.0;
-  addTearDown(tester.view.reset);
+  final originalShadows = debugDisableShadows;
+  debugDisableShadows = false;
+  try {
+    tester.view.physicalSize = Size(size.width * 2, size.height * 2);
+    tester.view.devicePixelRatio = 2.0;
+    addTearDown(tester.view.reset);
 
-  // Capture theme mirrors NoorTheme's colours/sizes but uses the
-  // loaded Roboto (NoorTheme's Manrope is a runtime Google Font and
-  // throws in the test binding). Do NOT call NoorTheme.light() here.
-  final captureTheme = ThemeData(
-    useMaterial3: true,
-    fontFamily: 'Roboto',
-    scaffoldBackgroundColor: NoorColors.cream,
-    // Material button labels need an explicit loaded family in the
-    // test capture, otherwise they fall back to the test box font.
-    filledButtonTheme: const FilledButtonThemeData(
-        style: ButtonStyle(
-            textStyle: WidgetStatePropertyAll(TextStyle(
-                fontFamily: 'Roboto',
-                fontSize: 16,
-                fontWeight: FontWeight.w700)))),
-    elevatedButtonTheme: const ElevatedButtonThemeData(
-        style: ButtonStyle(
-            textStyle: WidgetStatePropertyAll(TextStyle(
-                fontFamily: 'Roboto',
-                fontSize: 16,
-                fontWeight: FontWeight.w700)))),
-    colorScheme: ColorScheme.fromSeed(
-      seedColor: NoorColors.emerald,
-      primary: NoorColors.emerald,
-      secondary: NoorColors.gold,
-      surface: Colors.white,
-    ),
-    textTheme: const TextTheme(
-      headlineMedium: TextStyle(
-          fontFamily: 'Roboto',
-          fontSize: 28,
-          fontWeight: FontWeight.w800,
-          color: NoorColors.emeraldDark),
-      titleLarge: TextStyle(
-          fontFamily: 'Roboto',
-          fontSize: 20,
-          fontWeight: FontWeight.w800,
-          color: NoorColors.ink),
-      titleMedium: TextStyle(
-          fontFamily: 'Roboto',
-          fontSize: 16,
-          fontWeight: FontWeight.w700,
-          color: NoorColors.ink),
-      bodyMedium: TextStyle(
-          fontFamily: 'Roboto', fontSize: 14, color: NoorColors.ink),
-      bodySmall: TextStyle(
-          fontFamily: 'Roboto', fontSize: 12, color: NoorColors.muted),
-    ),
-    navigationBarTheme: NavigationBarThemeData(
-      backgroundColor: Colors.white,
-      indicatorColor: NoorColors.emeraldSoft,
-      labelTextStyle: WidgetStateProperty.all(
-          const TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
-    ),
-  );
+    // Use the actual app themes and bundled fonts for contrast and layout review.
+    final captureTheme =
+        entry.key.endsWith('_dark') ? NoorTheme.dark() : NoorTheme.light();
 
-  await tester.pumpWidget(MaterialApp(
-    debugShowCheckedModeBanner: false,
-    theme: captureTheme,
-    // Tab-root screens rely on the shell's Scaffold for a Material
-    // ancestor (TextField/InkWell require it); wrap every capture.
-    home: Scaffold(body: entry.value),
-  ));
-
-  // Decode asset images for real, then let fallbacks settle.
-  final ctx = tester.element(find.byType(MaterialApp));
-  await tester.runAsync(() async {
-    for (final path in _assetPaths) {
-      try {
-        await precacheImage(AssetImage(path), ctx);
-      } catch (_) {
-        // Missing asset on this screen: capture will show it.
-      }
+    if (entry.value is QuranReaderScreen) {
+      await tester.runAsync(() => QuranService()
+          .fetchSurahEditions((entry.value as QuranReaderScreen).surah));
     }
-    await Future<void>.delayed(const Duration(milliseconds: 50));
-  });
-  for (var i = 0; i < 5; i++) {
-    await tester.pump(const Duration(milliseconds: 100));
-  }
+    await tester.pumpWidget(MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: captureTheme,
+      // Tab-root screens rely on the shell's Scaffold for a Material
+      // ancestor (TextField/InkWell require it); wrap every capture.
+      home: Scaffold(body: entry.value),
+    ));
 
-  if (scrollToBottom) {
-    await tester.drag(find.byType(ListView), const Offset(0, -500));
-    for (var i = 0; i < 5; i++) {
+    // Decode asset images for real, then let fallbacks settle.
+    final ctx = tester.element(find.byType(MaterialApp));
+    await tester.runAsync(() async {
+      for (final path in _assetPaths) {
+        try {
+          await precacheImage(AssetImage(path), ctx);
+        } catch (_) {
+          // Missing asset on this screen: capture will show it.
+        }
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+    });
+    for (var i = 0; i < 8; i++) {
       await tester.pump(const Duration(milliseconds: 100));
     }
-  }
 
-  await expectLater(
-    find.byType(MaterialApp),
-    matchesGoldenFile('../previews/${entry.key}.png'),
-  );
+    if (entry.key.startsWith('home_cards')) {
+      await tester.scrollUntilVisible(find.text('Ayat of the Day'), 240,
+          scrollable: find.byType(Scrollable).first);
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+    if (scrollToBottom) {
+      await tester.drag(find.byType(ListView), const Offset(0, -500));
+      for (var i = 0; i < 8; i++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+    }
+
+    if (entry.key == 'audio_fatiha' ||
+        entry.key == 'audio_dark' ||
+        entry.key == 'audio_nas') {
+      final title = tester
+          .widget<Text>(find.byKey(const ValueKey('audio-surah-arabic')))
+          .data!;
+      expect(title.contains('الكَهْف'), isFalse);
+    }
+    await expectLater(
+      find.byType(MaterialApp),
+      matchesGoldenFile('../previews/${entry.key}.png'),
+    );
+  } finally {
+    debugDisableShadows = originalShadows;
+  }
 }

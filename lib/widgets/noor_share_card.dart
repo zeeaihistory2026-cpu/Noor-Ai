@@ -44,7 +44,9 @@ class NoorShareCard extends StatelessWidget {
       NoorColors.emeraldMid
     ][style];
     final fg = style == 1 ? NoorColors.emeraldDark : Colors.white;
-    final sub = style == 1 ? NoorColors.emeraldDark : NoorColors.gold;
+    final sub = style == 1
+        ? NoorColors.emeraldDark
+        : (style == 3 ? NoorColors.goldPale : NoorColors.gold);
 
     final effectiveRadius = borderRadius ??
         (mini ? BorderRadius.zero : BorderRadius.circular(NoorRadius.heroCard));
@@ -71,63 +73,76 @@ class NoorShareCard extends StatelessWidget {
                   letterSpacing: 1.4)),
         Expanded(
           child: Center(
-            child: SingleChildScrollView(
-              physics: const ClampingScrollPhysics(),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (streak != null) ...[
-                    Icon(
-                        streak!.iconName == 'calendar'
-                            ? Icons.calendar_month_outlined
-                            : Icons.local_fire_department_outlined,
-                        color: sub,
-                        size: mini ? 14 : 38),
-                    SizedBox(height: mini ? 2 : 8),
-                    Text(streak!.headline,
-                        style: TextStyle(
-                            color: fg,
-                            fontSize: mini ? 16 : 64,
-                            fontWeight: FontWeight.w800,
-                            height: 1)),
-                    Text(streak!.label,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                            color: fg,
-                            fontSize: mini ? 8 : 16,
-                            fontWeight: FontWeight.w700)),
-                    if (!mini) ...[
-                      const SizedBox(height: 8),
-                      Text('${streak!.days} days · ${streak!.caption}',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(color: fg, fontSize: 13, height: 1.4)),
-                    ],
-                  ] else ...[
-                    if ((item?.arabicText ?? SampleData.duaArabic).isNotEmpty)
-                      Text(item?.arabicText ?? SampleData.duaArabic,
-                          textDirection: TextDirection.rtl,
-                          textAlign: TextAlign.center,
-                          maxLines: mini ? 2 : null,
-                          overflow: mini ? TextOverflow.ellipsis : null,
-                          style: (emphasis == 2
-                              ? NoorType.urdu(size: mini ? 11 : 26, color: fg)
-                              : NoorType.arabic(
-                                  size: mini ? 11 : (emphasis == 1 ? 22 : 30),
-                                  color: fg))),
-                    if (!mini) ...[
-                      const SizedBox(height: 14),
-                      Text(item?.text ?? SampleData.duaTranslation,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                              color: fg,
-                              fontSize: emphasis == 1 ? 18 : 15,
-                              fontWeight:
-                                  emphasis == 1 ? FontWeight.w700 : FontWeight.w400)),
-                    ],
-                  ],
-                ],
-              ),
-            ),
+            child: LayoutBuilder(
+                builder: (context, bounds) => FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: SizedBox(
+                          width: bounds.maxWidth,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (streak != null) ...[
+                                Icon(
+                                    streak!.iconName == 'calendar'
+                                        ? Icons.calendar_month_outlined
+                                        : Icons.local_fire_department_outlined,
+                                    color: sub,
+                                    size: mini ? 14 : 38),
+                                SizedBox(height: mini ? 2 : 8),
+                                Text(streak!.headline,
+                                    style: TextStyle(
+                                        color: fg,
+                                        fontSize: mini ? 16 : 64,
+                                        fontWeight: FontWeight.w800,
+                                        height: 1)),
+                                Text(streak!.label,
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                        color: fg,
+                                        fontSize: mini ? 8 : 16,
+                                        fontWeight: FontWeight.w700)),
+                                if (!mini) ...[
+                                  const SizedBox(height: 8),
+                                  Text(
+                                      '${streak!.days} days · ${streak!.caption}',
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                          color: fg,
+                                          fontSize: 13,
+                                          height: 1.4)),
+                                ],
+                              ] else ...[
+                                if ((item?.arabicText ?? SampleData.duaArabic)
+                                    .isNotEmpty)
+                                  Text(item?.arabicText ?? SampleData.duaArabic,
+                                      textDirection: TextDirection.rtl,
+                                      textAlign: TextAlign.center,
+                                      maxLines: mini ? 2 : null,
+                                      overflow:
+                                          mini ? TextOverflow.ellipsis : null,
+                                      style: (emphasis == 2
+                                          ? NoorType.urdu(
+                                              size: mini ? 11 : 26, color: fg)
+                                          : NoorType.arabic(
+                                              size: mini
+                                                  ? 11
+                                                  : (emphasis == 1 ? 22 : 30),
+                                              color: fg))),
+                                if (!mini) ...[
+                                  const SizedBox(height: 14),
+                                  Text(item?.text ?? SampleData.duaTranslation,
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                          color: fg,
+                                          fontSize: emphasis == 1 ? 18 : 15,
+                                          fontWeight: emphasis == 1
+                                              ? FontWeight.w700
+                                              : FontWeight.w400)),
+                                ],
+                              ],
+                            ],
+                          )),
+                    )),
           ),
         ),
         Text(
@@ -162,7 +177,8 @@ class NoorShareCard extends StatelessWidget {
 /// supplied by the owning screen. Screens that pass none keep the
 /// drawn icon but visibly dimmed (honestly disabled, not fake-live).
 class NoorPlainHeader extends StatelessWidget {
-  const NoorPlainHeader({super.key, required this.title, this.moreActions, this.moreInfo});
+  const NoorPlainHeader(
+      {super.key, required this.title, this.moreActions, this.moreInfo});
   final String title;
 
   /// (icon, label, onTap) entries for the ⋮ overflow sheet.

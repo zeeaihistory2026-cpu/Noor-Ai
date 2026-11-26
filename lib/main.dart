@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'app.dart';
 import 'theme/noor_theme.dart';
+import 'data/background_reminders.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -42,4 +43,5 @@ void main() {
   };
 
   runApp(const NoorApp());
+  initializeBackgroundReminders();
 }

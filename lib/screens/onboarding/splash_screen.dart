@@ -1,254 +1,114 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../../app.dart';
+import '../../data/auth_service.dart';
 import '../../data/firebase_rest_service.dart';
 import '../../data/noor_store.dart';
 import '../../theme/noor_theme.dart';
+import '../../widgets/muslim_go_mark.dart';
 import '../auth/login_screen.dart';
 
-/// Page 36 — Animated Splash Screen.
-/// Clean, elegant opening: cream page, glowing emerald Islamic tile with
-/// gold MuslimGo typography and star emblem, brand titles, and animated
-/// loading pulse. Automatically transitions into the app or login.
 class SplashScreen extends StatefulWidget {
-  const SplashScreen({super.key});
-
+  const SplashScreen({super.key, this.authService});
+  final AuthService? authService;
   @override
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
 class _SplashScreenState extends State<SplashScreen>
     with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-  late final Animation<double> _fadeAnimation;
-  late final Animation<double> _scaleAnimation;
-  Timer? _transitionTimer;
-  bool _advanced = false;
-
+  late final AnimationController _animation = AnimationController(
+      vsync: this, duration: const Duration(milliseconds: 700))
+    ..forward();
+  Timer? _timer;
+  late final Future<bool> _session;
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 900),
-    );
+    _session = _canEnter();
+    _timer = Timer(const Duration(milliseconds: 1200), _advance);
+  }
 
-    _fadeAnimation = CurvedAnimation(
-      parent: _controller,
-      curve: Curves.easeOut,
-    );
+  Future<bool> _canEnter() async {
+    try {
+      return await (widget.authService ?? FirebaseRestService())
+              .hasSession()
+              .timeout(const Duration(seconds: 2)) ||
+          await NoorStore.hasGuestSession();
+    } catch (_) {
+      return false;
+    }
+  }
 
-    _scaleAnimation = Tween<double>(begin: 0.88, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: Curves.easeOutCubic,
-      ),
-    );
-
-    _controller.forward();
-
-    // Begin check and scheduled transition
-    _checkAndAdvance();
+  Future<void> _advance() async {
+    final enter = await _session;
+    if (!mounted) return;
+    Navigator.of(context).pushReplacement(PageRouteBuilder<void>(
+      transitionDuration: MediaQuery.disableAnimationsOf(context)
+          ? Duration.zero
+          : const Duration(milliseconds: 250),
+      pageBuilder: (_, __, ___) =>
+          enter ? const NoorTabShell() : const LoginScreen(),
+      transitionsBuilder: (_, animation, __, child) =>
+          FadeTransition(opacity: animation, child: child),
+    ));
   }
 
   @override
   void dispose() {
-    _transitionTimer?.cancel();
-    _controller.dispose();
+    _timer?.cancel();
+    _animation.dispose();
     super.dispose();
   }
 
-  Future<Widget> _resolveNextScreen() async {
-    try {
-      final auth = FirebaseRestService();
-      final hasSession = await auth.hasSession().timeout(
-            const Duration(milliseconds: 600),
-            onTimeout: () => false,
-          );
-      if (hasSession) {
-        return const NoorTabShell();
-      }
-      final savedName = await NoorStore.getUserName();
-      final isGuest = await NoorStore.getIsGuest();
-      if ((savedName != null && savedName.isNotEmpty) || isGuest) {
-        return const NoorTabShell();
-      }
-      final profile = await auth.currentProfile().timeout(
-            const Duration(milliseconds: 600),
-            onTimeout: () => null,
-          );
-      if (profile != null) {
-        return const NoorTabShell();
-      }
-    } catch (_) {
-      // Fall through to login
-    }
-    return const LoginScreen();
-  }
-
-  Future<void> _checkAndAdvance() async {
-    final nextScreenFuture = _resolveNextScreen();
-    // Allow the logo animation to be displayed for 1.8 seconds before starting
-    _transitionTimer = Timer(const Duration(milliseconds: 1800), () async {
-      final nextScreen = await nextScreenFuture;
-      _advanceTo(nextScreen);
-    });
-  }
-
-  void _advanceTo(Widget nextScreen) {
-    if (!mounted || _advanced) return;
-    _advanced = true;
-    _transitionTimer?.cancel();
-    Navigator.of(context).pushReplacement(
-      PageRouteBuilder(
-        transitionDuration: const Duration(milliseconds: 400),
-        pageBuilder: (_, animation, __) => FadeTransition(
-          opacity: animation,
-          child: nextScreen,
-        ),
-      ),
-    );
-  }
-
-  void _advance() async {
-    if (!mounted || _advanced) return;
-    final next = await _resolveNextScreen();
-    _advanceTo(next);
-  }
-
   @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: _advance,
-      child: Scaffold(
-        backgroundColor: NoorColors.cream,
+  Widget build(BuildContext context) => Scaffold(
+        backgroundColor: NoorColors.emeraldDark,
         body: SafeArea(
-          child: Center(
-            child: FadeTransition(
-              opacity: _fadeAnimation,
-              child: ScaleTransition(
-                scale: _scaleAnimation,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Spacer(flex: 3),
-                    // Glowing Emerald Islamic Medallion Tile
-                    // Official Emerald & Gold App Icon
-                    Container(
-                      width: 140,
-                      height: 140,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(34),
-                        boxShadow: [
-                          BoxShadow(
-                            color: NoorColors.emeraldDark.withValues(alpha: 0.35),
-                            blurRadius: 28,
-                            spreadRadius: 2,
-                            offset: const Offset(0, 10),
-                          ),
-                          BoxShadow(
-                            color: NoorColors.gold.withValues(alpha: 0.25),
-                            blurRadius: 16,
-                            spreadRadius: -2,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(34),
-                        child: Image.asset(
-                          'assets/images/app_logo.png',
-                          width: 140,
-                          height: 140,
-                          fit: BoxFit.contain,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 32),
-                    Text(
-                      'MuslimGo',
-                      style: NoorType.display.copyWith(
-                        fontSize: 32,
-                        fontWeight: FontWeight.w800,
-                        color: NoorColors.emeraldDark,
-                        letterSpacing: 2,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      'AI Companion',
-                      style:
-                          Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                color: NoorColors.ink,
-                                fontWeight: FontWeight.w600,
-                                letterSpacing: 0.5,
-                              ),
-                    ),
-                    const SizedBox(height: 12),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: NoorColors.emeraldSoft.withValues(alpha: 0.6),
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: Text(
-                        'Faith • Guidance • Growth',
-                        style: NoorType.meta.copyWith(
-                          color: NoorColors.emeraldDark,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.8,
-                        ),
-                      ),
-                    ),
-                    const Spacer(flex: 4),
-                    // Elegant pulsing gold indicator dots
-                    SizedBox(
-                      height: 32,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          for (int i = 0; i < 3; i++)
-                            _PulseDot(index: i, controller: _controller),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 36),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _PulseDot extends StatelessWidget {
-  final int index;
-  final AnimationController controller;
-  const _PulseDot({required this.index, required this.controller});
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: controller,
-      builder: (context, _) {
-        final t = (controller.value + (index * 0.25)) % 1.0;
-        final scale = 0.8 + 0.4 * (1.0 - (t - 0.5).abs() * 2);
-        final opacity = 0.4 + 0.6 * (1.0 - (t - 0.5).abs() * 2);
-        return Container(
-          margin: const EdgeInsets.symmetric(horizontal: 4),
-          width: 8 * scale,
-          height: 8 * scale,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: NoorColors.gold.withValues(alpha: opacity.clamp(0.2, 1.0)),
-          ),
-        );
-      },
-    );
-  }
+            child: LayoutBuilder(
+                builder: (context, constraints) => SingleChildScrollView(
+                      padding: const EdgeInsets.all(28),
+                      child: ConstrainedBox(
+                          constraints: BoxConstraints(
+                              minHeight: (constraints.maxHeight - 56)
+                                  .clamp(0, double.infinity)),
+                          child: Center(
+                            child: FadeTransition(
+                                opacity: MediaQuery.disableAnimationsOf(context)
+                                    ? const AlwaysStoppedAnimation(1)
+                                    : _animation,
+                                child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const MuslimGoMark(size: 148),
+                                      const SizedBox(height: 20),
+                                      Text('MuslimGo',
+                                          style: NoorType.display.copyWith(
+                                              color: Colors.white,
+                                              fontSize: 38,
+                                              letterSpacing: -1)),
+                                      const SizedBox(height: 12),
+                                      Text('AI Companion',
+                                          style: NoorType.section.copyWith(
+                                              color: NoorColors.goldSoft,
+                                              fontWeight: FontWeight.w500)),
+                                      const SizedBox(height: 30),
+                                      Text('Faith • Guidance • Growth',
+                                          textAlign: TextAlign.center,
+                                          style: NoorType.secondary.copyWith(
+                                              color:
+                                                  NoorColors.onEmeraldMuted)),
+                                      const SizedBox(height: 40),
+                                      const SizedBox(
+                                          width: 22,
+                                          height: 22,
+                                          child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              color: NoorColors.goldSoft,
+                                              semanticsLabel:
+                                                  'Opening MuslimGo')),
+                                    ])),
+                          )),
+                    ))),
+      );
 }

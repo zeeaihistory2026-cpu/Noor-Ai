@@ -127,8 +127,9 @@ class _HadithChaptersScreenState extends State<HadithChaptersScreen> {
     }
 
     // 1. Direct Hadith Number Search (e.g. "1", "42", "#42", "hadith 42")
-    final numMatch = RegExp(r'^(?:hadith\s*#?|#)?\s*(\d+)$', caseSensitive: false)
-        .firstMatch(q);
+    final numMatch =
+        RegExp(r'^(?:hadith\s*#?|#)?\s*(\d+)$', caseSensitive: false)
+            .firstMatch(q);
     if (numMatch != null) {
       final numVal = int.tryParse(numMatch.group(1)!);
       if (numVal != null) {
@@ -164,19 +165,16 @@ class _HadithChaptersScreenState extends State<HadithChaptersScreen> {
     if (book == null) return;
     Navigator.of(context).push(MaterialPageRoute(
         builder: (_) => HadithDetailScreen(
-            book: book,
-            sectionNumber: sectionNumber,
-            entryIndex: entryIndex)));
+            book: book, sectionNumber: sectionNumber, entryIndex: entryIndex)));
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-        backgroundColor: NoorColors.cream,
+        backgroundColor: NoorTheme.background(context, light: NoorColors.cream),
         body: SafeArea(
             child: Column(children: [
-          _noorHeader(context,
-              onBookmarks: () => setState(() => _chip = 1)),
+          _noorHeader(context, onBookmarks: () => setState(() => _chip = 1)),
           Expanded(child: _body()),
         ])));
   }
@@ -188,7 +186,7 @@ class _HadithChaptersScreenState extends State<HadithChaptersScreen> {
     if (_error != null) {
       return ListView(padding: const EdgeInsets.all(24), children: [
         const SizedBox(height: 40),
-        const Icon(Icons.cloud_off_outlined, size: 44, color: NoorColors.muted),
+        const Icon(Icons.cloud_off_outlined, size: 44, color: null),
         const SizedBox(height: 14),
         const Text('The full book needs a connection',
             textAlign: TextAlign.center, style: NoorType.cardTitle),
@@ -199,7 +197,8 @@ class _HadithChaptersScreenState extends State<HadithChaptersScreen> {
             'memory — the curated topic index in the AI Companion '
             'still works offline.',
             textAlign: TextAlign.center,
-            style: NoorType.meta.copyWith(color: NoorColors.muted, height: 1.5)),
+            style:
+                NoorType.meta.copyWith(color: null, height: 1.5)),
         const SizedBox(height: 18),
         Center(
             child: FilledButton.icon(
@@ -218,7 +217,7 @@ class _HadithChaptersScreenState extends State<HadithChaptersScreen> {
           Container(
               padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(
-                  color: NoorColors.emeraldSoft,
+                  color: NoorTheme.surface(context, light: NoorColors.emeraldSoft),
                   borderRadius: BorderRadius.circular(NoorRadius.card)),
               child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -227,7 +226,7 @@ class _HadithChaptersScreenState extends State<HadithChaptersScreen> {
                       Expanded(
                           child: Text(book.name,
                               style: NoorType.section
-                                  .copyWith(color: NoorColors.emeraldDark))),
+                                  .copyWith(color: null))),
                       _statusPill(),
                     ]),
                     const SizedBox(height: 6),
@@ -235,7 +234,7 @@ class _HadithChaptersScreenState extends State<HadithChaptersScreen> {
                         book.id == HadithService.nahjulBookId
                             ? '${_fmt(book.hadiths.length)} texts · ${book.sections.length} parts (Arabic)'
                             : '${_fmt(book.hadiths.length)} hadiths · ${book.sections.length} chapters',
-                        style: NoorType.meta.copyWith(color: NoorColors.muted)),
+                        style: NoorType.meta.copyWith(color: null)),
                     const SizedBox(height: 12),
                     // Language chooser: Arabic + English + Urdu.
                     // Nahjul Balagha's dataset is Arabic-only, so the
@@ -252,41 +251,54 @@ class _HadithChaptersScreenState extends State<HadithChaptersScreen> {
           Container(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: NoorTheme.surface(context, light: Colors.white),
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: NoorColors.hairline)),
+                  border: Border.all(color: NoorTheme.border(context))),
               child: TextField(
                   onChanged: _onSearchChanged,
                   onSubmitted: _onSearchChanged,
                   decoration: InputDecoration(
                       border: InputBorder.none,
                       hintText: 'Search by Hadith # (e.g. 1) or chapter...',
-                      hintStyle:
-                          NoorType.secondary.copyWith(color: NoorColors.muted),
-                      suffixIcon: const Icon(Icons.search,
-                          size: 19, color: NoorColors.emeraldDark)))),
+                      hintStyle: NoorType.secondary
+                          .copyWith(color: NoorTheme.muted(context)),
+                      suffixIcon: Icon(Icons.search,
+                          size: 19, color: NoorTheme.muted(context))))),
           const SizedBox(height: 14),
-          Row(children: [
-            for (var i = 0; i < 3; i++) ...[
+          Wrap(spacing: 8, runSpacing: 8, children: [
+            for (var i = 0; i < 3; i++)
               Semantics(
                   button: true,
-                  child: GestureDetector(
-                      onTap: () => setState(() => _chip = i),
-                      child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 18, vertical: 9),
-                          decoration: BoxDecoration(
-                              color: _chip == i
-                                  ? NoorColors.emeraldDark
-                                  : NoorColors.emeraldSoft,
-                              borderRadius: BorderRadius.circular(99)),
-                          child: Text(const ['Chapters', 'Bookmarks', 'Notes'][i],
-                              style: NoorType.meta.copyWith(
-                                  color: _chip == i
-                                      ? Colors.white
-                                      : NoorColors.ink))))),
-              const SizedBox(width: 8),
-            ]
+                  selected: _chip == i,
+                  child: Material(
+                      color: _chip == i
+                          ? NoorColors.emeraldDark
+                          : NoorTheme.softSurface(context),
+                      borderRadius: BorderRadius.circular(99),
+                      child: InkWell(
+                          onTap: () => setState(() => _chip = i),
+                          borderRadius: BorderRadius.circular(99),
+                          child: ConstrainedBox(
+                              constraints: const BoxConstraints(minHeight: 44),
+                              child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 18, vertical: 10),
+                                  child: Center(
+                                      widthFactor: 1,
+                                      child: Text(
+                                          const [
+                                            'Chapters',
+                                            'Bookmarks',
+                                            'Notes'
+                                          ][i],
+                                          style: NoorType.meta.copyWith(
+                                              color: _chip == i
+                                                  ? Colors.white
+                                                  : NoorTheme.foreground(
+                                                      context),
+                                              fontWeight: _chip == i
+                                                  ? FontWeight.w700
+                                                  : FontWeight.w500)))))))),
           ]),
           const SizedBox(height: 14),
           if (_chip == 0) ...[
@@ -298,9 +310,7 @@ class _HadithChaptersScreenState extends State<HadithChaptersScreen> {
                           ? 'Hadith #${_scanHits.first.hadithnumber} (Exact match)'
                           : 'Text matches (live scan) — ${_scanHits.length}',
                       style: NoorType.meta.copyWith(
-                          color: _isNumberSearch(_q)
-                              ? NoorColors.emeraldDark
-                              : NoorColors.muted,
+                          color: _isNumberSearch(_q) ? NoorTheme.accent(context) : NoorTheme.muted(context),
                           fontWeight: _isNumberSearch(_q)
                               ? FontWeight.w700
                               : FontWeight.normal))),
@@ -316,8 +326,7 @@ class _HadithChaptersScreenState extends State<HadithChaptersScreen> {
                               ? 'Hadith #$_q not found in ${book.name}.\n(Valid range: 1 – ${book.hadiths.length})'
                               : 'No chapter or text matched.',
                           textAlign: TextAlign.center,
-                          style: NoorType.secondary
-                              .copyWith(color: NoorColors.muted)))),
+                          style: NoorType.secondary.copyWith(color: NoorTheme.muted(context))))),
           ] else if (_chip == 1)
             _bookmarksTab(book)
           else
@@ -326,34 +335,47 @@ class _HadithChaptersScreenState extends State<HadithChaptersScreen> {
                 child: Center(
                     child: Text('Nothing saved here yet.',
                         style: NoorType.secondary
-                            .copyWith(color: NoorColors.muted)))),
+                            .copyWith(color: null)))),
         ]);
   }
 
   Widget _langChip(HadithLanguage l) {
     final selected = l == _language;
+    final fg = selected ? Colors.white : NoorTheme.foreground(context);
     return Semantics(
         button: true,
-        child: GestureDetector(
-            onTap: selected
-                ? null
-                : () {
-                    setState(() => _language = l);
-                    _load();
-                  },
-            child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-                decoration: BoxDecoration(
-                    color: selected ? NoorColors.emeraldDark : Colors.white,
-                    borderRadius: BorderRadius.circular(99),
-                    border: Border.all(
-                        color: selected
-                            ? NoorColors.emeraldDark
-                            : NoorColors.hairline)),
-                child: Text(l.label,
-                    style: NoorType.meta.copyWith(
-                        color: selected ? Colors.white : NoorColors.ink)))));
+        selected: selected,
+        child: Material(
+            color: selected
+                ? NoorColors.emeraldDark
+                : NoorTheme.surface(context),
+            borderRadius: BorderRadius.circular(99),
+            child: InkWell(
+                onTap: selected
+                    ? null
+                    : () {
+                        setState(() => _language = l);
+                        _load();
+                      },
+                borderRadius: BorderRadius.circular(99),
+                child: Container(
+                    constraints: const BoxConstraints(minHeight: 44),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 8),
+                    decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(99),
+                        border: Border.all(
+                            color: selected
+                                ? NoorColors.emeraldDark
+                                : NoorTheme.border(context))),
+                    child: Center(
+                        widthFactor: 1,
+                        child: Text(l.label,
+                            style: l == HadithLanguage.urd
+                                ? NoorType.urdu(size: 13, color: fg)
+                                : l == HadithLanguage.ara
+                                    ? NoorType.arabic(size: 15, color: fg)
+                                    : NoorType.meta.copyWith(color: fg)))))));
   }
 
   Widget _statusPill() {
@@ -361,52 +383,49 @@ class _HadithChaptersScreenState extends State<HadithChaptersScreen> {
     return Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
-            color: Colors.white, borderRadius: BorderRadius.circular(99)),
+            color: NoorTheme.surface(context, light: Colors.white), borderRadius: BorderRadius.circular(99)),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
           Container(
               width: 7,
               height: 7,
               decoration: BoxDecoration(
-                  color: _cachedOffline
-                      ? NoorColors.muted
-                      : NoorColors.emerald,
+                  color: _cachedOffline ? NoorTheme.muted(context) : NoorTheme.accent(context),
                   shape: BoxShape.circle)),
           const SizedBox(width: 6),
           Text(label,
-              style: NoorType.meta.copyWith(color: NoorColors.emeraldDark)),
+              style: NoorType.meta.copyWith(color: NoorTheme.muted(context))),
         ]));
   }
 
   Widget _chapterRow(HadithBook book, HadithSection s) => Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Material(
-          color: Colors.white,
+          color: NoorTheme.surface(context, light: Colors.white),
           borderRadius: BorderRadius.circular(16),
           child: InkWell(
               onTap: () => _openSection(s.number),
               borderRadius: BorderRadius.circular(16),
               child: Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 15),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
                   decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: NoorColors.hairline)),
+                      border: Border.all(color: NoorTheme.border(context))),
                   child: Row(children: [
                     Container(
                         width: 38,
                         height: 38,
                         alignment: Alignment.center,
-                        decoration: const BoxDecoration(
-                            color: NoorColors.emeraldSoft,
+                        decoration: BoxDecoration(
+                            color: NoorTheme.softSurface(context),
                             shape: BoxShape.circle),
                         child: Text('${s.number}',
                             style: NoorType.secondary
-                                .copyWith(color: NoorColors.emeraldDark))),
+                                .copyWith(color: NoorTheme.accent(context)))),
                     const SizedBox(width: 13),
                     Expanded(
                         child: Column(
-                            crossAxisAlignment:
-                                CrossAxisAlignment.start,
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                           Text(s.title, style: NoorType.body),
                           const SizedBox(height: 3),
@@ -414,11 +433,9 @@ class _HadithChaptersScreenState extends State<HadithChaptersScreen> {
                               book.id == HadithService.nahjulBookId
                                   ? '${s.count} texts'
                                   : '${s.count} narrations',
-                              style: NoorType.meta
-                                  .copyWith(color: NoorColors.muted))
+                              style: NoorType.meta.copyWith(color: NoorTheme.muted(context)))
                         ])),
-                    const Icon(Icons.chevron_right,
-                        size: 19, color: NoorColors.muted),
+                    ExcludeSemantics(child: Icon(Icons.chevron_right, size: 19, color: NoorTheme.muted(context))),
                   ])))));
 
   Widget _hitRow(HadithBook book, HadithEntry h) {
@@ -427,7 +444,7 @@ class _HadithChaptersScreenState extends State<HadithChaptersScreen> {
     return Padding(
         padding: const EdgeInsets.only(bottom: 10),
         child: Material(
-            color: Colors.white,
+            color: NoorTheme.surface(context, light: Colors.white),
             borderRadius: BorderRadius.circular(16),
             child: InkWell(
                 onTap: () =>
@@ -438,23 +455,20 @@ class _HadithChaptersScreenState extends State<HadithChaptersScreen> {
                         horizontal: 16, vertical: 13),
                     decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: NoorColors.hairline)),
+                        border: Border.all(color: NoorTheme.border(context))),
                     child: Row(children: [
                       Expanded(
                           child: Column(
-                              crossAxisAlignment:
-                                  CrossAxisAlignment.start,
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                             Text('Hadith ${h.hadithnumber}',
-                                style: NoorType.secondary.copyWith(
-                                    color: NoorColors.emeraldDark)),
+                                style: NoorType.secondary),
                             const SizedBox(height: 3),
                             Text(section.title,
-                                style: NoorType.meta.copyWith(
-                                    color: NoorColors.muted)),
+                                style: NoorType.meta
+                                    .copyWith(color: NoorTheme.muted(context))),
                           ])),
-                      const Icon(Icons.chevron_right,
-                          size: 19, color: NoorColors.muted),
+                      ExcludeSemantics(child: Icon(Icons.chevron_right, size: 19, color: NoorTheme.muted(context))),
                     ])))));
   }
 
@@ -480,10 +494,9 @@ class _HadithChaptersScreenState extends State<HadithChaptersScreen> {
               child: Center(
                   child: Text('Nothing saved here yet.',
                       style: NoorType.secondary
-                          .copyWith(color: NoorColors.muted))));
+                          .copyWith(color: null))));
         }
-        return Column(
-            children: [for (final e in entries) _hitRow(book, e)]);
+        return Column(children: [for (final e in entries) _hitRow(book, e)]);
       });
 
   static String _fmt(int n) {
@@ -507,6 +520,7 @@ Widget _noorHeader(BuildContext context, {required VoidCallback onBookmarks}) =>
       padding: const EdgeInsets.fromLTRB(6, 10, 6, 22),
       child: Row(children: [
         IconButton(
+            tooltip: 'Back',
             icon: const Icon(Icons.arrow_back_ios_new,
                 color: Colors.white, size: 19),
             onPressed: () => Navigator.of(context).maybePop()),
@@ -523,16 +537,12 @@ Widget _noorHeader(BuildContext context, {required VoidCallback onBookmarks}) =>
             tooltip: 'Book options',
             icon: const Icon(Icons.more_vert, color: Colors.white),
             onPressed: () => showNoorOverflowSheet(context,
-                title: 'Hadith book',
-                info: const [
-                  'Full cross-book keyword search needs a server-side index — coming in a later version. Use the chapter list and the in-book search above.',
-                ],
-                actions: [
-                  (
-                    Icons.bookmark_border,
-                    'View my bookmarks',
-                    onBookmarks
-                  ),
-                ])),
+                    title: 'Hadith book',
+                    info: const [
+                      'Full cross-book keyword search needs a server-side index — coming in a later version. Use the chapter list and the in-book search above.',
+                    ],
+                    actions: [
+                      (Icons.bookmark_border, 'View my bookmarks', onBookmarks),
+                    ])),
       ]),
     );

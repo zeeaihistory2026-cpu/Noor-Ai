@@ -51,7 +51,7 @@ class _CardEditorScreenState extends State<CardEditorScreen> {
   Future<void> _pickContent() async {
     final picked = await showModalBottomSheet<ShareContentItem>(
       context: context,
-      backgroundColor: NoorColors.cream,
+      backgroundColor: NoorTheme.background(context),
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (ctx) => SafeArea(
@@ -62,7 +62,7 @@ class _CardEditorScreenState extends State<CardEditorScreen> {
             const SizedBox(height: 6),
             Text(
                 'Brief, referenced sample cards. Streak cards are under Share Studio → Streaks.',
-                style: NoorType.meta.copyWith(color: NoorColors.muted)),
+                style: NoorType.meta.copyWith(color: null)),
             for (final group in const [
               ('Ayah cards', ShareContent.ayahCards),
               ('Hadith cards', ShareContent.hadithCards),
@@ -75,19 +75,19 @@ class _CardEditorScreenState extends State<CardEditorScreen> {
                 ListTile(
                   contentPadding: EdgeInsets.zero,
                   leading: CircleAvatar(
-                    backgroundColor: NoorColors.emeraldSoft,
+                    backgroundColor: NoorTheme.softSurface(context),
                     child: Text(item.typeLabel.substring(0, 1),
                         style: NoorType.meta
-                            .copyWith(color: NoorColors.emeraldDark)),
+                            .copyWith(color: null)),
                   ),
                   title: Text(item.title, style: NoorType.secondary),
                   subtitle: Text(item.reference,
-                      style: NoorType.meta.copyWith(color: NoorColors.muted)),
+                      style: NoorType.meta.copyWith(color: null)),
                   trailing: _item.id == item.id && _streak == null
-                      ? const Icon(Icons.check_circle,
-                          color: NoorColors.emerald)
+                      ? Icon(Icons.check_circle,
+                          color: NoorTheme.foreground(context, light: NoorColors.emerald))
                       : const Icon(Icons.chevron_right,
-                          color: NoorColors.muted, size: 18),
+                          color: null, size: 18),
                   onTap: () => Navigator.of(ctx).pop(item),
                 ),
             ],
@@ -105,7 +105,7 @@ class _CardEditorScreenState extends State<CardEditorScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        backgroundColor: NoorColors.cream,
+        backgroundColor: NoorTheme.background(context, light: NoorColors.cream),
         body: SafeArea(
             child: Column(children: [
           NoorPlainHeader(title: 'Card Editor', moreActions: [
@@ -113,11 +113,11 @@ class _CardEditorScreenState extends State<CardEditorScreen> {
               Icons.restart_alt_outlined,
               'Reset edits',
               () => setState(() {
-                _bg = 1;
-                _type = 0;
-                _layout = 0;
-                _brand = true;
-              })
+                    _bg = 1;
+                    _type = 0;
+                    _layout = 0;
+                    _brand = true;
+                  })
             ),
             (
               Icons.ios_share,
@@ -126,10 +126,12 @@ class _CardEditorScreenState extends State<CardEditorScreen> {
                   builder: (_) => ShareExportScreen(
                         item: _streak == null ? _item : null,
                         streak: _streak,
-                        initialStyle:
-                            _bg == 0 ? 1 : _bg == 2 ? 2 : 3,
-                        format:
-                            widget.format ?? ShareFormats.instagramPost,
+                        initialStyle: _bg == 0
+                            ? 1
+                            : _bg == 2
+                                ? 2
+                                : 3,
+                        format: widget.format ?? ShareFormats.instagramPost,
                       )))
             ),
           ]),
@@ -151,7 +153,7 @@ class _CardEditorScreenState extends State<CardEditorScreen> {
                     emphasis: _type),
                 const SizedBox(height: 18),
                 Material(
-                    color: Colors.white,
+                    color: NoorTheme.surface(context, light: Colors.white),
                     borderRadius: BorderRadius.circular(16),
                     child: InkWell(
                         onTap: _pickContent,
@@ -161,10 +163,10 @@ class _CardEditorScreenState extends State<CardEditorScreen> {
                                 horizontal: 16, vertical: 14),
                             decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(16),
-                                border: Border.all(color: NoorColors.hairline)),
+                                border: Border.all(color: NoorTheme.border(context))),
                             child: Row(children: [
                               const Icon(Icons.library_books_outlined,
-                                  color: NoorColors.emeraldDark, size: 20),
+                                  color: null, size: 20),
                               const SizedBox(width: 12),
                               Expanded(
                                   child: Column(
@@ -181,11 +183,11 @@ class _CardEditorScreenState extends State<CardEditorScreen> {
                                             ? _item.reference
                                             : '${_streak!.days}-day streak',
                                         style: NoorType.meta
-                                            .copyWith(color: NoorColors.muted)),
+                                            .copyWith(color: null)),
                                   ])),
                               const Text('Change', style: NoorType.meta),
                               const Icon(Icons.chevron_right,
-                                  color: NoorColors.muted, size: 18),
+                                  color: null, size: 18),
                             ])))),
                 const SizedBox(height: 22),
                 _group('Background', _bgNames, _bg,
@@ -199,14 +201,15 @@ class _CardEditorScreenState extends State<CardEditorScreen> {
                 Container(
                     padding: const EdgeInsets.fromLTRB(18, 8, 10, 8),
                     decoration: BoxDecoration(
-                        color: NoorColors.surfaceWarm,
+                        color: NoorTheme.softSurface(context),
                         borderRadius: BorderRadius.circular(16)),
                     child: Row(children: [
                       const Expanded(
-                          child: Text('MuslimGo watermark', style: NoorType.body)),
+                          child:
+                              Text('MuslimGo watermark', style: NoorType.body)),
                       Text(_brand ? 'On' : 'Off',
                           style: NoorType.secondary
-                              .copyWith(color: NoorColors.muted)),
+                              .copyWith(color: null)),
                       Semantics(
                           label: 'Show MuslimGo branding',
                           toggled: _brand,
@@ -219,13 +222,13 @@ class _CardEditorScreenState extends State<CardEditorScreen> {
                 const SizedBox(height: 16),
                 Row(children: [
                   const Icon(Icons.lock_outline,
-                      size: 15, color: NoorColors.muted),
+                      size: 15, color: null),
                   const SizedBox(width: 6),
                   Expanded(
                       child: Text(
                           'Locked source: Quran/Hadith text and reference cannot be altered. Reset restores the original template.',
                           style:
-                              NoorType.meta.copyWith(color: NoorColors.muted)))
+                              NoorType.meta.copyWith(color: null)))
                 ]),
                 const SizedBox(height: 18),
                 Row(children: [
@@ -277,9 +280,9 @@ class _CardEditorScreenState extends State<CardEditorScreen> {
         Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
             decoration: BoxDecoration(
-                color: NoorColors.surfaceWarm,
+                color: NoorTheme.softSurface(context),
                 borderRadius: BorderRadius.circular(16)),
-            child: Row(children: [
+            child: Wrap(spacing: 8, runSpacing: 8, children: [
               for (var i = 0; i < opts.length; i++) ...[
                 Semantics(
                     button: true,
@@ -297,9 +300,8 @@ class _CardEditorScreenState extends State<CardEditorScreen> {
                                         ? FontWeight.w800
                                         : FontWeight.w500,
                                     color: i == sel
-                                        ? NoorColors.emeraldDark
-                                        : NoorColors.ink))))),
-                if (i < opts.length - 1) const SizedBox(width: 8),
+                                        ? NoorTheme.accent(context)
+                                        : NoorTheme.foreground(context)))))),
               ],
             ])),
         const SizedBox(height: 18),

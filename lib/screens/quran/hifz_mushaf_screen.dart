@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../data/noor_store.dart';
+import '../../data/offline_quran.dart';
 import '../../data/quran_service.dart';
 import '../../theme/noor_theme.dart';
 import '../../widgets/noor_components.dart';
@@ -11,7 +12,7 @@ import 'quran_audio_player_screen.dart';
 
 /// Page 04 — Hifz Mushaf (16-Line Quran).
 ///
-/// Features authentic 16-line Indo-Pak / Taj Company Mushaf pagination (1..604),
+/// Features authentic 16-line Indo-Pak / Taj Company Mushaf pagination (1..548),
 /// word-by-word line coordinate rendering, ornate Islamic frame, line-level
 /// ruled layout, script toggle (IndoPak / Uthmani), recitation playback,
 /// repetition counter for memorization, and quick page/surah/juz navigation.
@@ -26,8 +27,21 @@ class HifzMushafScreen extends StatefulWidget {
 
 class _HifzMushafScreenState extends State<HifzMushafScreen> {
   int _page = 2;
-  bool _isLoading = false;
+  bool _isLoading = true;
+  String? _error;
+  int _request = 0;
   Mushaf16Page? _pageData;
+
+  int _firstAyahOnPage(Mushaf16Page pageData) {
+    for (final line in pageData.lines) {
+      for (final word in line.words) {
+        final parts = word.verseKey.split(':');
+        final parsed = int.tryParse(parts.isNotEmpty ? parts.last : '');
+        if (parsed != null && parsed > 0) return parsed;
+      }
+    }
+    return 1;
+  }
   bool _bookmarked = false;
   String _script = 'indopak'; // 'indopak' or 'uthmani'
 
@@ -63,32 +77,30 @@ class _HifzMushafScreenState extends State<HifzMushafScreen> {
   }
 
   Future<void> _loadPage(int page, {bool forceRefresh = false}) async {
+    final request = ++_request;
+    final requestedPage = page.clamp(1, QuranService.totalMushaf16Pages);
     setState(() {
       _isLoading = true;
-      _page = page.clamp(1, QuranService.totalMushaf16Pages);
+      _error = null;
+      _page = requestedPage;
+      _pageData = null;
     });
-
-    await NoorStore.setLastMushafPage(_page);
-    _checkBookmark();
-
     try {
-      final data = await QuranService().fetchMushaf16LinePage(
-        _page,
-        forceRefresh: forceRefresh,
-      );
-      if (mounted) {
-        setState(() {
-          _pageData = data;
-          _isLoading = false;
-        });
-      }
+      final data = await QuranService()
+          .fetchMushaf16LinePage(requestedPage, forceRefresh: forceRefresh);
+      if (!mounted || request != _request) return;
+      setState(() {
+        _pageData = data;
+        _isLoading = false;
+      });
+      await NoorStore.setLastMushafPage(requestedPage);
+      _checkBookmark();
     } catch (_) {
-      if (mounted) {
-        setState(() {
-          _pageData = QuranService.sampleMushaf16Page(_page);
-          _isLoading = false;
-        });
-      }
+      if (!mounted || request != _request) return;
+      setState(() {
+        _isLoading = false;
+        _error = 'This page could not be loaded. Please retry.';
+      });
     }
   }
 
@@ -99,7 +111,8 @@ class _HifzMushafScreenState extends State<HifzMushafScreen> {
       await NoorStore.saveRichItem(
         id: _bookmarkId,
         title: 'Mushaf · $surahName (Page $_page)',
-        subtitle: '16-Line Quran Page $_page • Juz ${_pageData?.juzNumber ?? 1}',
+        subtitle:
+            '16-Line Quran Page $_page • Juz ${_pageData?.juzNumber ?? 1}',
         tag: 'Quran Page',
       );
     } else {
@@ -109,7 +122,8 @@ class _HifzMushafScreenState extends State<HifzMushafScreen> {
     setState(() => _bookmarked = now);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(now ? 'Bookmarked · Page $_page ($surahName)' : 'Bookmark removed'),
+        content: Text(
+            now ? 'Bookmarked · Page $_page ($surahName)' : 'Bookmark removed'),
         duration: const Duration(seconds: 2),
       ),
     );
@@ -133,7 +147,9 @@ class _HifzMushafScreenState extends State<HifzMushafScreen> {
     });
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(_script == 'indopak' ? 'Script: Indo-Pak (Nastaliq)' : 'Script: Uthmani (Madani)'),
+        content: Text(_script == 'indopak'
+            ? 'Script: Indo-Pak (Nastaliq)'
+            : 'Script: Uthmani (Madani)'),
         duration: const Duration(seconds: 1),
       ),
     );
@@ -151,7 +167,8 @@ class _HifzMushafScreenState extends State<HifzMushafScreen> {
       HapticFeedback.heavyImpact();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Completed $_repeatTarget repeats on Page $_page! MashaAllah.'),
+          content: Text(
+              'Completed $_repeatTarget repeats on Page $_page! MashaAllah.'),
           duration: const Duration(seconds: 2),
         ),
       );
@@ -162,7 +179,7 @@ class _HifzMushafScreenState extends State<HifzMushafScreen> {
         context,
         title: 'Mushaf options',
         info: const [
-          'The 16-line page is the traditional Hifz layout: 15 lines of text plus the surah header.',
+          'IndoPak 16-line Mushaf: 548 pages, using the verified Quran Foundation layout. Surah headings and Bismillah occupy their reserved lines.',
         ],
         actions: [
           (
@@ -181,7 +198,9 @@ class _HifzMushafScreenState extends State<HifzMushafScreen> {
           ),
           (
             Icons.font_download_outlined,
-            _script == 'indopak' ? 'Switch to Uthmani (Madani) Script' : 'Switch to Indo-Pak Script',
+            _script == 'indopak'
+                ? 'Switch to Uthmani (Madani) Script'
+                : 'Switch to Indo-Pak Script',
             _toggleScript,
           ),
           (
@@ -197,12 +216,13 @@ class _HifzMushafScreenState extends State<HifzMushafScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
+      backgroundColor: NoorTheme.surface(context),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (ctx) => Padding(
-        padding: EdgeInsets.fromLTRB(20, 16, 20, MediaQuery.of(ctx).viewInsets.bottom + 24),
+        padding: EdgeInsets.fromLTRB(
+            20, 16, 20, MediaQuery.of(ctx).viewInsets.bottom + 24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -212,7 +232,7 @@ class _HifzMushafScreenState extends State<HifzMushafScreen> {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: NoorColors.hairline,
+                  color: NoorTheme.border(context),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -220,13 +240,17 @@ class _HifzMushafScreenState extends State<HifzMushafScreen> {
             const SizedBox(height: 14),
             Row(
               children: [
-                const Icon(Icons.explore_outlined, color: NoorColors.emeraldDark),
+                const Icon(Icons.explore_outlined,
+                    color: null),
                 const SizedBox(width: 8),
-                Text('Jump in 16-Line Mushaf', style: NoorType.section.copyWith(color: NoorColors.emeraldDark)),
+                Text('Jump in 16-Line Mushaf',
+                    style: NoorType.section
+                        .copyWith(color: null)),
               ],
             ),
             const SizedBox(height: 16),
-            Text('Enter Page (1 – 604):', style: NoorType.meta.copyWith(color: NoorColors.mutedDark)),
+            Text('Enter Page (1 – 548):',
+                style: NoorType.meta.copyWith(color: null)),
             const SizedBox(height: 6),
             Row(
               children: [
@@ -235,14 +259,17 @@ class _HifzMushafScreenState extends State<HifzMushafScreen> {
                     controller: pageCtrl,
                     keyboardType: TextInputType.number,
                     autofocus: true,
-                    style: NoorType.display.copyWith(fontSize: 22, color: NoorColors.emeraldDark),
+                    style: NoorType.display
+                        .copyWith(fontSize: 22, color: null),
                     decoration: InputDecoration(
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 10),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: NoorColors.emeraldMid),
+                        borderSide:
+                            const BorderSide(color: NoorColors.emeraldMid),
                       ),
-                      suffixText: '/ 604',
+                      suffixText: '/ 548',
                     ),
                   ),
                 ),
@@ -251,12 +278,16 @@ class _HifzMushafScreenState extends State<HifzMushafScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: NoorColors.emeraldDark,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 14),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
                   ),
                   onPressed: () {
                     final target = int.tryParse(pageCtrl.text.trim());
-                    if (target != null && target >= 1 && target <= QuranService.totalMushaf16Pages) {
+                    if (target != null &&
+                        target >= 1 &&
+                        target <= QuranService.totalMushaf16Pages) {
                       Navigator.of(ctx).pop();
                       _loadPage(target);
                     }
@@ -266,10 +297,11 @@ class _HifzMushafScreenState extends State<HifzMushafScreen> {
               ],
             ),
             const SizedBox(height: 18),
-            Text('Quick Juz Navigation (1 – 30):', style: NoorType.meta.copyWith(color: NoorColors.muted)),
+            Text('Quick Juz Navigation (1 – 30):',
+                style: NoorType.meta.copyWith(color: null)),
             const SizedBox(height: 8),
             SizedBox(
-              height: 42,
+              height: 52,
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 physics: const BouncingScrollPhysics(),
@@ -277,28 +309,34 @@ class _HifzMushafScreenState extends State<HifzMushafScreen> {
                 separatorBuilder: (_, __) => const SizedBox(width: 6),
                 itemBuilder: (_, i) {
                   final j = i + 1;
-                  final p = QuranService.juzStartPages[j] ?? ((j - 1) * 20 + 1);
+                  final isCurrentJuz = _pageData?.juzNumber == j;
                   return ActionChip(
                     label: Text('Juz $j'),
-                    backgroundColor: _pageData?.juzNumber == j ? NoorColors.emeraldDark : NoorColors.emeraldSoft,
+                    backgroundColor: isCurrentJuz
+                        ? NoorColors.emeraldDark
+                        : NoorTheme.softSurface(ctx),
                     labelStyle: TextStyle(
-                      color: _pageData?.juzNumber == j ? Colors.white : NoorColors.emeraldDark,
+                      color: isCurrentJuz
+                          ? Colors.white
+                          : NoorTheme.foreground(ctx),
                       fontWeight: FontWeight.w700,
                       fontSize: 12,
                     ),
-                    onPressed: () {
+                    onPressed: () async {
                       Navigator.of(ctx).pop();
-                      _loadPage(p);
+                      final target = await OfflineQuran.pageForJuz(j);
+                      if (mounted) _loadPage(target);
                     },
                   );
                 },
               ),
             ),
             const SizedBox(height: 18),
-            Text('Quick Surah Navigation (1 – 114):', style: NoorType.meta.copyWith(color: NoorColors.muted)),
+            Text('Quick Surah Navigation (1 – 114):',
+                style: NoorType.meta.copyWith(color: null)),
             const SizedBox(height: 8),
             SizedBox(
-              height: 42,
+              height: 52,
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 physics: const BouncingScrollPhysics(),
@@ -306,20 +344,25 @@ class _HifzMushafScreenState extends State<HifzMushafScreen> {
                 separatorBuilder: (_, __) => const SizedBox(width: 6),
                 itemBuilder: (_, i) {
                   final sNum = i + 1;
-                  final sName = QuranService.surahInfoMap[sNum]?.$1 ?? 'Surah $sNum';
-                  final p = QuranService.surahStartPages[sNum] ?? 1;
+                  final sName =
+                      QuranService.surahInfoMap[sNum]?.$1 ?? 'Surah $sNum';
                   final isCurrent = _pageData?.surahNumber == sNum;
                   return ActionChip(
                     label: Text('$sNum. $sName'),
-                    backgroundColor: isCurrent ? NoorColors.emeraldDark : NoorColors.emeraldSoft,
+                    backgroundColor: isCurrent
+                        ? NoorColors.emeraldDark
+                        : NoorTheme.softSurface(ctx),
                     labelStyle: TextStyle(
-                      color: isCurrent ? Colors.white : NoorColors.emeraldDark,
+                      color: isCurrent
+                          ? Colors.white
+                          : NoorTheme.foreground(ctx),
                       fontWeight: FontWeight.w700,
                       fontSize: 12,
                     ),
-                    onPressed: () {
+                    onPressed: () async {
                       Navigator.of(ctx).pop();
-                      _loadPage(p);
+                      final target = await OfflineQuran.pageForSurah(sNum);
+                      if (mounted) _loadPage(target);
                     },
                   );
                 },
@@ -334,7 +377,7 @@ class _HifzMushafScreenState extends State<HifzMushafScreen> {
   void _showAyahDetail(Mushaf16Word word) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.white,
+      backgroundColor: NoorTheme.surface(context),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -349,7 +392,7 @@ class _HifzMushafScreenState extends State<HifzMushafScreen> {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: NoorColors.hairline,
+                  color: NoorTheme.border(context),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -358,30 +401,37 @@ class _HifzMushafScreenState extends State<HifzMushafScreen> {
             Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: NoorColors.emeraldSoft,
+                    color: NoorTheme.surface(context, light: NoorColors.emeraldSoft),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
                     'Ayah ${word.verseKey}',
-                    style: NoorType.meta.copyWith(color: NoorColors.emeraldDark, fontWeight: FontWeight.w700),
+                    style: NoorType.meta.copyWith(
+                        color: null,
+                        fontWeight: FontWeight.w700),
                   ),
                 ),
                 const Spacer(),
-                Text('Line ${word.lineNumber} • Page $_page', style: NoorType.meta.copyWith(color: NoorColors.muted)),
+                Text('Line ${word.lineNumber} • Page $_page',
+                    style: NoorType.meta.copyWith(color: null)),
               ],
             ),
             const SizedBox(height: 16),
             Align(
               alignment: Alignment.centerRight,
               child: Text(
-                _script == 'indopak' && word.textIndoPak.isNotEmpty ? word.textIndoPak : word.textUthmani,
+                _script == 'indopak' && word.textIndoPak.isNotEmpty
+                    ? word.textIndoPak
+                    : word.textUthmani,
                 textDirection: TextDirection.rtl,
                 style: TextStyle(
-                  fontFamily: _script == 'indopak' ? 'NotoNastaliqUrdu' : 'AmiriQuran',
+                  fontFamily:
+                      _script == 'indopak' ? 'IndopakNastaleeq' : 'AmiriQuran',
                   fontSize: 26,
-                  color: NoorColors.emeraldDark,
+                  color: null,
                 ),
               ),
             ),
@@ -389,7 +439,7 @@ class _HifzMushafScreenState extends State<HifzMushafScreen> {
               const SizedBox(height: 10),
               Text(
                 word.translation!,
-                style: NoorType.body.copyWith(color: NoorColors.ink),
+                style: NoorType.body.copyWith(color: null),
               ),
             ],
             const SizedBox(height: 18),
@@ -400,15 +450,19 @@ class _HifzMushafScreenState extends State<HifzMushafScreen> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: NoorColors.emeraldDark,
                       foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
                     ),
                     icon: const Icon(Icons.menu_book, size: 18),
                     label: const Text('Read in Surah View'),
                     onPressed: () {
-                      final sNum = int.tryParse(word.verseKey.split(':').first) ?? (_pageData?.surahNumber ?? 2);
+                      final sNum =
+                          int.tryParse(word.verseKey.split(':').first) ??
+                              (_pageData?.surahNumber ?? 2);
                       Navigator.of(ctx).pop();
                       Navigator.of(context).push(
-                        MaterialPageRoute(builder: (_) => QuranReaderScreen(surah: sNum)),
+                        MaterialPageRoute(
+                            builder: (_) => QuranReaderScreen(surah: sNum)),
                       );
                     },
                   ),
@@ -423,12 +477,33 @@ class _HifzMushafScreenState extends State<HifzMushafScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final pageData = _pageData ?? QuranService.sampleMushaf16Page(_page);
+    if (_pageData == null) {
+      return Scaffold(
+          appBar: AppBar(title: const Text('16-Line Quran')),
+          body: Center(
+              child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(mainAxisSize: MainAxisSize.min, children: [
+              if (_isLoading)
+                const CircularProgressIndicator()
+              else ...[
+                Text(_error ?? 'This page is unavailable.',
+                    textAlign: TextAlign.center),
+                const SizedBox(height: 16),
+                FilledButton(
+                    onPressed: () => _loadPage(_page),
+                    child: const Text('Retry')),
+              ],
+            ]),
+          )));
+    }
+
+    final pageData = _pageData!;
     final surahName = pageData.surahEnglishName;
     final juzNum = pageData.juzNumber;
 
     return Scaffold(
-      backgroundColor: NoorColors.cream,
+      backgroundColor: NoorTheme.background(context, light: NoorColors.cream),
       body: SafeArea(
         child: Column(
           children: [
@@ -438,8 +513,9 @@ class _HifzMushafScreenState extends State<HifzMushafScreen> {
               padding: const EdgeInsets.fromLTRB(6, 10, 6, 14),
               child: Row(
                 children: [
-                  IconButton(
-                    icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 19),
+                  IconButton(tooltip: 'Back', 
+                    icon: const Icon(Icons.arrow_back_ios_new,
+                        color: Colors.white, size: 19),
                     onPressed: () => Navigator.of(context).maybePop(),
                   ),
                   Expanded(
@@ -447,7 +523,8 @@ class _HifzMushafScreenState extends State<HifzMushafScreen> {
                       children: [
                         Text(
                           surahName,
-                          style: NoorType.screenTitle.copyWith(color: Colors.white),
+                          style: NoorType.screenTitle
+                              .copyWith(color: Colors.white),
                         ),
                         const SizedBox(height: 2),
                         Text(
@@ -459,7 +536,8 @@ class _HifzMushafScreenState extends State<HifzMushafScreen> {
                   ),
                   IconButton(
                     tooltip: 'Switch script',
-                    icon: const Icon(Icons.font_download_outlined, color: Colors.white, size: 20),
+                    icon: const Icon(Icons.font_download_outlined,
+                        color: Colors.white, size: 20),
                     onPressed: _toggleScript,
                   ),
                   IconButton(
@@ -472,7 +550,8 @@ class _HifzMushafScreenState extends State<HifzMushafScreen> {
                   ),
                   IconButton(
                     tooltip: 'Mushaf options',
-                    icon: const Icon(Icons.settings_outlined, color: Colors.white),
+                    icon: const Icon(Icons.settings_outlined,
+                        color: Colors.white),
                     onPressed: _openOptions,
                   ),
                 ],
@@ -484,7 +563,7 @@ class _HifzMushafScreenState extends State<HifzMushafScreen> {
               margin: const EdgeInsets.fromLTRB(16, 10, 16, 0),
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: NoorTheme.surface(context, light: Colors.white),
                 borderRadius: BorderRadius.circular(14),
                 boxShadow: NoorShadows.card,
               ),
@@ -493,21 +572,29 @@ class _HifzMushafScreenState extends State<HifzMushafScreen> {
                 borderRadius: BorderRadius.circular(14),
                 child: Row(
                   children: [
-                    const Icon(Icons.menu_book_outlined, size: 18, color: NoorColors.emeraldDark),
+                    const Icon(Icons.menu_book_outlined,
+                        size: 18, color: null),
                     const SizedBox(width: 8),
-                    Text('16-Line Page View', style: NoorType.secondary.copyWith(color: NoorColors.emeraldDark)),
+                    Text('16-Line Page View',
+                        style: NoorType.secondary
+                            .copyWith(color: null)),
                     const Spacer(),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
-                        color: NoorColors.sand,
+                        color: NoorTheme.surface(context, light: NoorColors.sand),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Row(
                         children: [
-                          Text('Page $_page', style: NoorType.meta.copyWith(color: NoorColors.emeraldDark, fontWeight: FontWeight.w700)),
+                          Text('Page $_page',
+                              style: NoorType.meta.copyWith(
+                                  color: null,
+                                  fontWeight: FontWeight.w700)),
                           const SizedBox(width: 4),
-                          const Icon(Icons.keyboard_arrow_down, size: 14, color: NoorColors.emeraldDark),
+                          const Icon(Icons.keyboard_arrow_down,
+                              size: 14, color: null),
                         ],
                       ),
                     ),
@@ -539,7 +626,8 @@ class _HifzMushafScreenState extends State<HifzMushafScreen> {
                     Center(
                       child: Text(
                         '$surahName · Page $_page of ${QuranService.totalMushaf16Pages}',
-                        style: NoorType.meta.copyWith(color: NoorColors.mutedDark),
+                        style:
+                            NoorType.meta.copyWith(color: null),
                       ),
                     ),
 
@@ -565,8 +653,12 @@ class _HifzMushafScreenState extends State<HifzMushafScreen> {
                             onTap: _openJumpDialog,
                             child: Column(
                               children: [
-                                Text('$_page / ${QuranService.totalMushaf16Pages}', style: NoorType.cardTitle),
-                                Text('Juz $juzNum', style: NoorType.meta.copyWith(color: NoorColors.muted)),
+                                Text(
+                                    '$_page / ${QuranService.totalMushaf16Pages}',
+                                    style: NoorType.cardTitle),
+                                Text('Juz $juzNum',
+                                    style: NoorType.meta
+                                        .copyWith(color: null)),
                               ],
                             ),
                           ),
@@ -574,12 +666,16 @@ class _HifzMushafScreenState extends State<HifzMushafScreen> {
                         const SizedBox(width: 10),
                         Expanded(
                           child: InkWell(
-                            onTap: _page < QuranService.totalMushaf16Pages ? _nextPage : null,
+                            onTap: _page < QuranService.totalMushaf16Pages
+                                ? _nextPage
+                                : null,
                             borderRadius: BorderRadius.circular(14),
                             child: _navBtn(
                               Icons.keyboard_double_arrow_right,
                               'Next',
-                              _page < QuranService.totalMushaf16Pages ? 'Page ${_page + 1}' : 'End',
+                              _page < QuranService.totalMushaf16Pages
+                                  ? 'Page ${_page + 1}'
+                                  : 'End',
                               trailing: true,
                             ),
                           ),
@@ -593,7 +689,7 @@ class _HifzMushafScreenState extends State<HifzMushafScreen> {
                     Container(
                       padding: const EdgeInsets.symmetric(vertical: 10),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: NoorTheme.surface(context, light: Colors.white),
                         borderRadius: BorderRadius.circular(16),
                         boxShadow: NoorShadows.card,
                       ),
@@ -606,19 +702,24 @@ class _HifzMushafScreenState extends State<HifzMushafScreen> {
                             'Listen',
                             () => Navigator.of(context).push(
                               MaterialPageRoute(
-                                builder: (_) => QuranAudioPlayerScreen(surah: pageData.surahNumber),
+                                builder: (_) => QuranAudioPlayerScreen(
+                                    surah: pageData.surahNumber, initialAyah: _firstAyahOnPage(pageData)),
                               ),
                             ),
                           ),
                           _tool(
                             context,
                             Icons.repeat,
-                            _repeatCount > 0 ? 'Rep $_repeatCount/$_repeatTarget' : 'Repeat',
+                            _repeatCount > 0
+                                ? 'Rep $_repeatCount/$_repeatTarget'
+                                : 'Repeat',
                             _cycleRepeat,
                           ),
                           _tool(
                             context,
-                            _bookmarked ? Icons.bookmark : Icons.bookmark_border,
+                            _bookmarked
+                                ? Icons.bookmark
+                                : Icons.bookmark_border,
                             'Bookmark',
                             _toggleBookmark,
                           ),
@@ -627,7 +728,8 @@ class _HifzMushafScreenState extends State<HifzMushafScreen> {
                             Icons.school_outlined,
                             'Test Me',
                             () => Navigator.of(context).push(
-                              MaterialPageRoute(builder: (_) => const HifzAiTestScreen()),
+                              MaterialPageRoute(
+                                  builder: (_) => const HifzAiTestScreen()),
                             ),
                           ),
                           _tool(
@@ -636,7 +738,8 @@ class _HifzMushafScreenState extends State<HifzMushafScreen> {
                             'Read',
                             () => Navigator.of(context).push(
                               MaterialPageRoute(
-                                builder: (_) => QuranReaderScreen(surah: pageData.surahNumber),
+                                builder: (_) => QuranReaderScreen(
+                                    surah: pageData.surahNumber, initialAyah: _firstAyahOnPage(pageData)),
                               ),
                             ),
                           ),
@@ -648,39 +751,41 @@ class _HifzMushafScreenState extends State<HifzMushafScreen> {
 
                     // Hifz Progress Card
                     Material(
-                      color: Colors.white,
+                      color: NoorTheme.surface(context, light: Colors.white),
                       borderRadius: BorderRadius.circular(16),
                       child: InkWell(
                         onTap: () => Navigator.of(context).push(
-                          MaterialPageRoute(builder: (_) => const HifzHeatmapScreen()),
+                          MaterialPageRoute(
+                              builder: (_) => const HifzHeatmapScreen()),
                         ),
                         borderRadius: BorderRadius.circular(16),
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 14),
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(16),
                             boxShadow: NoorShadows.card,
                           ),
                           child: Row(
                             children: [
-                              const Icon(Icons.track_changes_outlined, color: NoorColors.emeraldDark, size: 20),
+                              const Icon(Icons.track_changes_outlined,
+                                  color: null, size: 20),
                               const SizedBox(width: 10),
-                              const Text('Hifz Progress', style: NoorType.secondary),
-                              const Spacer(),
-                              for (var i = 0; i < 7; i++)
-                                Container(
-                                  width: 10,
-                                  height: 10,
-                                  margin: const EdgeInsets.symmetric(horizontal: 2.5),
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    color: i < 4
-                                        ? NoorColors.emeraldDark
-                                        : (i == 4 ? NoorColors.gold : NoorColors.sand),
-                                  ),
-                                ),
+                              const Expanded(
+                                  child: Text('Hifz Progress',
+                                      style: NoorType.secondary)),
+                              Text(
+                                _repeatCount > 0
+                                    ? 'Practice $_repeatCount/$_repeatTarget'
+                                    : 'Page $_page of 604',
+                                style: NoorType.meta.copyWith(
+                                    color: NoorTheme.muted(context)),
+                              ),
                               const SizedBox(width: 6),
-                              const Icon(Icons.chevron_right, color: NoorColors.muted, size: 19),
+                              ExcludeSemantics(
+                                  child: Icon(Icons.chevron_right,
+                                      color: NoorTheme.muted(context),
+                                      size: 19)),
                             ],
                           ),
                         ),
@@ -700,7 +805,7 @@ class _HifzMushafScreenState extends State<HifzMushafScreen> {
   Widget _buildOrnateMushafFrame(Mushaf16Page pageData) {
     return Container(
       decoration: BoxDecoration(
-        color: NoorColors.surfaceWarm,
+        color: NoorTheme.surface(context, light: NoorColors.surfaceWarm),
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: NoorColors.goldSoft, width: 3),
         boxShadow: NoorShadows.card,
@@ -708,7 +813,7 @@ class _HifzMushafScreenState extends State<HifzMushafScreen> {
       padding: const EdgeInsets.all(5),
       child: Container(
         decoration: BoxDecoration(
-          color: NoorColors.surfaceWarm,
+          color: NoorTheme.surface(context, light: NoorColors.surfaceWarm),
           border: Border.all(color: NoorColors.emeraldMid, width: 1.5),
           borderRadius: BorderRadius.circular(6),
         ),
@@ -732,7 +837,7 @@ class _HifzMushafScreenState extends State<HifzMushafScreen> {
               Center(
                 child: Text(
                   'Loading 16-Line Page $_page...',
-                  style: NoorType.meta.copyWith(color: NoorColors.emeraldDark),
+                  style: NoorType.meta.copyWith(color: null),
                 ),
               ),
               const SizedBox(height: 60),
@@ -757,17 +862,17 @@ class _HifzMushafScreenState extends State<HifzMushafScreen> {
         children: [
           Text(
             'الجزء ${pageData.juzNumber}',
-            style: TextStyle(
-              fontFamily: _script == 'indopak' ? 'NotoNastaliqUrdu' : 'AmiriQuran',
+            style: const TextStyle(
+              fontFamily: 'AmiriQuran',
               fontSize: 13,
               fontWeight: FontWeight.w700,
-              color: NoorColors.emeraldDark,
+              color: null,
             ),
           ),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
             decoration: BoxDecoration(
-              color: NoorColors.sand,
+              color: NoorTheme.surface(context, light: NoorColors.sand),
               borderRadius: BorderRadius.circular(10),
               border: Border.all(color: NoorColors.goldSoft),
             ),
@@ -775,7 +880,7 @@ class _HifzMushafScreenState extends State<HifzMushafScreen> {
               '$_page',
               style: NoorType.tabular(
                 NoorType.secondary.copyWith(
-                  color: NoorColors.emeraldDark,
+                  color: null,
                   fontWeight: FontWeight.w800,
                   fontSize: 13,
                 ),
@@ -784,11 +889,11 @@ class _HifzMushafScreenState extends State<HifzMushafScreen> {
           ),
           Text(
             pageData.surahArabicName,
-            style: TextStyle(
-              fontFamily: _script == 'indopak' ? 'NotoNastaliqUrdu' : 'AmiriQuran',
+            style: const TextStyle(
+              fontFamily: 'AmiriQuran',
               fontSize: 13,
               fontWeight: FontWeight.w700,
-              color: NoorColors.emeraldDark,
+              color: null,
             ),
           ),
         ],
@@ -801,11 +906,16 @@ class _HifzMushafScreenState extends State<HifzMushafScreen> {
     // 1. Surah Header Banner Line
     if (line.isSurahHeader) {
       return Container(
-        height: 34,
+        constraints: const BoxConstraints(minHeight: 34),
+        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
         margin: const EdgeInsets.symmetric(vertical: 3),
         decoration: BoxDecoration(
           gradient: const LinearGradient(
-            colors: [NoorColors.emeraldDark, NoorColors.emeraldMid, NoorColors.emeraldDark],
+            colors: [
+              NoorColors.emeraldDark,
+              NoorColors.emeraldMid,
+              NoorColors.emeraldDark
+            ],
           ),
           borderRadius: BorderRadius.circular(8),
           border: Border.all(color: NoorColors.gold, width: 1.5),
@@ -842,17 +952,19 @@ class _HifzMushafScreenState extends State<HifzMushafScreen> {
     // 2. Bismillah Line
     if (line.isBismillah) {
       return Container(
-        height: 32,
+        constraints: const BoxConstraints(minHeight: 32),
+        padding: const EdgeInsets.symmetric(vertical: 2),
         margin: const EdgeInsets.symmetric(vertical: 2),
         alignment: Alignment.center,
         child: Text(
           'بِسۡمِ اللهِ الرَّحۡمٰنِ الرَّحِيۡمِ',
           textDirection: TextDirection.rtl,
           style: TextStyle(
-            fontFamily: _script == 'indopak' ? 'NotoNastaliqUrdu' : 'AmiriQuran',
+            fontFamily:
+                _script == 'indopak' ? 'IndopakNastaleeq' : 'AmiriQuran',
             fontSize: 16,
             fontWeight: FontWeight.w700,
-            color: NoorColors.emeraldDark,
+            color: NoorTheme.foreground(context),
           ),
         ),
       );
@@ -863,10 +975,10 @@ class _HifzMushafScreenState extends State<HifzMushafScreen> {
 
     return Container(
       constraints: const BoxConstraints(minHeight: 28),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         border: Border(
           bottom: BorderSide(
-            color: NoorColors.hairline,
+            color: NoorTheme.border(context),
             width: 0.6,
           ),
         ),
@@ -874,63 +986,78 @@ class _HifzMushafScreenState extends State<HifzMushafScreen> {
       padding: const EdgeInsets.symmetric(vertical: 2, horizontal: 4),
       alignment: Alignment.center,
       child: hasWords
-          ? FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Directionality(
+          ? Directionality(
+              textDirection: TextDirection.rtl,
+              child: Wrap(
+                alignment: WrapAlignment.center,
+                crossAxisAlignment: WrapCrossAlignment.center,
                 textDirection: TextDirection.rtl,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: line.words.map((w) {
-                    final isEnd = w.isAyahEnd;
-                    final text = _script == 'indopak' && w.textIndoPak.isNotEmpty ? w.textIndoPak : w.textUthmani;
+                spacing: 4,
+                runSpacing: 4,
+                children: line.words.map((w) {
+                  final isEnd = w.isAyahEnd;
+                  final text =
+                      _script == 'indopak' && w.textIndoPak.isNotEmpty
+                          ? w.textIndoPak
+                          : w.textUthmani;
 
-                    return InkWell(
-                      onTap: () => _showAyahDetail(w),
-                      borderRadius: BorderRadius.circular(4),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 2),
-                        child: isEnd
-                            ? Container(
-                                padding: const EdgeInsets.all(2),
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  border: Border.all(color: NoorColors.gold, width: 1),
-                                  color: NoorColors.sand,
-                                ),
-                                child: Text(
-                                  text,
-                                  style: const TextStyle(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w800,
-                                    color: NoorColors.emeraldDark,
-                                  ),
-                                ),
-                              )
-                            : Text(
+                  return InkWell(
+                    onTap: () => _showAyahDetail(w),
+                    borderRadius: BorderRadius.circular(4),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 2, vertical: 2),
+                      child: isEnd
+                          ? Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 5, vertical: 2),
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                    color: NoorTheme.accent(context),
+                                    width: 1),
+                                color: NoorTheme.softSurface(context),
+                              ),
+                              child: Text(
                                 text,
                                 style: TextStyle(
-                                  fontFamily: _script == 'indopak' ? 'NotoNastaliqUrdu' : 'AmiriQuran',
-                                  fontSize: 16.5,
-                                  fontWeight: FontWeight.w600,
-                                  color: NoorColors.ink,
-                                  height: 1.35,
+                                  fontFamily: _script == 'indopak'
+                                      ? 'IndopakNastaleeq'
+                                      : 'AmiriQuran',
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w800,
+                                  color: NoorTheme.accent(context),
                                 ),
                               ),
-                      ),
-                    );
-                  }).toList(),
-                ),
+                            )
+                          : Text(
+                              text,
+                              style: TextStyle(
+                                fontFamily: _script == 'indopak'
+                                    ? 'IndopakNastaleeq'
+                                    : 'AmiriQuran',
+                                fontSize: 16.5,
+                                fontWeight: FontWeight.w600,
+                                color: NoorTheme.foreground(context),
+                                height: 1.65,
+                              ),
+                            ),
+                    ),
+                  );
+                }).toList(),
               ),
             )
-          : const SizedBox(height: 24), // Empty ruled line slot for introductory pages
+          : const SizedBox(
+              height: 24), // Empty ruled line slot for introductory pages
     );
   }
 
-  Widget _navBtn(IconData icon, String label, String sub, {bool trailing = false}) => Container(
+  Widget _navBtn(IconData icon, String label, String sub,
+          {bool trailing = false}) =>
+      Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: NoorTheme.surface(context, light: Colors.white),
           borderRadius: BorderRadius.circular(14),
           boxShadow: NoorShadows.card,
         ),
@@ -938,50 +1065,69 @@ class _HifzMushafScreenState extends State<HifzMushafScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             if (!trailing) ...[
-              Icon(icon, size: 16, color: NoorColors.emeraldDark),
+              Icon(icon, size: 16, color: NoorTheme.accent(context)),
               const SizedBox(width: 6),
             ],
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(label, style: NoorType.meta.copyWith(fontWeight: FontWeight.w700)),
-                Text(sub, style: NoorType.meta.copyWith(color: NoorColors.muted, fontSize: 11)),
-              ],
+            Flexible(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style:
+                          NoorType.meta.copyWith(fontWeight: FontWeight.w700)),
+                  Text(sub,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: NoorType.meta
+                          .copyWith(color: NoorTheme.muted(context))),
+                ],
+              ),
             ),
             if (trailing) ...[
               const SizedBox(width: 6),
-              Icon(icon, size: 16, color: NoorColors.emeraldDark),
+              Icon(icon, size: 16, color: NoorTheme.accent(context)),
             ],
           ],
         ),
       );
 
-  Widget _tool(BuildContext context, IconData icon, String label, VoidCallback? onTap) => Semantics(
+  Widget _tool(BuildContext context, IconData icon, String label,
+          VoidCallback? onTap) =>
+      Semantics(
         button: onTap != null,
         enabled: onTap != null,
         label: label,
         child: InkWell(
           onTap: onTap,
           borderRadius: BorderRadius.circular(20),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  icon,
-                  size: 20,
-                  color: onTap == null ? NoorColors.mutedDark : NoorColors.emeraldDark,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  label,
-                  style: NoorType.meta.copyWith(
-                    color: onTap == null ? NoorColors.mutedDark : NoorColors.ink,
-                    fontSize: 11,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    icon,
+                    size: 20,
+                    color: onTap == null
+                        ? NoorTheme.muted(context)
+                        : NoorTheme.accent(context),
                   ),
-                ),
-              ],
+                  const SizedBox(height: 4),
+                  Text(
+                    label,
+                    style: NoorType.compactMeta.copyWith(
+                      color: onTap == null
+                          ? NoorTheme.muted(context)
+                          : NoorTheme.foreground(context),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),

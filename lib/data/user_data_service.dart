@@ -3,9 +3,9 @@ import 'dart:convert';
 import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
 import 'firebase_rest_service.dart';
 import 'noor_store.dart';
+import 'session_store.dart';
 
 enum SyncState { idle, syncing, synced, offlinePending, error }
 
@@ -24,7 +24,8 @@ class UserDataService {
   static const _base =
       'https://firestore.googleapis.com/v1/projects/$_projectId/databases/(default)/documents';
 
-  final ValueNotifier<SyncState> syncState = ValueNotifier<SyncState>(SyncState.idle);
+  final ValueNotifier<SyncState> syncState =
+      ValueNotifier<SyncState>(SyncState.idle);
 
   Timer? _prayerDebounceTimer;
   final Map<String, List<bool>> _pendingPrayers = {};
@@ -34,8 +35,7 @@ class UserDataService {
 
   Future<String?> _token() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      return FirebaseRestService.decryptToken(prefs.getString('fb.idToken'));
+      return await SessionStore.read('fb.idToken');
     } catch (_) {
       return null;
     }
@@ -43,8 +43,7 @@ class UserDataService {
 
   Future<String?> _refreshToken() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      return FirebaseRestService.decryptToken(prefs.getString('fb.refreshToken'));
+      return await SessionStore.read('fb.refreshToken');
     } catch (_) {
       return null;
     }
@@ -52,8 +51,7 @@ class UserDataService {
 
   Future<String?> _uid() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      return FirebaseRestService.decryptToken(prefs.getString('fb.uid'));
+      return await SessionStore.read('fb.uid');
     } catch (_) {
       return null;
     }
@@ -62,19 +60,37 @@ class UserDataService {
   /// Optional HTTP client for dependency injection and testing.
   http.Client? httpClient;
 
-  Future<http.Response> _httpPost(Uri url, {Map<String, String>? headers, Object? body}) {
-    if (httpClient != null) return httpClient!.post(url, headers: headers, body: body);
-    return http.post(url, headers: headers, body: body);
+  Future<http.Response> _httpPost(Uri url,
+      {Map<String, String>? headers, Object? body}) {
+    if (httpClient != null) {
+      return httpClient!
+          .post(url, headers: headers, body: body)
+          .timeout(const Duration(seconds: 12));
+    }
+    return http
+        .post(url, headers: headers, body: body)
+        .timeout(const Duration(seconds: 12));
   }
 
-  Future<http.Response> _httpPatch(Uri url, {Map<String, String>? headers, Object? body}) {
-    if (httpClient != null) return httpClient!.patch(url, headers: headers, body: body);
-    return http.patch(url, headers: headers, body: body);
+  Future<http.Response> _httpPatch(Uri url,
+      {Map<String, String>? headers, Object? body}) {
+    if (httpClient != null) {
+      return httpClient!
+          .patch(url, headers: headers, body: body)
+          .timeout(const Duration(seconds: 12));
+    }
+    return http
+        .patch(url, headers: headers, body: body)
+        .timeout(const Duration(seconds: 12));
   }
 
   Future<http.Response> _httpGet(Uri url, {Map<String, String>? headers}) {
-    if (httpClient != null) return httpClient!.get(url, headers: headers);
-    return http.get(url, headers: headers);
+    if (httpClient != null) {
+      return httpClient!
+          .get(url, headers: headers)
+          .timeout(const Duration(seconds: 12));
+    }
+    return http.get(url, headers: headers).timeout(const Duration(seconds: 12));
   }
 
   Future<bool> _refreshIdToken() async {
@@ -84,23 +100,16 @@ class UserDataService {
       final resp = await _httpPost(
         Uri.parse('https://securetoken.googleapis.com/v1/token?key=$_apiKey'),
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-        body: 'grant_type=refresh_token&refresh_token=$rf',
+        body: {'grant_type': 'refresh_token', 'refresh_token': rf},
       );
       if (resp.statusCode != 200) return false;
       final data = jsonDecode(resp.body);
       final newIdToken = data['id_token']?.toString();
       final newRf = data['refresh_token']?.toString();
       if (newIdToken != null) {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString(
-          'fb.idToken',
-          FirebaseRestService.encryptToken(newIdToken),
-        );
+        await SessionStore.write('fb.idToken', newIdToken);
         if (newRf != null) {
-          await prefs.setString(
-            'fb.refreshToken',
-            FirebaseRestService.encryptToken(newRf),
-          );
+          await SessionStore.write('fb.refreshToken', newRf);
         }
         return true;
       }
@@ -110,7 +119,8 @@ class UserDataService {
     }
   }
 
-  Future<http.Response?> _authenticatedPatch(String path, Map<String, dynamic> data) async {
+  Future<http.Response?> _authenticatedPatch(
+      String path, Map<String, dynamic> data) async {
     var token = await _token();
     if (token == null) return null;
 
@@ -185,6 +195,8 @@ class UserDataService {
     _prayerDebounceTimer = null;
     _tasbihDebounceTimer?.cancel();
     _tasbihDebounceTimer = null;
+    _pendingPrayers.clear();
+    _pendingTasbih.clear();
   }
 
   // --- Prayer logs ---
@@ -192,7 +204,8 @@ class UserDataService {
   /// Saves 5 prayer states for [date].
   /// Debounces rapid consecutive taps (unless [immediate] is true).
   /// Enqueues into offline outbox if network or auth fails.
-  Future<void> savePrayers(String date, List<bool> done, {bool immediate = false}) async {
+  Future<void> savePrayers(String date, List<bool> done,
+      {bool immediate = false}) async {
     _pendingPrayers[date] = List<bool>.from(done);
 
     if (immediate) {
@@ -264,7 +277,8 @@ class UserDataService {
   // --- Tasbih Sync ---
 
   /// Saves today's tasbih total count with debouncing.
-  Future<void> saveTasbihTotal(String date, int total, {bool immediate = false}) async {
+  Future<void> saveTasbihTotal(String date, int total,
+      {bool immediate = false}) async {
     _pendingTasbih[date] = total;
 
     if (immediate) {
@@ -373,6 +387,7 @@ class UserDataService {
         final Map<String, dynamic> payload =
             rawData is Map ? Map<String, dynamic>.from(rawData) : {};
 
+        if (!path.startsWith('users/$uid/')) continue;
         final resp = await _authenticatedPatch(path, payload);
         if (resp != null && resp.statusCode >= 200 && resp.statusCode < 300) {
           if (opId.isNotEmpty) successfullySynced.add(opId);
@@ -408,7 +423,8 @@ class UserDataService {
       }
 
       final remaining = await NoorStore.getSyncOutbox();
-      syncState.value = remaining.isEmpty ? SyncState.synced : SyncState.offlinePending;
+      syncState.value =
+          remaining.isEmpty ? SyncState.synced : SyncState.offlinePending;
       return successfullySynced.length;
     } catch (e) {
       debugPrint('UserDataService.flushOutbox error: $e');
@@ -465,13 +481,16 @@ class UserDataService {
           result[k] = list.map((elem) {
             if (elem is Map) {
               if (elem.containsKey('booleanValue')) return elem['booleanValue'];
-              if (elem.containsKey('integerValue')) return int.tryParse(elem['integerValue'].toString()) ?? 0;
+              if (elem.containsKey('integerValue')) {
+                return int.tryParse(elem['integerValue'].toString()) ?? 0;
+              }
               return elem['stringValue'] ?? '';
             }
             return elem;
           }).toList();
         } else if (v.containsKey('mapValue')) {
-          result[k] = _fromFs((v['mapValue']['fields'] ?? {}) as Map<String, dynamic>);
+          result[k] =
+              _fromFs((v['mapValue']['fields'] ?? {}) as Map<String, dynamic>);
         }
       }
     });

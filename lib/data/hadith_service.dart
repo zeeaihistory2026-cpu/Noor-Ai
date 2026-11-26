@@ -74,9 +74,7 @@ class HadithService {
         name: 'Sahih Muslim',
         author: 'Imam Muslim ibn Al-Hajjaj'),
     HadithBookMeta(
-        id: 'abudawud',
-        name: 'Sunan Abu Dawud',
-        author: 'Imam Abu Dawud'),
+        id: 'abudawud', name: 'Sunan Abu Dawud', author: 'Imam Abu Dawud'),
     HadithBookMeta(
         id: 'tirmidhi',
         name: "Jami' At Tirmidhi",
@@ -84,9 +82,7 @@ class HadithService {
     HadithBookMeta(
         id: 'nasai', name: 'Sunan An-Nasai', author: 'Imam An-Nasai'),
     HadithBookMeta(
-        id: 'ibnmajah',
-        name: 'Sunan Ibn Majah',
-        author: 'Imam Ibn Majah'),
+        id: 'ibnmajah', name: 'Sunan Ibn Majah', author: 'Imam Ibn Majah'),
     // MuslimGo addition (user request, 2026-10-31): Nahjul Balagha —
     // sermons, letters and sayings of Imam Ali ibn Abi Talib,
     // compiled by Sharif al-Radi. It is NOT part of the hadith-api
@@ -158,7 +154,8 @@ class HadithService {
   bool _hasLive = false;
 
   final Map<String, HadithBook> _memory = <String, HadithBook>{};
-  final Map<String, Future<HadithBook>> _inFlightEditions = <String, Future<HadithBook>>{};
+  final Map<String, Future<HadithBook>> _inFlightEditions =
+      <String, Future<HadithBook>>{};
 
   static String editionId(String bookId, HadithLanguage language) =>
       '${language.prefix}-$bookId';
@@ -172,12 +169,13 @@ class HadithService {
   Future<bool> checkLive() async {
     for (final base in cdnMirrors) {
       try {
-        final res = await _client
-            .get(
-              Uri.parse('$base/editions.json'),
-              headers: const {'Accept': 'application/json', 'User-Agent': 'NoorApp/1.0'},
-            )
-            .timeout(const Duration(seconds: 8));
+        final res = await _client.get(
+          Uri.parse('$base/editions.json'),
+          headers: const {
+            'Accept': 'application/json',
+            'User-Agent': 'NoorApp/1.0'
+          },
+        ).timeout(const Duration(seconds: 8));
         if (res.statusCode == 200) {
           _hasLive = true;
           return true;
@@ -234,7 +232,8 @@ class HadithService {
               body = res.body;
               break;
             } else if (res.statusCode != 200) {
-              lastError = HadithServiceException('Hadith CDN HTTP ${res.statusCode}');
+              lastError =
+                  HadithServiceException('Hadith CDN HTTP ${res.statusCode}');
             }
           } catch (e) {
             lastError = e;
@@ -250,15 +249,13 @@ class HadithService {
           }
           _hasLive = false;
           if (lastError is HadithServiceException) throw lastError;
-          throw HadithServiceException(
-              lastError is TimeoutException
-                  ? 'Connection timed out while loading $edition'
-                  : 'Unable to load Hadith databank ($edition). Please check connection.');
+          throw HadithServiceException(lastError is TimeoutException
+              ? 'Connection timed out while loading $edition'
+              : 'Unable to load Hadith databank ($edition). Please check connection.');
         }
 
         _hasLive = true;
-        final book = parseEditionJson(body,
-            bookId: bookId, language: language);
+        final book = parseEditionJson(body, bookId: bookId, language: language);
         _memory[edition] = book;
         unawaited(_writeDiskCache(edition, body));
         return book;
@@ -324,8 +321,7 @@ class HadithService {
 
   Future<void> _writeNahjulCache(Map<String, dynamic> parts) async {
     try {
-      final zipped =
-          const GZipEncoder().encode(utf8.encode(jsonEncode(parts)));
+      final zipped = const GZipEncoder().encode(utf8.encode(jsonEncode(parts)));
       await FileCacheStore.writeBytes(_nahjulCacheKey, zipped);
     } catch (e) {
       debugPrint('HadithService: Failed to cache Nahjul Balagha: $e');
@@ -454,11 +450,13 @@ class HadithService {
         await FileCacheStore.writeBytes(_cacheKey(edition), legacyZipped);
         await NoorStore.cacheJson(_cacheKey(edition), '');
         return parseEditionJson(utf8.decode(bytes),
-            bookId: _bookIdForEdition(edition), language: _langForEdition(edition));
+            bookId: _bookIdForEdition(edition),
+            language: _langForEdition(edition));
       }
       final bytes = const GZipDecoder().decodeBytes(zipped);
       return parseEditionJson(utf8.decode(bytes),
-          bookId: _bookIdForEdition(edition), language: _langForEdition(edition));
+          bookId: _bookIdForEdition(edition),
+          language: _langForEdition(edition));
     } catch (e) {
       debugPrint('HadithService: Failed to read disk cache for $edition: $e');
       return null;
@@ -542,7 +540,8 @@ class HadithService {
     final allNumbers = <int>{
       ...sectionsRaw.keys.map((k) => int.tryParse(k)).whereType<int>(),
       ...counts.keys,
-    }.toList()..sort();
+    }.toList()
+      ..sort();
 
     for (final n in allNumbers) {
       final title = sectionsRaw['$n']?.toString().trim() ?? '';
@@ -579,8 +578,7 @@ class HadithService {
       if (g is Map) {
         final name = g['name']?.toString() ?? '';
         final grade = g['grade']?.toString() ?? '';
-        final label =
-            [name, grade].where((s) => s.isNotEmpty).join(': ');
+        final label = [name, grade].where((s) => s.isNotEmpty).join(': ');
         if (label.isNotEmpty) out.add(label);
       } else if (g != null) {
         out.add(g.toString());

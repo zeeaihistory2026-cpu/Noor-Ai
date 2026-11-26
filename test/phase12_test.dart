@@ -25,10 +25,13 @@ double _contrast(Color a, Color b) {
 
 void main() {
   group('Phase 12 — NoorAppState single source of truth', () {
-    test('date line pairs the demo Gregorian date with the design Hijri', () {
-      expect(NoorAppState.gregorianLabel, 'Sunday, 31 Jan 2027');
-      expect(
-          NoorAppState.dateLine, 'Sunday, 31 Jan 2027 · 12 Sha\'ban 1448 AH');
+    test('date line follows the current calendar instead of a demo date', () {
+      expect(NoorAppState.formatGregorian(DateTime(2027, 1, 31)),
+          'Sunday, 31 Jan 2027');
+      expect(NoorAppState.gregorianLabel,
+          NoorAppState.formatGregorian(DateTime.now()));
+      expect(NoorAppState.dateLine,
+          '${NoorAppState.gregorianLabel} · ${NoorAppState.hijriLabel}');
     });
 
     test('prayer chain is internally consistent', () {
@@ -97,7 +100,11 @@ void main() {
       for (final entity in Directory('lib').listSync(recursive: true)) {
         if (entity is File && entity.path.endsWith('.dart')) {
           final text = entity.readAsStringSync();
-          if (text.contains('() {}')) {
+          // setState(() {}) legitimately refreshes values derived from a
+          // ChangeNotifier; inspect UI event callbacks rather than all closures.
+          if (RegExp(
+                  r'on(?:Pressed|Tap|Changed|LongPress):\s*\([^)]*\)\s*(?:async\s*)?\{\s*\}')
+              .hasMatch(text)) {
             offenders.add(entity.path);
           }
         }
@@ -118,13 +125,13 @@ void main() {
         final lines = entity.readAsStringSync().split('\n');
         for (var i = 0; i < lines.length; i++) {
           final line = lines[i];
-          final hit = RegExp(r'on(Pressed|Tap|Changed|LongPress): null')
-              .hasMatch(line);
+          final hit =
+              RegExp(r'on(Pressed|Tap|Changed|LongPress): null').hasMatch(line);
           if (!hit) continue;
-          final conditional =
-              line.contains('? null') || line.contains('?null');
-          final allowedFallback =
-              entity.path.replaceAll('\\', '/').endsWith('widgets/noor_share_card.dart');
+          final conditional = line.contains('? null') || line.contains('?null');
+          final allowedFallback = entity.path
+              .replaceAll('\\', '/')
+              .endsWith('widgets/noor_share_card.dart');
           if (!conditional && !allowedFallback) {
             offenders.add('${entity.path}:${i + 1}');
           }

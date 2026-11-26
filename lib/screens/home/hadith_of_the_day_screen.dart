@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../data/app_state.dart';
 import '../../data/daily_content_service.dart';
+import '../../data/daily_content_actions.dart';
+import '../../data/share_content.dart';
 import '../../theme/noor_theme.dart';
 import '../../widgets/noor_components.dart';
+import '../../widgets/daily_reflection_card.dart';
 import '../library/hadith_library_screen.dart';
 import '../library/share_card_studio_screen.dart';
 
@@ -25,27 +28,55 @@ class HadithOfTheDayScreen extends StatefulWidget {
 class _HadithOfTheDayScreenState extends State<HadithOfTheDayScreen> {
   late int _offset;
   bool _saved = false;
+  final _playback = DailyContentPlayback();
   bool _isPlayingAudio = false;
+
+  void _audioChanged() {
+    if (!mounted) return;
+    setState(() => _isPlayingAudio = _playback.playing || _playback.loading);
+    final error = _playback.error;
+    if (error != null) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(error)));
+      _playback.error = null;
+    }
+  }
+
+  @override
+  void dispose() {
+    _playback.removeListener(_audioChanged);
+    _playback.dispose();
+    super.dispose();
+  }
 
   @override
   void initState() {
     super.initState();
     _offset = widget.initialOffset;
+    _playback.addListener(_audioChanged);
+    _checkBookmark();
   }
 
   void _nextHadith() {
     HapticFeedback.selectionClick();
     setState(() => _offset++);
+    _playback.stop();
+    _checkBookmark();
   }
 
   void _prevHadith() {
     HapticFeedback.selectionClick();
     setState(() => _offset--);
+    _playback.stop();
+    _checkBookmark();
   }
 
   void _shuffleHadith() {
+    _playback.stop();
     HapticFeedback.mediumImpact();
     setState(() => _offset += 1 + (DateTime.now().microsecond % 5));
+    _playback.stop();
+    _checkBookmark();
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
         content: Text('Changed to another authentic Hadith!'),
@@ -54,17 +85,34 @@ class _HadithOfTheDayScreenState extends State<HadithOfTheDayScreen> {
     );
   }
 
-  void _toggleAudio(DailyContentItem hadith) {
-    HapticFeedback.selectionClick();
-    setState(() => _isPlayingAudio = !_isPlayingAudio);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(_isPlayingAudio
-            ? 'Playing narration audio: ${hadith.title} (${hadith.reference})'
-            : 'Audio narration paused'),
-        duration: const Duration(seconds: 2),
-      ),
-    );
+  Future<void> _checkBookmark() async {
+    final item = DailyContentService.getHadith(offset: _offset);
+    final saved = await DailyBookmarks.isSaved(item, 'hadith');
+    if (mounted &&
+        DailyContentService.getHadith(offset: _offset).id == item.id) {
+      setState(() => _saved = saved);
+    }
+  }
+
+  Future<void> _toggleSave() async {
+    final item = DailyContentService.getHadith(offset: _offset);
+    final saved = await DailyBookmarks.toggle(item, 'hadith');
+    if (!mounted ||
+        DailyContentService.getHadith(offset: _offset).id != item.id) {
+      return;
+    }
+    setState(() => _saved = saved);
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(
+            saved ? 'Saved to your library' : 'Removed from saved items')));
+  }
+
+  void _toggleAudio(DailyContentItem item) {
+    if (!_isPlayingAudio) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Listening uses your selected male narrator.')));
+    }
+    _playback.toggle(item, context: context);
   }
 
   @override
@@ -72,353 +120,202 @@ class _HadithOfTheDayScreenState extends State<HadithOfTheDayScreen> {
     final hadith = DailyContentService.getHadith(offset: _offset);
 
     return Scaffold(
-        backgroundColor: NoorColors.cream,
-        body: SafeArea(
-            child: ListView(padding: EdgeInsets.zero, children: [
-          Stack(clipBehavior: Clip.none, children: [
-            Container(
-                height: 190,
-                color: NoorColors.emeraldDark,
-                child: Stack(children: [
-                  Positioned(
-                      left: 0,
-                      right: 0,
-                      bottom: 0,
-                      child: Image.asset(NoorAssets.hadithLibraryHeader,
-                          cacheWidth: 1170,
-                          height: 76,
-                          width: double.infinity,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) =>
-                              const SizedBox.shrink())),
-                  Column(children: [
-                    Padding(
-                        padding: const EdgeInsets.fromLTRB(6, 8, 6, 0),
-                        child: Row(children: [
-                          IconButton(
-                              icon: const Icon(Icons.arrow_back_ios_new,
-                                  color: Colors.white, size: 19),
-                              onPressed: () =>
-                                  Navigator.of(context).maybePop()),
-                          Expanded(
-                              child: Text('Hadith of the Day',
-                                  textAlign: TextAlign.center,
-                                  style: NoorType.screenTitle.copyWith(color: Colors.white))),
-                          IconButton(
-                              icon: const Icon(Icons.bookmark_border,
-                                  color: Colors.white, size: 20),
-                              onPressed: () =>
-                                  setState(() => _saved = !_saved)),
-                          IconButton(
-                              tooltip: 'More options',
-                              icon: const Icon(Icons.more_vert,
-                                  color: Colors.white),
-                              onPressed: () => showNoorOverflowSheet(context,
-                                  title: 'Hadith of the Day',
-                                  actions: [
-                                    (
-                                      Icons.copy_outlined,
-                                      'Copy hadith text',
-                                      _copyHadith
-                                    ),
-                                    (
-                                      _saved
-                                          ? Icons.bookmark
-                                          : Icons.bookmark_border,
-                                      _saved ? 'Unsave' : 'Save',
-                                      () => setState(() => _saved = !_saved)
-                                    ),
-                                    (
-                                      Icons.ios_share,
-                                      'Open in Share Studio',
-                                      () => Navigator.of(context).push(
-                                          MaterialPageRoute(
-                                              builder: (_) =>
-                                                  const ShareCardStudioScreen()))
-                                    ),
-                                  ])),
-                        ])),
-                    Text(NoorAppState.hijriLabel,
-                        style: NoorType.secondary.copyWith(color: Colors.white)),
-                    const SizedBox(height: 3),
-                    Text(NoorAppState.gregorianLabel,
-                        style:
-                            NoorType.meta.copyWith(color: Colors.white70)),
-                  ]),
-                ])),
-            Positioned(
-                left: 20,
-                right: 20,
-                bottom: -6,
-                child: Container(
-                    height: 26,
-                    decoration: BoxDecoration(
-                        color: NoorColors.cream,
-                        borderRadius: BorderRadius.circular(20)))),
-          ]),
+      backgroundColor: NoorTheme.background(context, light: NoorColors.cream),
+      body: SafeArea(
+          child: ListView(padding: EdgeInsets.zero, children: [
+        Column(children: [
           Padding(
-              padding: const EdgeInsets.fromLTRB(20, 10, 20, 24),
-              child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    NoorCard(
-                        child: Column(children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: NoorColors.emeraldSoft,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Text(
-                              hadith.title,
-                              style: NoorType.meta.copyWith(
-                                color: NoorColors.emeraldDark,
-                                fontWeight: FontWeight.w700,
+              padding: const EdgeInsets.fromLTRB(6, 8, 6, 0),
+              child: Row(children: [
+                IconButton(
+                  tooltip: 'Back',
+                    icon: Icon(Icons.arrow_back_ios_new,
+                        color: NoorTheme.foreground(context,
+                            light: NoorColors.emeraldDark),
+                        size: 19),
+                    onPressed: () => Navigator.of(context).maybePop()),
+                Expanded(
+                    child: Semantics(header: true, child: Text('Hadith of the Day',
+                        textAlign: TextAlign.center,
+                        style: NoorType.screenTitle.copyWith(
+                            color: NoorTheme.foreground(context,
+                                light: NoorColors.emeraldDark))))),
+                IconButton(
+                  tooltip: _saved ? 'Remove bookmark' : 'Save hadith',
+                    icon: Icon(_saved ? Icons.bookmark : Icons.bookmark_border,
+                        color: NoorTheme.foreground(context,
+                            light: NoorColors.emeraldDark),
+                        size: 20),
+                    onPressed: _toggleSave),
+                IconButton(
+                    tooltip: 'More options',
+                    icon: Icon(Icons.more_vert,
+                        color: NoorTheme.foreground(context,
+                            light: NoorColors.emeraldDark)),
+                    onPressed: () => showNoorOverflowSheet(context,
+                            title: 'Hadith of the Day',
+                            actions: [
+                              (
+                                Icons.copy_outlined,
+                                'Copy hadith text',
+                                _copyHadith
                               ),
-                            ),
-                          ),
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              IconButton(
-                                icon: const Icon(Icons.arrow_back_ios, size: 16),
-                                tooltip: 'Previous Hadith',
-                                onPressed: _prevHadith,
+                              (
+                                Icons.record_voice_over_outlined,
+                                'Choose male narrator',
+                                () => _playback.selectNarrator(context)
                               ),
-                              IconButton(
-                                icon: const Icon(Icons.shuffle, size: 17, color: NoorColors.emeraldDark),
-                                tooltip: 'Change Hadith',
-                                onPressed: _shuffleHadith,
-                              ),
-                              IconButton(
-                                icon: const Icon(Icons.arrow_forward_ios, size: 16),
-                                tooltip: 'Next Hadith',
-                                onPressed: _nextHadith,
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      ClipOval(
-                          child: Image.asset(NoorAssets.hadithDayMedallion,
-                              width: 88,
-                              cacheWidth: 264,
-                              height: 88,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Container(
-                                  width: 88,
-                                  height: 88,
-                                  color: NoorColors.emeraldDark,
-                                  child: const Icon(Icons.mosque,
-                                      color: NoorColors.gold)))),
-                      const SizedBox(height: 14),
-                      const Text('Prophet Muhammad (peace be upon him) said:',
-                          textAlign: TextAlign.center,
-                          style: NoorType.secondary),
-                      const SizedBox(height: 14),
-                      Text(hadith.arabic,
-                          textDirection: TextDirection.rtl,
-                          textAlign: TextAlign.center,
-                          style: NoorType.arabic(
-                              size: 27, color: NoorColors.emeraldDark)),
-                      const SizedBox(height: 10),
-                      Container(
-                          width: 110, height: 1.4, color: NoorColors.goldSoft),
-                      const SizedBox(height: 12),
-                      Text(
-                          '"${hadith.translation}"',
-                          textAlign: TextAlign.center,
-                          style: NoorType.body.copyWith(height: 1.55)),
-                      const SizedBox(height: 10),
-                      Text(hadith.source,
-                          style: NoorType.secondary.copyWith(color: NoorColors.emerald)),
-                      const SizedBox(height: 20),
-                      Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceAround,
-                          children: [
-                            _action(
-                                _isPlayingAudio
-                                    ? Icons.pause_circle_filled
-                                    : Icons.volume_up_outlined,
-                                _isPlayingAudio ? 'Pause' : 'Listen',
-                                () => _toggleAudio(hadith)),
-                            _action(
+                              (
                                 _saved ? Icons.bookmark : Icons.bookmark_border,
-                                'Save',
-                                () => setState(() => _saved = !_saved)),
-                            _action(
+                                _saved ? 'Unsave' : 'Save',
+                                _toggleSave
+                              ),
+                              (
                                 Icons.ios_share,
-                                'Share',
+                                'Open in Share Studio',
                                 () => Navigator.of(context).push(
                                     MaterialPageRoute(
-                                        builder: (_) =>
-                                            const ShareCardStudioScreen()))),
-                            _action(Icons.copy_outlined, 'Copy', _copyHadith),
-                          ]),
-                    ])),
-                    const SizedBox(height: 20),
-                    const Text('About this Hadith',
-                        style: NoorType.cardTitle),
-                    const SizedBox(height: 7),
-                    Text(
-                        hadith.about,
-                        style: NoorType.secondary.copyWith(color: NoorColors.mutedDark,
-                            height: 1.55)),
-                    const SizedBox(height: 16),
-                    Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                            color: NoorColors.surfaceWarm,
-                            borderRadius:
-                                BorderRadius.circular(NoorRadius.card)),
-                        child: Row(children: [
-                          const Icon(Icons.psychology_outlined,
-                              color: NoorColors.emeraldDark, size: 26),
-                          const SizedBox(width: 12),
-                          Expanded(
-                              child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                const Text('Reflection',
-                                    style: NoorType.body),
-                                const SizedBox(height: 4),
-                                Text(
-                                    hadith.reflection,
-                                    style: NoorType.meta.copyWith(color: NoorColors.muted,
-                                        height: 1.5)),
-                              ])),
+                                        builder: (_) => ShareCardStudioScreen(
+                                            initialItem:
+                                                ShareContentItem.fromDaily(
+                                                    hadith,
+                                                    ShareContentType.hadith))))
+                              ),
+                            ])),
+              ])),
+          Padding(
+              padding: const EdgeInsets.fromLTRB(22, 4, 22, 12),
+              child: Text(NoorAppState.dateLine, style: NoorType.meta))
+        ]),
+        Padding(
+            padding: const EdgeInsets.fromLTRB(20, 10, 20, 24),
+            child:
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              DailyReflectionCard(
+                item: hadith,
+                kind: 'hadith',
+                expanded: true,
+                saved: _saved,
+                playing: _playback.playing,
+                loading: _playback.loading,
+                onListen: () => _toggleAudio(hadith),
+                onSave: _toggleSave,
+                onCopy: _copyHadith,
+                onPrevious: _prevHadith,
+                onNext: _nextHadith,
+                onChange: _shuffleHadith,
+                onShare: () => Navigator.of(context).push(MaterialPageRoute(
+                    builder: (_) => ShareCardStudioScreen(
+                        initialItem: ShareContentItem.fromDaily(
+                            hadith, ShareContentType.hadith)))),
+              ),
+              const SizedBox(height: 20),
+              const Text('About this Hadith', style: NoorType.cardTitle),
+              const SizedBox(height: 7),
+              Text(hadith.about,
+                  style:
+                      NoorType.secondary.copyWith(color: null, height: 1.55)),
+              const SizedBox(height: 16),
+              Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                      color: NoorTheme.surface(context,
+                          light: NoorColors.surfaceWarm),
+                      borderRadius: BorderRadius.circular(NoorRadius.card)),
+                  child: Row(children: [
+                    const Icon(Icons.psychology_outlined,
+                        color: null, size: 26),
+                    const SizedBox(width: 12),
+                    Expanded(
+                        child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                          const Text('Reflection', style: NoorType.body),
+                          const SizedBox(height: 4),
+                          Text(hadith.reflection,
+                              style: NoorType.meta
+                                  .copyWith(color: null, height: 1.5)),
                         ])),
-                    const SizedBox(height: 12),
-                    Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                            color: NoorColors.emeraldSoft,
-                            borderRadius:
-                                BorderRadius.circular(NoorRadius.card)),
-                        child: Row(children: [
-                          Container(
-                              width: 44,
-                              height: 44,
-                              decoration: const BoxDecoration(
-                                  color: NoorColors.emeraldDark,
-                                  shape: BoxShape.circle),
-                              child: const Icon(Icons.card_giftcard,
-                                  color: Colors.white, size: 20)),
-                          const SizedBox(width: 12),
-                          Expanded(
-                              child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                const Text('Share & Earn Reward',
-                                    style: NoorType.body),
-                                const SizedBox(height: 3),
-                                Text(
-                                    'Share this hadith with others and spread the knowledge.',
-                                    style: NoorType.meta.copyWith(color: NoorColors.muted)),
-                              ])),
-                          FilledButton(
-                              onPressed: () => Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                      builder: (_) =>
-                                          const ShareCardStudioScreen())),
-                              style: FilledButton.styleFrom(
-                                  backgroundColor: NoorColors.emeraldDark,
-                                  shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12))),
-                              child: const Text('Share Now',
-                                  style: NoorType.meta)),
-                        ])),
-                    const SizedBox(height: 20),
-                    Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text('More Hadiths for You',
-                              style: NoorType.cardTitle),
-                          TextButton(
-                              onPressed: () => Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                      builder: (_) =>
-                                          const HadithLibraryScreen())),
-                              style: TextButton.styleFrom(
-                                  minimumSize: const Size(44, 44)),
-                              child: Text('View All',
-                                  style: NoorType.secondary.copyWith(color: NoorColors.emerald))),
-                        ]),
-                    const SizedBox(height: 12),
-                    Row(children: [
-                      for (final h in [
-                        ('Sahih Muslim 1907', 'Character'),
-                        ('Sahih al-Bukhari 1', 'Intentions'),
-                        ('Sahih Muslim 1718', 'Deeds')
-                      ]) ...[
-                        Expanded(
-                            child: Container(
-                                constraints:
-                                    const BoxConstraints(minHeight: 96),
-                                padding: const EdgeInsets.all(12),
-                                decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(14),
-                                    boxShadow: NoorShadows.card),
-                                child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(h.$2,
-                                          style: NoorType.meta),
-                                      const SizedBox(height: 6),
-                                      Text(h.$1,
-                                          style: NoorType.meta.copyWith(color: NoorColors.muted)),
-                                      const Align(
-                                          alignment: Alignment.centerRight,
-                                          child: Icon(Icons.bookmark_border,
-                                              size: 15,
-                                              color: NoorColors.muted))
-                                    ]))),
-                        const SizedBox(width: 10),
-                      ],
-                    ]),
                   ])),
-        ])),
-      );
+              const SizedBox(height: 12),
+              NoorCard(
+                  child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                    const Text('Share a reminder', style: NoorType.cardTitle),
+                    const SizedBox(height: 8),
+                    const Text(
+                        'Create a card with this narration and its reference.',
+                        style: NoorType.secondary),
+                    const SizedBox(height: 14),
+                    FilledButton.icon(
+                        onPressed: () => Navigator.of(context).push(
+                            MaterialPageRoute(
+                                builder: (_) => ShareCardStudioScreen(
+                                    initialItem: ShareContentItem.fromDaily(
+                                        hadith, ShareContentType.hadith)))),
+                        icon: const Icon(Icons.ios_share_rounded),
+                        label: const Text('Create card')),
+                  ])),
+              const SizedBox(height: 20),
+              Wrap(
+                  alignment: WrapAlignment.spaceBetween,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    const Text('More Hadiths for You',
+                        style: NoorType.cardTitle),
+                    TextButton(
+                        onPressed: () => Navigator.of(context).push(
+                            MaterialPageRoute(
+                                builder: (_) => const HadithLibraryScreen())),
+                        style: TextButton.styleFrom(
+                            minimumSize: const Size(44, 44)),
+                        child: Text('View All',
+                            style: NoorType.secondary.copyWith(
+                                color: NoorTheme.foreground(context,
+                                    light: NoorColors.emerald)))),
+                  ]),
+              const SizedBox(height: 12),
+              for (int i = 1; i <= 2; i++) ...[
+                NoorCard(
+                    onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                        builder: (_) =>
+                            HadithOfTheDayScreen(initialOffset: _offset + i))),
+                    child: Row(children: [
+                      const Icon(Icons.auto_stories_outlined),
+                      const SizedBox(width: 12),
+                      Expanded(
+                          child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                            Text(
+                                DailyContentService.getHadith(
+                                        offset: _offset + i)
+                                    .title,
+                                style: NoorType.body),
+                            const SizedBox(height: 5),
+                            Text(
+                                DailyContentService.getHadith(
+                                        offset: _offset + i)
+                                    .reference,
+                                style: NoorType.meta),
+                          ])),
+                      const Icon(Icons.chevron_right),
+                    ])),
+                const SizedBox(height: 10),
+              ],
+            ])),
+      ])),
+    );
   }
 
   Future<void> _copyHadith() async {
-    final hadith = DailyContentService.getHadithOfDay();
-    await Clipboard.setData(ClipboardData(
-        text: '${hadith.source}: "${hadith.translation}"'));
+    final hadith = DailyContentService.getHadith(offset: _offset);
+    await Clipboard.setData(
+        ClipboardData(text: '${hadith.source}: "${hadith.translation}"'));
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Copied - paste anywhere to share')));
     }
   }
-
-  Widget _action(IconData i, String l, VoidCallback? f) => Semantics(
-      button: f != null,
-      enabled: f != null,
-      label: l,
-      child: InkWell(
-          onTap: f,
-          borderRadius: BorderRadius.circular(26),
-          child: Column(children: [
-            Container(
-                width: 52,
-                height: 52,
-                decoration: BoxDecoration(
-                    color: f == null ? NoorColors.sand : NoorColors.emeraldSoft,
-                    shape: BoxShape.circle),
-                child: Icon(i,
-                    color: f == null
-                        ? NoorColors.mutedDark
-                        : NoorColors.emeraldDark,
-                    size: 21)),
-            const SizedBox(height: 7),
-            Text(l,
-                style:
-                    NoorType.meta),
-          ])));
 }

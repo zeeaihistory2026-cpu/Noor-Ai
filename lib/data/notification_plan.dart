@@ -56,10 +56,11 @@ class NotificationPlan {
     const obligatory = <String>['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'];
     for (final name in obligatory) {
       if (toggles[name] == false) continue;
-      final at = day.timings[name] ?? (name == 'Dhuhr' ? day.timings['Zuhr'] : null);
+      final at =
+          day.timings[name] ?? (name == 'Dhuhr' ? day.timings['Zuhr'] : null);
       if (at == null) continue;
       final displayName = (name == 'Dhuhr') ? 'Zuhr' : name;
-      
+
       // 1. Lead reminder (15 minutes prior)
       final whenLead = at.subtract(const Duration(minutes: salahLeadMinutes));
       if (includePast || !whenLead.isBefore(n)) {
@@ -129,7 +130,9 @@ class NotificationPlan {
               'Start your morning with peace through remembrance of Allah.',
             'Evening Adhkar' =>
               'Evening supplications and adhkar for tranquility.',
-            _ => group == 'Worship' ? 'Time for ${r.$1}.' : 'Your ${r.$1} is ready.',
+            _ => group == 'Worship'
+                ? 'Time for ${r.$1}.'
+                : 'Your ${r.$1} is ready.',
           },
           scheduledAt: when,
           prayerName: r.$1,
@@ -166,6 +169,27 @@ class NotificationPlan {
     ];
     all.sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));
     return all;
+  }
+
+  static List<PlannedNotification> buildUpcomingPlan(
+      {required List<PrayerDay> days,
+      required Map<String, bool> toggles,
+      DateTime? now}) {
+    final instant = now ?? DateTime.now();
+    final result = <PlannedNotification>[];
+    for (int i = 0; i < days.length; i++) {
+      final day = days[i];
+      if (day.source != PrayerSource.sample) {
+        result.addAll(buildSalahPlan(day: day, toggles: toggles, now: instant));
+      }
+      result.addAll(buildFixedPlan(
+          toggles: toggles,
+          date: DateTime(instant.year, instant.month, instant.day + i),
+          now: instant));
+    }
+    final unique = {for (final entry in result) entry.id: entry};
+    return unique.values.toList()
+      ..sort((a, b) => a.scheduledAt.compareTo(b.scheduledAt));
   }
 
   // ---- helpers --------------------------------------------------------

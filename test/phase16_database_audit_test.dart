@@ -57,7 +57,8 @@ void main() {
       final customList = await NoorStore.getCustomDhikrs();
       expect(customList.length, equals(1));
       expect(customList.first['id'], equals('custom_123'));
-      expect(customList.first['transliteration'], equals('SubhanAllah wa bihamdihi'));
+      expect(customList.first['transliteration'],
+          equals('SubhanAllah wa bihamdihi'));
 
       // Delete custom dhikr
       await NoorStore.deleteCustomDhikr('custom_123');
@@ -65,7 +66,8 @@ void main() {
       expect(updatedList, isEmpty);
     });
 
-    test('Rich bookmarks save, load, and remove with synchronization', () async {
+    test('Rich bookmarks save, load, and remove with synchronization',
+        () async {
       await NoorStore.saveRichItem(
         id: 'quran:18:10',
         title: 'Surah Al-Kahf, Ayah 10',
@@ -107,7 +109,9 @@ void main() {
 
       // Tap Dhuhr to mark it
       // Find Dhuhr prayer row or its checkbox
-      final dhuhrFinder = find.text('Dhuhr');
+      final dhuhrFinder = find.byWidgetPredicate((widget) =>
+          widget is Semantics &&
+          widget.properties.label?.startsWith('Dhuhr prayer,') == true);
       expect(dhuhrFinder, findsOneWidget);
       await tester.tap(dhuhrFinder);
       await tester.pumpAndSettle();

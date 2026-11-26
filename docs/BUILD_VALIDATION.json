@@ -1,0 +1,95 @@
+{
+  "recorded_at": "2026-11-05",
+  "version_name": "1.0.4",
+  "version_code": 19,
+  "package": "com.noorai.com.audit",
+  "label": "MuslimGo Test",
+  "source_file_count": 92,
+  "source_sha256": "72ebcacf8f6e3a77465fa732d84b4375d7f790b4a0615b5e5f997cedde95a7ac",
+  "checks": {
+    "analysis": {
+      "passed": true,
+      "count": null,
+      "log_sha256": "55d5ea6fc90b194a2f5a9a4796966c70ede299c1de0b3b24e110885eed856461"
+    },
+    "functional": {
+      "passed": true,
+      "count": 226,
+      "log_sha256": "06b86519a7a6d23c5827a3cf0eef661f17b7a5885ee7f74191eed312d527cd21"
+    },
+    "renders": {
+      "passed": true,
+      "count": 64,
+      "log_sha256": "222bf45c130515cf5d4963bddbe232a753b20124de63a860ec234d087421821b",
+      "scope": "64 Flutter rendering checks using bundled fonts and actual light/dark themes; native plugins are mocked/unavailable in these captures."
+    },
+    "layout": {
+      "passed": true,
+      "count": 36,
+      "log_sha256": "1aacb87d3ee30eb788867df5fd21e1970a121d55aafd02c7800fbd22ef8ef417",
+      "scope": "36 targeted regressions, including full-height scrolling at 320px and 200% text; overlaps with the 226-test suite."
+    }
+  },
+  "icon": {
+    "sha256": "99655c417f3ef66a0bf82d9534487205da26cb8860062f61a264b7b33f96e0a2",
+    "transparent_corners": true
+  },
+  "phone": {
+    "status": "pending_final_apk_install",
+    "existing_test_version": "1.0.3 (18)",
+    "original_app_preserved": true,
+    "permission_preflight": {
+      "notifications": "granted",
+      "exact_alarms": "allowed"
+    },
+    "completed_checks": [],
+    "pending_checks": [
+      "audible sound confirmation",
+      "locked-screen and reboot alarm delivery",
+      "full reciter interruption/reconnection matrix",
+      "compass comparison to trusted physical direction",
+      "owned-account recovery and multi-device sync"
+    ]
+  },
+  "release_limits": [
+    "Separate ARM64 QA package signed with the local debug certificate; owner release keystore is unavailable.",
+    "Recorded azan alert, not a live mosque broadcast.",
+    "Hadith editions download/cache on demand; complete Quran text and 548-page 16-line layout are bundled.",
+    "AI/Hifz scoring remain labelled previews; a secured backend and verified content/assessment integration are still needed.",
+    "Interface localization is partial; reading language selection does not translate all menus."
+  ],
+  "packaged_at": "2026-11-05T00:18:26.229411+05:00",
+  "apk": {
+    "file": "MuslimGo-Test-1.0.4.apk",
+    "bytes": 37264571,
+    "sha256": "f6778c8f5f80ff3e6c77351989a9f1e746f9f1ed9994bcb04b71d1f57660e87d",
+    "certificate_sha256": "3002670b30fdd8d7c79bf857a741b482c279d306a2ae361c8fea1e82be4f83cf",
+    "abis": [
+      "arm64-v8a"
+    ],
+    "signature_verified": true,
+    "zipalign_16kb_verified": true,
+    "verified_assets": [
+      "assets/quran/quran-uthmani.json.gz",
+      "assets/quran/en.sahih.json.gz",
+      "assets/quran/ur.jalandhry.json.gz",
+      "assets/quran/mushaf16.json.gz",
+      "assets/images/app_icon.png",
+      "assets/images/app_logo.png",
+      "assets/fonts/IndopakNastaleeq-Regular.ttf",
+      "assets/fonts/Manrope-Variable.ttf",
+      "assets/fonts/AmiriQuran-Regular.ttf"
+    ],
+    "release_aot": true,
+    "audit_install": true,
+    "resource_shrinking": false
+  },
+  "build": {
+    "flutter": "3.47.0 stable",
+    "jdk": "17",
+    "assemble_seconds": 66.5,
+    "gradle_memory_override_restored": true,
+    "app_gradle_sha256": "fcaf14f6a4df97098262ff2b8fc71e69f01a72c95da38f054d9c40399def8d55",
+    "note": "ARM64 plugin JNI filter verified. Flutter reports future built-in Kotlin migration for app_settings, flutter_tts and workmanager_android; current build completed successfully."
+  }
+}

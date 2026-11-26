@@ -1,0 +1,311 @@
+[
+  {
+    "city": "Karachi",
+    "latitude": 24.8608,
+    "longitude": 67.0011,
+    "method": 1,
+    "school": 1,
+    "source": "https://api.aladhan.com/v1/timings/04-11-2026?latitude=24.8608&longitude=67.0011&method=1&school=1",
+    "response": {
+      "code": 200,
+      "status": "OK",
+      "data": {
+        "timings": {
+          "Fajr": "05:23",
+          "Sunrise": "06:41",
+          "Dhuhr": "12:16",
+          "Asr": "16:14",
+          "Sunset": "17:50",
+          "Maghrib": "17:50",
+          "Isha": "19:08",
+          "Imsak": "05:13",
+          "Midnight": "00:15",
+          "Firstthird": "22:07",
+          "Lastthird": "02:24"
+        },
+        "date": {
+          "readable": "04 Nov 2026",
+          "timestamp": "1793757600",
+          "hijri": {
+            "date": "24-05-1448",
+            "format": "DD-MM-YYYY",
+            "day": "24",
+            "weekday": {
+              "en": "Al Arba'a",
+              "ar": "الاربعاء"
+            },
+            "month": {
+              "number": 5,
+              "en": "Jumādá al-ūlá",
+              "ar": "جُمادى الأولى",
+              "days": 30
+            },
+            "year": "1448",
+            "designation": {
+              "abbreviated": "AH",
+              "expanded": "Anno Hegirae"
+            },
+            "holidays": [],
+            "adjustedHolidays": [],
+            "method": "HJCoSA"
+          },
+          "gregorian": {
+            "date": "04-11-2026",
+            "format": "DD-MM-YYYY",
+            "day": "04",
+            "weekday": {
+              "en": "Wednesday"
+            },
+            "month": {
+              "number": 11,
+              "en": "November"
+            },
+            "year": "2026",
+            "designation": {
+              "abbreviated": "AD",
+              "expanded": "Anno Domini"
+            },
+            "lunarSighting": false
+          }
+        },
+        "meta": {
+          "latitude": 24.8608,
+          "longitude": 67.0011,
+          "timezone": "Asia/Karachi",
+          "method": {
+            "id": 1,
+            "name": "University of Islamic Sciences, Karachi",
+            "params": {
+              "Fajr": 18,
+              "Isha": 18
+            },
+            "location": {
+              "latitude": 24.8614622,
+              "longitude": 67.0099388
+            }
+          },
+          "latitudeAdjustmentMethod": "ANGLE_BASED",
+          "midnightMode": "STANDARD",
+          "school": "HANAFI",
+          "offset": {
+            "Imsak": 0,
+            "Fajr": 0,
+            "Sunrise": 0,
+            "Dhuhr": 0,
+            "Asr": 0,
+            "Maghrib": 0,
+            "Sunset": 0,
+            "Isha": 0,
+            "Midnight": 0
+          }
+        }
+      }
+    }
+  },
+  {
+    "city": "Lahore",
+    "latitude": 31.5204,
+    "longitude": 74.3587,
+    "method": 1,
+    "school": 1,
+    "source": "https://api.aladhan.com/v1/timings/04-11-2026?latitude=31.5204&longitude=74.3587&method=1&school=1",
+    "response": {
+      "code": 200,
+      "status": "OK",
+      "data": {
+        "timings": {
+          "Fajr": "04:58",
+          "Sunrise": "06:21",
+          "Dhuhr": "11:46",
+          "Asr": "15:34",
+          "Sunset": "17:11",
+          "Maghrib": "17:11",
+          "Isha": "18:34",
+          "Imsak": "04:48",
+          "Midnight": "23:46",
+          "Firstthird": "21:34",
+          "Lastthird": "01:58"
+        },
+        "date": {
+          "readable": "04 Nov 2026",
+          "timestamp": "1793757600",
+          "hijri": {
+            "date": "24-05-1448",
+            "format": "DD-MM-YYYY",
+            "day": "24",
+            "weekday": {
+              "en": "Al Arba'a",
+              "ar": "الاربعاء"
+            },
+            "month": {
+              "number": 5,
+              "en": "Jumādá al-ūlá",
+              "ar": "جُمادى الأولى",
+              "days": 30
+            },
+            "year": "1448",
+            "designation": {
+              "abbreviated": "AH",
+              "expanded": "Anno Hegirae"
+            },
+            "holidays": [],
+            "adjustedHolidays": [],
+            "method": "HJCoSA"
+          },
+          "gregorian": {
+            "date": "04-11-2026",
+            "format": "DD-MM-YYYY",
+            "day": "04",
+            "weekday": {
+              "en": "Wednesday"
+            },
+            "month": {
+              "number": 11,
+              "en": "November"
+            },
+            "year": "2026",
+            "designation": {
+              "abbreviated": "AD",
+              "expanded": "Anno Domini"
+            },
+            "lunarSighting": false
+          }
+        },
+        "meta": {
+          "latitude": 31.5204,
+          "longitude": 74.3587,
+          "timezone": "Asia/Karachi",
+          "method": {
+            "id": 1,
+            "name": "University of Islamic Sciences, Karachi",
+            "params": {
+              "Fajr": 18,
+              "Isha": 18
+            },
+            "location": {
+              "latitude": 24.8614622,
+              "longitude": 67.0099388
+            }
+          },
+          "latitudeAdjustmentMethod": "ANGLE_BASED",
+          "midnightMode": "STANDARD",
+          "school": "HANAFI",
+          "offset": {
+            "Imsak": 0,
+            "Fajr": 0,
+            "Sunrise": 0,
+            "Dhuhr": 0,
+            "Asr": 0,
+            "Maghrib": 0,
+            "Sunset": 0,
+            "Isha": 0,
+            "Midnight": 0
+          }
+        }
+      }
+    }
+  },
+  {
+    "city": "Lahore",
+    "latitude": 31.5204,
+    "longitude": 74.3587,
+    "method": 1,
+    "school": 0,
+    "source": "https://api.aladhan.com/v1/timings/04-11-2026?latitude=31.5204&longitude=74.3587&method=1&school=0",
+    "response": {
+      "code": 200,
+      "status": "OK",
+      "data": {
+        "timings": {
+          "Fajr": "04:58",
+          "Sunrise": "06:21",
+          "Dhuhr": "11:46",
+          "Asr": "14:50",
+          "Sunset": "17:11",
+          "Maghrib": "17:11",
+          "Isha": "18:34",
+          "Imsak": "04:48",
+          "Midnight": "23:46",
+          "Firstthird": "21:34",
+          "Lastthird": "01:58"
+        },
+        "date": {
+          "readable": "04 Nov 2026",
+          "timestamp": "1793757600",
+          "hijri": {
+            "date": "24-05-1448",
+            "format": "DD-MM-YYYY",
+            "day": "24",
+            "weekday": {
+              "en": "Al Arba'a",
+              "ar": "الاربعاء"
+            },
+            "month": {
+              "number": 5,
+              "en": "Jumādá al-ūlá",
+              "ar": "جُمادى الأولى",
+              "days": 30
+            },
+            "year": "1448",
+            "designation": {
+              "abbreviated": "AH",
+              "expanded": "Anno Hegirae"
+            },
+            "holidays": [],
+            "adjustedHolidays": [],
+            "method": "HJCoSA"
+          },
+          "gregorian": {
+            "date": "04-11-2026",
+            "format": "DD-MM-YYYY",
+            "day": "04",
+            "weekday": {
+              "en": "Wednesday"
+            },
+            "month": {
+              "number": 11,
+              "en": "November"
+            },
+            "year": "2026",
+            "designation": {
+              "abbreviated": "AD",
+              "expanded": "Anno Domini"
+            },
+            "lunarSighting": false
+          }
+        },
+        "meta": {
+          "latitude": 31.5204,
+          "longitude": 74.3587,
+          "timezone": "Asia/Karachi",
+          "method": {
+            "id": 1,
+            "name": "University of Islamic Sciences, Karachi",
+            "params": {
+              "Fajr": 18,
+              "Isha": 18
+            },
+            "location": {
+              "latitude": 24.8614622,
+              "longitude": 67.0099388
+            }
+          },
+          "latitudeAdjustmentMethod": "ANGLE_BASED",
+          "midnightMode": "STANDARD",
+          "school": "STANDARD",
+          "offset": {
+            "Imsak": 0,
+            "Fajr": 0,
+            "Sunrise": 0,
+            "Dhuhr": 0,
+            "Asr": 0,
+            "Maghrib": 0,
+            "Sunset": 0,
+            "Isha": 0,
+            "Midnight": 0
+          }
+        }
+      }
+    }
+  }
+]

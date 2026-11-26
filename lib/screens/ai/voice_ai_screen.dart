@@ -38,7 +38,7 @@ class _VoiceAiScreenState extends State<VoiceAiScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        backgroundColor: NoorColors.cream,
+        backgroundColor: NoorTheme.background(context, light: NoorColors.cream),
         body: SafeArea(
             child: Column(children: [
           Container(
@@ -46,6 +46,7 @@ class _VoiceAiScreenState extends State<VoiceAiScreen> {
             padding: const EdgeInsets.fromLTRB(6, 10, 6, 22),
             child: Row(children: [
               IconButton(
+                  tooltip: 'Back',
                   icon: const Icon(Icons.arrow_back_ios_new,
                       color: Colors.white, size: 19),
                   onPressed: () => Navigator.of(context).maybePop()),
@@ -62,64 +63,72 @@ class _VoiceAiScreenState extends State<VoiceAiScreen> {
                   icon: const Icon(Icons.more_vert, color: Colors.white),
                   // Phase 16 audit: honest info + real text-chat route.
                   onPressed: () => showNoorOverflowSheet(context,
-                      title: 'Voice companion',
-                      info: const [
-                        'Voice input is a demo in this version — the microphone is not connected. Type instead:',
-                      ],
-                      actions: [
-                        (
-                          Icons.chat_outlined,
-                          'Open text chat',
-                          () => Navigator.of(context).push(MaterialPageRoute(
-                              builder: (_) => const AiChatScreen()))
-                        ),
-                      ])),
+                          title: 'Voice companion',
+                          info: const [
+                            'Voice input is a demo in this version — the microphone is not connected. Type instead:',
+                          ],
+                          actions: [
+                            (
+                              Icons.chat_outlined,
+                              'Open text chat',
+                              () => Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                      builder: (_) => const AiChatScreen()))
+                            ),
+                          ])),
             ]),
           ),
           Expanded(
               child: ListView(
                   padding: const EdgeInsets.fromLTRB(20, 22, 20, 24),
                   children: [
-                const Text('Speak your question',
-                    style:
-                        NoorType.screenTitle),
+                const Text('Speak your question', style: NoorType.screenTitle),
                 const SizedBox(height: 26),
                 Center(
-                    child: Semantics(button: true, child: GestureDetector(
-                  onTap: _toggleListening,
-                  child: Container(
-                      width: 232,
-                      height: 232,
-                      decoration: const BoxDecoration(
+                    child: Semantics(
+                        button: true,
+                        label: _listening
+                            ? 'Stop listening'
+                            : 'Start voice prompt',
+                        child: Material(
                           color: NoorColors.emeraldDark,
-                          shape: BoxShape.circle,
-                          boxShadow: NoorShadows.hero),
-                      child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            for (final h in [
-                              26.0,
-                              48.0,
-                              64.0,
-                              84.0,
-                              56.0,
-                              72.0,
-                              36.0
-                            ])
-                              Container(
-                                  width: 9,
-                                  height: _listening ? h : 22,
-                                  margin:
-                                      const EdgeInsets.symmetric(horizontal: 5),
-                                  decoration: BoxDecoration(
-                                      color: Colors.white,
-                                      borderRadius: BorderRadius.circular(99))),
-                          ])),
-                ))),
+                          shape: const CircleBorder(),
+                          elevation: 4,
+                          child: InkWell(
+                            customBorder: const CircleBorder(),
+                            onTap: _toggleListening,
+                            child: SizedBox(
+                                width: 232,
+                                height: 232,
+                              child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    for (final h in [
+                                      26.0,
+                                      48.0,
+                                      64.0,
+                                      84.0,
+                                      56.0,
+                                      72.0,
+                                      36.0
+                                    ])
+                                      Container(
+                                          width: 9,
+                                          height: _listening ? h : 22,
+                                          margin: const EdgeInsets.symmetric(
+                                              horizontal: 5),
+                                          decoration: BoxDecoration(
+                                              color: Colors.white,
+                                              borderRadius:
+                                                  BorderRadius.circular(99))),
+                                  ])),
+                          ),
+                        ))),
                 const SizedBox(height: 22),
                 Center(
                     child: Text(_listening ? 'Listening...' : 'Tap to speak',
-                        style: NoorType.cardTitle.copyWith(color: NoorColors.emeraldDark))),
+                        style: NoorType.cardTitle
+                            .copyWith(color: NoorTheme.muted(context)))),
                 const SizedBox(height: 8),
                 const Center(
                     child: Text('Self-check demo — microphone is not connected',
@@ -133,6 +142,7 @@ class _VoiceAiScreenState extends State<VoiceAiScreen> {
                     label: const Text('Stop'),
                     style: FilledButton.styleFrom(
                         backgroundColor: NoorColors.emeraldDark,
+                        foregroundColor: Colors.white,
                         minimumSize: const Size(120, 44)),
                   )),
                 ],
@@ -141,38 +151,38 @@ class _VoiceAiScreenState extends State<VoiceAiScreen> {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 20, vertical: 16),
                     decoration: BoxDecoration(
-                        color: NoorColors.emeraldSoft,
+                        color: NoorTheme.softSurface(context),
                         borderRadius: BorderRadius.circular(28)),
                     child: Text(SampleData.voicePromptSample,
-                        style:
-                            NoorType.secondary.copyWith(color: NoorColors.ink))),
+                        style: NoorType.secondary
+                            .copyWith(color: NoorTheme.muted(context)))),
                 if (_sampleAnswer != null) ...[
                   const SizedBox(height: 14),
                   Container(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 20, vertical: 16),
                       decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: NoorTheme.surface(context),
                           borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: NoorColors.hairline)),
+                          border: Border.all(color: NoorTheme.border(context))),
                       child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text('Sample answer (offline)',
-                                style: NoorType.meta.copyWith(color: NoorColors.emeraldDark)),
+                                style: NoorType.meta
+                                    .copyWith(color: NoorTheme.muted(context))),
                             const SizedBox(height: 6),
                             Text(_sampleAnswer!,
-                                style: NoorType.secondary.copyWith(height: 1.5)),
+                                style:
+                                    NoorType.secondary.copyWith(height: 1.5)),
                           ])),
                 ],
                 const SizedBox(height: 26),
-                const Text('Try asking',
-                    style:
-                        NoorType.cardTitle),
+                const Text('Try asking', style: NoorType.cardTitle),
                 const SizedBox(height: 12),
                 for (final s in SampleData.voiceSuggestions) ...[
                   Material(
-                      color: Colors.white,
+                      color: NoorTheme.surface(context),
                       borderRadius: BorderRadius.circular(16),
                       child: InkWell(
                           onTap: () => Navigator.of(context).push(
@@ -184,19 +194,20 @@ class _VoiceAiScreenState extends State<VoiceAiScreen> {
                                   horizontal: 18, vertical: 17),
                               decoration: BoxDecoration(
                                   borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(
-                                      color: NoorColors.hairline)),
-                              child: Text(s,
-                                  style: NoorType.body)))),
+                                  border:
+                                      Border.all(color: NoorTheme.border(context))),
+                              child: Text(s, style: NoorType.body)))),
                   const SizedBox(height: 10),
                 ],
                 Row(children: [
-                  const Icon(Icons.lock_outline, size: 15, color: NoorColors.muted),
+                  const Icon(Icons.lock_outline,
+                      size: 15, color: null),
                   const SizedBox(width: 6),
                   Expanded(
                       child: Text(
                           'Private mode: voice sessions are not saved unless you choose.',
-                          style: NoorType.meta.copyWith(color: NoorColors.muted)))
+                          style:
+                              NoorType.meta.copyWith(color: NoorTheme.muted(context))))
                 ]),
               ])),
         ])),

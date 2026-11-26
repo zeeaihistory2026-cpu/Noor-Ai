@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 
 import 'noor_store.dart';
 import 'sample_data.dart';
+import 'offline_quran.dart';
 
 /// Phase 6 — Qur'an text, translation and audio wiring.
 ///
@@ -21,17 +22,17 @@ import 'sample_data.dart';
 /// [ayahAudioUrl]. Secondary source: Quran.com API v4 — stubbed
 /// (URL builders + one chapters call) for a later phase.
 ///
-/// RULE: no Qur'an text is embedded in code beyond the brief,
-/// attributed excerpts already in [SampleData]. Full text is only
-/// ever fetched at runtime from the APIs above. Phase 7
-/// (2026-10-06): live-tested from the shell — /v1/surah returned
-/// HTTP 200 with 114 items, and the multi-edition call for Surah
-/// 18 returned 3 editions (quran-uthmani, en.sahih, ur.jalandhry)
-/// with the identifiers/ayah counts the parser below expects.
+/// Complete Arabic, English and Urdu editions and the 548-page IndoPak
+/// layout ship as compressed source downloads validated by the bundling tool.
+/// Recorded recitation streams from the existing audio CDN.
 class QuranService {
-  QuranService({http.Client? client}) : _client = client ?? http.Client();
+  QuranService({http.Client? client})
+      : _providedClient = client,
+        _useOffline = client == null;
+  final bool _useOffline;
 
-  final http.Client _client;
+  final http.Client? _providedClient;
+  late final http.Client _client = _providedClient ?? http.Client();
 
   static const String alQuranBase = 'https://api.alquran.cloud/v1';
   static const String quranComBase = 'https://api.quran.com/api/v4';
@@ -52,14 +53,19 @@ class QuranService {
   static const String editionAudioDefault = 'ar.alafasy';
 
   static List<SurahMeta>? _memorySurahList;
-  static final Map<int, Map<String, SurahDetail>> _editionsCache = <int, Map<String, SurahDetail>>{};
+  static final Map<int, Map<String, SurahDetail>> _editionsCache =
+      <int, Map<String, SurahDetail>>{};
   static final Map<String, SurahDetail> _surahCache = <String, SurahDetail>{};
-  static final Map<String, List<QuranSearchMatch>> _searchCache = <String, List<QuranSearchMatch>>{};
+  static final Map<String, List<QuranSearchMatch>> _searchCache =
+      <String, List<QuranSearchMatch>>{};
 
   static Future<List<SurahMeta>>? _inFlightSurahList;
-  static final Map<String, Future<SurahDetail>> _inFlightSurah = <String, Future<SurahDetail>>{};
-  static final Map<int, Future<Map<String, SurahDetail>>> _inFlightEditions = <int, Future<Map<String, SurahDetail>>>{};
-  static final Map<String, Future<List<QuranSearchMatch>>> _inFlightSearch = <String, Future<List<QuranSearchMatch>>>{};
+  static final Map<String, Future<SurahDetail>> _inFlightSurah =
+      <String, Future<SurahDetail>>{};
+  static final Map<int, Future<Map<String, SurahDetail>>> _inFlightEditions =
+      <int, Future<Map<String, SurahDetail>>>{};
+  static final Map<String, Future<List<QuranSearchMatch>>> _inFlightSearch =
+      <String, Future<List<QuranSearchMatch>>>{};
 
   /// Clears in-memory caches and in-flight requests. Useful for tests.
   static void clearCache() {
@@ -77,7 +83,8 @@ class QuranService {
 
   /// All 114 surahs from AlQuran Cloud, persisted-cached with TTL,
   /// with cache-first resolution and sample list fallback.
-  Future<List<SurahMeta>> fetchSurahListOrFallback({bool forceRefresh = false}) async {
+  Future<List<SurahMeta>> fetchSurahListOrFallback(
+      {bool forceRefresh = false}) async {
     if (!forceRefresh) {
       if (_memorySurahList != null && _memorySurahList!.isNotEmpty) {
         return _memorySurahList!;
@@ -92,7 +99,8 @@ class QuranService {
       final list = await fetchSurahList(forceRefresh: forceRefresh);
       if (list.isNotEmpty) return list;
     } catch (e) {
-      debugPrint('QuranService: fetchSurahList failed, falling back to cache: $e');
+      debugPrint(
+          'QuranService: fetchSurahList failed, falling back to cache: $e');
     }
     final cached = await _cachedSurahList();
     return cached ?? sampleSurahList();
@@ -205,9 +213,20 @@ class QuranService {
           _surahCache[cacheKey] = parsed;
           return parsed;
         } catch (e) {
-          debugPrint('QuranService: Failed to parse cached Surah $number ($edition): $e');
+          debugPrint(
+              'QuranService: Failed to parse cached Surah $number ($edition): $e');
         }
       }
+    }
+
+    if (_useOffline &&
+        !forceRefresh &&
+        const [editionArabic, editionEnglish, editionUrdu].contains(edition)) {
+      final detail = SurahDetail.fromEditionJson(
+          await OfflineQuran.surah(number, edition),
+          edition: edition);
+      _surahCache[cacheKey] = detail;
+      return detail;
     }
 
     final inFlight = _inFlightSurah[cacheKey];
@@ -247,6 +266,13 @@ class QuranService {
     int number, {
     bool forceRefresh = false,
   }) async {
+    if (_useOffline && !forceRefresh) {
+      final result = <String, SurahDetail>{};
+      for (final edition in [editionArabic, editionEnglish, editionUrdu]) {
+        result[edition] = await fetchSurah(number, edition: edition);
+      }
+      return result;
+    }
     final cacheKey = 'quran.surah.$number.editions';
     if (!forceRefresh) {
       final mem = _editionsCache[number];
@@ -262,7 +288,8 @@ class QuranService {
             return parsed;
           }
         } catch (e) {
-          debugPrint('QuranService: Failed to parse cached editions for Surah $number: $e');
+          debugPrint(
+              'QuranService: Failed to parse cached editions for Surah $number: $e');
         }
       }
     }
@@ -273,11 +300,12 @@ class QuranService {
     final future = () async {
       try {
         const editions = <String>[editionArabic, editionEnglish, editionUrdu];
-        final uri =
-            Uri.parse('$alQuranBase/surah/$number/editions/${editions.join(',')}');
+        final uri = Uri.parse(
+            '$alQuranBase/surah/$number/editions/${editions.join(',')}');
         final res = await _client.get(uri).timeout(const Duration(seconds: 20));
         if (res.statusCode != 200) {
-          throw QuranServiceException('AlQuran editions HTTP ${res.statusCode}');
+          throw QuranServiceException(
+              'AlQuran editions HTTP ${res.statusCode}');
         }
         await NoorStore.cacheJsonWithTtl(
           cacheKey,
@@ -339,7 +367,8 @@ class QuranService {
           _searchCache[cacheKey] = parsed;
           return parsed;
         } catch (e) {
-          debugPrint('QuranService: Failed to parse search cache for "$keyword": $e');
+          debugPrint(
+              'QuranService: Failed to parse search cache for "$keyword": $e');
         }
       }
     }
@@ -397,9 +426,9 @@ class QuranService {
   static String ayahAudioUrl(
     int globalAyahNumber, {
     String edition = editionAudioDefault,
-    int bitrate = 128,
+    int? bitrate,
   }) =>
-      'https://cdn.islamic.network/quran/audio/$bitrate/$edition/'
+      'https://cdn.islamic.network/quran/audio/${bitrate ?? (edition == 'ar.abdulbasitmurattal' ? 192 : edition == 'ar.saoodshuraym' || edition == 'ar.husary' ? 64 : 128)}/$edition/'
       '$globalAyahNumber.mp3';
 
   /// Surah-level audio is a playlist of its ayahs; the player
@@ -443,9 +472,10 @@ class QuranService {
 
   // ---- 16-Line Mushaf (Hifz Quran) ------------------------------------
   static final Map<int, Mushaf16Page> _mushafPageCache = <int, Mushaf16Page>{};
-  static final Map<int, Future<Mushaf16Page>> _inFlightMushafPage = <int, Future<Mushaf16Page>>{};
+  static final Map<int, Future<Mushaf16Page>> _inFlightMushafPage =
+      <int, Future<Mushaf16Page>>{};
 
-  static const int totalMushaf16Pages = 604;
+  static const int totalMushaf16Pages = 548;
 
   /// Fetches a 16-line Mushaf page with word coordinates and line numbers (1..16).
   /// Primary source: Quran.com API v4 (mushaf=7, IndoPak 16-line layout).
@@ -454,7 +484,14 @@ class QuranService {
     bool forceRefresh = false,
   }) async {
     final page = pageNumber.clamp(1, totalMushaf16Pages);
-    final cacheKey = 'quran.mushaf16.page.$page';
+    final cacheKey = 'quran.mushaf16.v2.page.$page';
+
+    if (_useOffline) {
+      final raw = await OfflineQuran.mushafPage(page);
+      final parsed = parseMushaf16PageJson(jsonEncode(raw), page);
+      _mushafPageCache[page] = parsed;
+      return parsed;
+    }
 
     if (!forceRefresh) {
       final mem = _mushafPageCache[page];
@@ -467,7 +504,8 @@ class QuranService {
           _mushafPageCache[page] = parsed;
           return parsed;
         } catch (e) {
-          debugPrint('QuranService: Failed to parse cached mushaf page $page: $e');
+          debugPrint(
+              'QuranService: Failed to parse cached mushaf page $page: $e');
         }
       }
     }
@@ -478,9 +516,12 @@ class QuranService {
     final future = () async {
       try {
         final uri = Uri.parse(
-          '$quranComBase/verses/by_page/$page?mushaf=7&words=true&word_fields=line_number,text_indopak,text_uthmani',
+          'https://api.qurancdn.com/api/qdc/verses/by_page/$page?mushaf=7&words=true&word_fields=line_number,text_indopak_nastaleeq,text_indopak,text_uthmani&per_page=50',
         );
-        final res = await _client.get(uri).timeout(const Duration(seconds: 15));
+        final res = await _client.get(uri, headers: const {
+          'User-Agent': 'MuslimGo/1.0',
+          'Accept': 'application/json'
+        }).timeout(const Duration(seconds: 15));
         if (res.statusCode == 200) {
           await NoorStore.cacheJsonWithTtl(
             cacheKey,
@@ -495,10 +536,8 @@ class QuranService {
         debugPrint('QuranService: Mushaf page $page network fetch error: $e');
       }
 
-      // Fallback for offline safety
-      final fallback = sampleMushaf16Page(page);
-      _mushafPageCache[page] = fallback;
-      return fallback;
+      throw QuranServiceException(
+          'This Mushaf page is unavailable. Please retry.');
     }();
 
     _inFlightMushafPage[page] = future;
@@ -559,15 +598,16 @@ class QuranService {
       String? headerSurahName;
       String? headerSurahEnglish;
 
-      if (startingSurahs.containsKey(i + 2)) {
+      if (words.isEmpty && startingSurahs.containsKey(i + 2) &&
+          startingSurahs[i + 2] != 1 && startingSurahs[i + 2] != 9) {
         isHeader = true;
         headerSurah = startingSurahs[i + 2];
         final info = surahInfoMap[headerSurah];
         headerSurahEnglish = info?.$1 ?? 'Surah $headerSurah';
         headerSurahName = info?.$2 ?? 'سُورَةُ $headerSurah';
-      } else if (startingSurahs.containsKey(i + 1)) {
+      } else if (words.isEmpty && startingSurahs.containsKey(i + 1)) {
         final s = startingSurahs[i + 1]!;
-        if (s != 9) {
+        if (s != 9 && s != 1) {
           isBismillah = true;
         } else {
           isHeader = true;
@@ -576,18 +616,6 @@ class QuranService {
           headerSurahEnglish = info?.$1 ?? 'Surah $headerSurah';
           headerSurahName = info?.$2 ?? 'سُورَةُ $headerSurah';
         }
-      } else if (words.isEmpty && i == 1 && page == 2) {
-        isHeader = true;
-        headerSurah = 2;
-        headerSurahName = 'سُورَةُ البَقَرَةِ';
-        headerSurahEnglish = 'Al-Baqarah';
-      } else if (words.isEmpty && i == 2 && page == 2) {
-        isBismillah = true;
-      } else if (words.isEmpty && i == 1 && page == 1) {
-        isHeader = true;
-        headerSurah = 1;
-        headerSurahName = 'سُورَةُ الفَاتِحَةِ';
-        headerSurahEnglish = 'Al-Fatihah';
       }
 
       assembledLines.add(Mushaf16Line(
@@ -601,7 +629,8 @@ class QuranService {
       ));
     }
 
-    final surahInfo = surahInfoMap[primarySurah] ?? ('Al-Baqarah', 'البَقَرَة', 286);
+    final surahInfo =
+        surahInfoMap[primarySurah] ?? ('Al-Baqarah', 'البَقَرَة', 286);
     return Mushaf16Page(
       pageNumber: page,
       juzNumber: primaryJuz,
@@ -616,57 +645,357 @@ class QuranService {
     if (page == 2) {
       final sampleWords = [
         // Line 3
-        const Mushaf16Word(id: 1, position: 1, lineNumber: 3, textIndoPak: 'الٓمّٓۚ‏', textUthmani: 'الٓمٓ', verseKey: '2:1', isAyahEnd: false),
-        const Mushaf16Word(id: 2, position: 2, lineNumber: 3, textIndoPak: '١', textUthmani: '١', verseKey: '2:1', isAyahEnd: true),
-        const Mushaf16Word(id: 3, position: 3, lineNumber: 3, textIndoPak: 'ذٰلِكَ', textUthmani: 'ذَٰلِكَ', verseKey: '2:2', isAyahEnd: false),
-        const Mushaf16Word(id: 4, position: 4, lineNumber: 3, textIndoPak: 'الۡڪِتٰبُ', textUthmani: 'ٱلْكِتَـٰبُ', verseKey: '2:2', isAyahEnd: false),
-        const Mushaf16Word(id: 5, position: 5, lineNumber: 3, textIndoPak: 'لَا', textUthmani: 'لَا', verseKey: '2:2', isAyahEnd: false),
-        const Mushaf16Word(id: 6, position: 6, lineNumber: 3, textIndoPak: 'رَيۡبَۛۚۖ', textUthmani: 'رَيْبَ', verseKey: '2:2', isAyahEnd: false),
-        const Mushaf16Word(id: 7, position: 7, lineNumber: 3, textIndoPak: 'فِيۡهِۛۚ', textUthmani: 'فِيهِ', verseKey: '2:2', isAyahEnd: false),
-        const Mushaf16Word(id: 8, position: 8, lineNumber: 3, textIndoPak: 'هُدًى', textUthmani: 'هُدًى', verseKey: '2:2', isAyahEnd: false),
+        const Mushaf16Word(
+            id: 1,
+            position: 1,
+            lineNumber: 3,
+            textIndoPak: 'الٓمّٓۚ‏',
+            textUthmani: 'الٓمٓ',
+            verseKey: '2:1',
+            isAyahEnd: false),
+        const Mushaf16Word(
+            id: 2,
+            position: 2,
+            lineNumber: 3,
+            textIndoPak: '١',
+            textUthmani: '١',
+            verseKey: '2:1',
+            isAyahEnd: true),
+        const Mushaf16Word(
+            id: 3,
+            position: 3,
+            lineNumber: 3,
+            textIndoPak: 'ذٰلِكَ',
+            textUthmani: 'ذَٰلِكَ',
+            verseKey: '2:2',
+            isAyahEnd: false),
+        const Mushaf16Word(
+            id: 4,
+            position: 4,
+            lineNumber: 3,
+            textIndoPak: 'الۡڪِتٰبُ',
+            textUthmani: 'ٱلْكِتَـٰبُ',
+            verseKey: '2:2',
+            isAyahEnd: false),
+        const Mushaf16Word(
+            id: 5,
+            position: 5,
+            lineNumber: 3,
+            textIndoPak: 'لَا',
+            textUthmani: 'لَا',
+            verseKey: '2:2',
+            isAyahEnd: false),
+        const Mushaf16Word(
+            id: 6,
+            position: 6,
+            lineNumber: 3,
+            textIndoPak: 'رَيۡبَۛۚۖ',
+            textUthmani: 'رَيْبَ',
+            verseKey: '2:2',
+            isAyahEnd: false),
+        const Mushaf16Word(
+            id: 7,
+            position: 7,
+            lineNumber: 3,
+            textIndoPak: 'فِيۡهِۛۚ',
+            textUthmani: 'فِيهِ',
+            verseKey: '2:2',
+            isAyahEnd: false),
+        const Mushaf16Word(
+            id: 8,
+            position: 8,
+            lineNumber: 3,
+            textIndoPak: 'هُدًى',
+            textUthmani: 'هُدًى',
+            verseKey: '2:2',
+            isAyahEnd: false),
         // Line 4
-        const Mushaf16Word(id: 9, position: 1, lineNumber: 4, textIndoPak: 'لِّلۡمُتَّقِيۡنَۙ‏', textUthmani: 'لِّلْمُتَّقِينَ', verseKey: '2:2', isAyahEnd: false),
-        const Mushaf16Word(id: 10, position: 2, lineNumber: 4, textIndoPak: '٢', textUthmani: '٢', verseKey: '2:2', isAyahEnd: true),
-        const Mushaf16Word(id: 11, position: 3, lineNumber: 4, textIndoPak: 'الَّذِيۡنَ', textUthmani: 'ٱلَّذِينَ', verseKey: '2:3', isAyahEnd: false),
-        const Mushaf16Word(id: 12, position: 4, lineNumber: 4, textIndoPak: 'يُؤۡمِنُوۡنَ', textUthmani: 'يُؤْمِنُونَ', verseKey: '2:3', isAyahEnd: false),
-        const Mushaf16Word(id: 13, position: 5, lineNumber: 4, textIndoPak: 'بِالۡغَيۡبِ', textUthmani: 'بِٱلْغَيْبِ', verseKey: '2:3', isAyahEnd: false),
-        const Mushaf16Word(id: 14, position: 6, lineNumber: 4, textIndoPak: 'وَ', textUthmani: 'وَ', verseKey: '2:3', isAyahEnd: false),
-        const Mushaf16Word(id: 15, position: 7, lineNumber: 4, textIndoPak: 'يُقِيۡمُوۡنَ', textUthmani: 'يُقِيمُونَ', verseKey: '2:3', isAyahEnd: false),
-        const Mushaf16Word(id: 16, position: 8, lineNumber: 4, textIndoPak: 'الصَّلٰوةَ', textUthmani: 'ٱلصَّلَوٰةَ', verseKey: '2:3', isAyahEnd: false),
+        const Mushaf16Word(
+            id: 9,
+            position: 1,
+            lineNumber: 4,
+            textIndoPak: 'لِّلۡمُتَّقِيۡنَۙ‏',
+            textUthmani: 'لِّلْمُتَّقِينَ',
+            verseKey: '2:2',
+            isAyahEnd: false),
+        const Mushaf16Word(
+            id: 10,
+            position: 2,
+            lineNumber: 4,
+            textIndoPak: '٢',
+            textUthmani: '٢',
+            verseKey: '2:2',
+            isAyahEnd: true),
+        const Mushaf16Word(
+            id: 11,
+            position: 3,
+            lineNumber: 4,
+            textIndoPak: 'الَّذِيۡنَ',
+            textUthmani: 'ٱلَّذِينَ',
+            verseKey: '2:3',
+            isAyahEnd: false),
+        const Mushaf16Word(
+            id: 12,
+            position: 4,
+            lineNumber: 4,
+            textIndoPak: 'يُؤۡمِنُوۡنَ',
+            textUthmani: 'يُؤْمِنُونَ',
+            verseKey: '2:3',
+            isAyahEnd: false),
+        const Mushaf16Word(
+            id: 13,
+            position: 5,
+            lineNumber: 4,
+            textIndoPak: 'بِالۡغَيۡبِ',
+            textUthmani: 'بِٱلْغَيْبِ',
+            verseKey: '2:3',
+            isAyahEnd: false),
+        const Mushaf16Word(
+            id: 14,
+            position: 6,
+            lineNumber: 4,
+            textIndoPak: 'وَ',
+            textUthmani: 'وَ',
+            verseKey: '2:3',
+            isAyahEnd: false),
+        const Mushaf16Word(
+            id: 15,
+            position: 7,
+            lineNumber: 4,
+            textIndoPak: 'يُقِيۡمُوۡنَ',
+            textUthmani: 'يُقِيمُونَ',
+            verseKey: '2:3',
+            isAyahEnd: false),
+        const Mushaf16Word(
+            id: 16,
+            position: 8,
+            lineNumber: 4,
+            textIndoPak: 'الصَّلٰوةَ',
+            textUthmani: 'ٱلصَّلَوٰةَ',
+            verseKey: '2:3',
+            isAyahEnd: false),
         // Line 5
-        const Mushaf16Word(id: 17, position: 1, lineNumber: 5, textIndoPak: 'وَمِمَّا', textUthmani: 'وَمِمَّا', verseKey: '2:3', isAyahEnd: false),
-        const Mushaf16Word(id: 18, position: 2, lineNumber: 5, textIndoPak: 'رَزَقۡنٰهُمۡ', textUthmani: 'رَزَقْنَـٰهُمْ', verseKey: '2:3', isAyahEnd: false),
-        const Mushaf16Word(id: 19, position: 3, lineNumber: 5, textIndoPak: 'يُنۡفِقُوۡنَۙ‏', textUthmani: 'يُنفِقُونَ', verseKey: '2:3', isAyahEnd: false),
-        const Mushaf16Word(id: 20, position: 4, lineNumber: 5, textIndoPak: '٣', textUthmani: '٣', verseKey: '2:3', isAyahEnd: true),
-        const Mushaf16Word(id: 21, position: 5, lineNumber: 5, textIndoPak: 'وَالَّذِيۡنَ', textUthmani: 'وَٱلَّذِينَ', verseKey: '2:4', isAyahEnd: false),
-        const Mushaf16Word(id: 22, position: 6, lineNumber: 5, textIndoPak: 'يُؤۡمِنُوۡنَ', textUthmani: 'يُؤْمِنُونَ', verseKey: '2:4', isAyahEnd: false),
-        const Mushaf16Word(id: 23, position: 7, lineNumber: 5, textIndoPak: 'بِمَۤا', textUthmani: 'بِمَآ', verseKey: '2:4', isAyahEnd: false),
-        const Mushaf16Word(id: 24, position: 8, lineNumber: 5, textIndoPak: 'اُنۡزِلَ', textUthmani: 'أُنزِلَ', verseKey: '2:4', isAyahEnd: false),
+        const Mushaf16Word(
+            id: 17,
+            position: 1,
+            lineNumber: 5,
+            textIndoPak: 'وَمِمَّا',
+            textUthmani: 'وَمِمَّا',
+            verseKey: '2:3',
+            isAyahEnd: false),
+        const Mushaf16Word(
+            id: 18,
+            position: 2,
+            lineNumber: 5,
+            textIndoPak: 'رَزَقۡنٰهُمۡ',
+            textUthmani: 'رَزَقْنَـٰهُمْ',
+            verseKey: '2:3',
+            isAyahEnd: false),
+        const Mushaf16Word(
+            id: 19,
+            position: 3,
+            lineNumber: 5,
+            textIndoPak: 'يُنۡفِقُوۡنَۙ‏',
+            textUthmani: 'يُنفِقُونَ',
+            verseKey: '2:3',
+            isAyahEnd: false),
+        const Mushaf16Word(
+            id: 20,
+            position: 4,
+            lineNumber: 5,
+            textIndoPak: '٣',
+            textUthmani: '٣',
+            verseKey: '2:3',
+            isAyahEnd: true),
+        const Mushaf16Word(
+            id: 21,
+            position: 5,
+            lineNumber: 5,
+            textIndoPak: 'وَالَّذِيۡنَ',
+            textUthmani: 'وَٱلَّذِينَ',
+            verseKey: '2:4',
+            isAyahEnd: false),
+        const Mushaf16Word(
+            id: 22,
+            position: 6,
+            lineNumber: 5,
+            textIndoPak: 'يُؤۡمِنُوۡنَ',
+            textUthmani: 'يُؤْمِنُونَ',
+            verseKey: '2:4',
+            isAyahEnd: false),
+        const Mushaf16Word(
+            id: 23,
+            position: 7,
+            lineNumber: 5,
+            textIndoPak: 'بِمَۤا',
+            textUthmani: 'بِمَآ',
+            verseKey: '2:4',
+            isAyahEnd: false),
+        const Mushaf16Word(
+            id: 24,
+            position: 8,
+            lineNumber: 5,
+            textIndoPak: 'اُنۡزِلَ',
+            textUthmani: 'أُنزِلَ',
+            verseKey: '2:4',
+            isAyahEnd: false),
         // Line 6
-        const Mushaf16Word(id: 25, position: 1, lineNumber: 6, textIndoPak: 'اِلَيۡكَ', textUthmani: 'إِلَيْكَ', verseKey: '2:4', isAyahEnd: false),
-        const Mushaf16Word(id: 26, position: 2, lineNumber: 6, textIndoPak: 'وَمَاۤ', textUthmani: 'وَمَآ', verseKey: '2:4', isAyahEnd: false),
-        const Mushaf16Word(id: 27, position: 3, lineNumber: 6, textIndoPak: 'اُنۡزِلَ', textUthmani: 'أُنزِلَ', verseKey: '2:4', isAyahEnd: false),
-        const Mushaf16Word(id: 28, position: 4, lineNumber: 6, textIndoPak: 'مِنۡ', textUthmani: 'مِن', verseKey: '2:4', isAyahEnd: false),
-        const Mushaf16Word(id: 29, position: 5, lineNumber: 6, textIndoPak: 'قَبۡلِكَۚ', textUthmani: 'قَبْلِكَ', verseKey: '2:4', isAyahEnd: false),
-        const Mushaf16Word(id: 30, position: 6, lineNumber: 6, textIndoPak: 'وَبِالۡاٰخِرَةِ', textUthmani: 'وَبِٱلْـَٔاخِرَةِ', verseKey: '2:4', isAyahEnd: false),
-        const Mushaf16Word(id: 31, position: 7, lineNumber: 6, textIndoPak: 'هُمۡ', textUthmani: 'هُمْ', verseKey: '2:4', isAyahEnd: false),
-        const Mushaf16Word(id: 32, position: 8, lineNumber: 6, textIndoPak: 'يُوۡقِنُوۡنَؕ‏', textUthmani: 'يُوقِنُونَ', verseKey: '2:4', isAyahEnd: false),
-        const Mushaf16Word(id: 33, position: 9, lineNumber: 6, textIndoPak: '٤', textUthmani: '٤', verseKey: '2:4', isAyahEnd: true),
+        const Mushaf16Word(
+            id: 25,
+            position: 1,
+            lineNumber: 6,
+            textIndoPak: 'اِلَيۡكَ',
+            textUthmani: 'إِلَيْكَ',
+            verseKey: '2:4',
+            isAyahEnd: false),
+        const Mushaf16Word(
+            id: 26,
+            position: 2,
+            lineNumber: 6,
+            textIndoPak: 'وَمَاۤ',
+            textUthmani: 'وَمَآ',
+            verseKey: '2:4',
+            isAyahEnd: false),
+        const Mushaf16Word(
+            id: 27,
+            position: 3,
+            lineNumber: 6,
+            textIndoPak: 'اُنۡزِلَ',
+            textUthmani: 'أُنزِلَ',
+            verseKey: '2:4',
+            isAyahEnd: false),
+        const Mushaf16Word(
+            id: 28,
+            position: 4,
+            lineNumber: 6,
+            textIndoPak: 'مِنۡ',
+            textUthmani: 'مِن',
+            verseKey: '2:4',
+            isAyahEnd: false),
+        const Mushaf16Word(
+            id: 29,
+            position: 5,
+            lineNumber: 6,
+            textIndoPak: 'قَبۡلِكَۚ',
+            textUthmani: 'قَبْلِكَ',
+            verseKey: '2:4',
+            isAyahEnd: false),
+        const Mushaf16Word(
+            id: 30,
+            position: 6,
+            lineNumber: 6,
+            textIndoPak: 'وَبِالۡاٰخِرَةِ',
+            textUthmani: 'وَبِٱلْـَٔاخِرَةِ',
+            verseKey: '2:4',
+            isAyahEnd: false),
+        const Mushaf16Word(
+            id: 31,
+            position: 7,
+            lineNumber: 6,
+            textIndoPak: 'هُمۡ',
+            textUthmani: 'هُمْ',
+            verseKey: '2:4',
+            isAyahEnd: false),
+        const Mushaf16Word(
+            id: 32,
+            position: 8,
+            lineNumber: 6,
+            textIndoPak: 'يُوۡقِنُوۡنَؕ‏',
+            textUthmani: 'يُوقِنُونَ',
+            verseKey: '2:4',
+            isAyahEnd: false),
+        const Mushaf16Word(
+            id: 33,
+            position: 9,
+            lineNumber: 6,
+            textIndoPak: '٤',
+            textUthmani: '٤',
+            verseKey: '2:4',
+            isAyahEnd: true),
         // Line 7
-        const Mushaf16Word(id: 34, position: 1, lineNumber: 7, textIndoPak: 'اُولٰٓٮِٕكَ', textUthmani: 'أُو۟لَـٰٓئِكَ', verseKey: '2:5', isAyahEnd: false),
-        const Mushaf16Word(id: 35, position: 2, lineNumber: 7, textIndoPak: 'عَلٰى', textUthmani: 'عَلَىٰ', verseKey: '2:5', isAyahEnd: false),
-        const Mushaf16Word(id: 36, position: 3, lineNumber: 7, textIndoPak: 'هُدًى', textUthmani: 'هُدًۭى', verseKey: '2:5', isAyahEnd: false),
-        const Mushaf16Word(id: 37, position: 4, lineNumber: 7, textIndoPak: 'مِّنۡ', textUthmani: 'مِّن', verseKey: '2:5', isAyahEnd: false),
-        const Mushaf16Word(id: 38, position: 5, lineNumber: 7, textIndoPak: 'رَّبِّهِمۡ​', textUthmani: 'رَّبِّهِمْ ۖ', verseKey: '2:5', isAyahEnd: false),
-        const Mushaf16Word(id: 39, position: 6, lineNumber: 7, textIndoPak: 'وَاُولٰٓٮِٕكَ', textUthmani: 'وَأُو۟لَـٰٓئِكَ', verseKey: '2:5', isAyahEnd: false),
+        const Mushaf16Word(
+            id: 34,
+            position: 1,
+            lineNumber: 7,
+            textIndoPak: 'اُولٰٓٮِٕكَ',
+            textUthmani: 'أُو۟لَـٰٓئِكَ',
+            verseKey: '2:5',
+            isAyahEnd: false),
+        const Mushaf16Word(
+            id: 35,
+            position: 2,
+            lineNumber: 7,
+            textIndoPak: 'عَلٰى',
+            textUthmani: 'عَلَىٰ',
+            verseKey: '2:5',
+            isAyahEnd: false),
+        const Mushaf16Word(
+            id: 36,
+            position: 3,
+            lineNumber: 7,
+            textIndoPak: 'هُدًى',
+            textUthmani: 'هُدًۭى',
+            verseKey: '2:5',
+            isAyahEnd: false),
+        const Mushaf16Word(
+            id: 37,
+            position: 4,
+            lineNumber: 7,
+            textIndoPak: 'مِّنۡ',
+            textUthmani: 'مِّن',
+            verseKey: '2:5',
+            isAyahEnd: false),
+        const Mushaf16Word(
+            id: 38,
+            position: 5,
+            lineNumber: 7,
+            textIndoPak: 'رَّبِّهِمۡ​',
+            textUthmani: 'رَّبِّهِمْ ۖ',
+            verseKey: '2:5',
+            isAyahEnd: false),
+        const Mushaf16Word(
+            id: 39,
+            position: 6,
+            lineNumber: 7,
+            textIndoPak: 'وَاُولٰٓٮِٕكَ',
+            textUthmani: 'وَأُو۟لَـٰٓئِكَ',
+            verseKey: '2:5',
+            isAyahEnd: false),
         // Line 8
-        const Mushaf16Word(id: 40, position: 1, lineNumber: 8, textIndoPak: 'هُمُ', textUthmani: 'هُمُ', verseKey: '2:5', isAyahEnd: false),
-        const Mushaf16Word(id: 41, position: 2, lineNumber: 8, textIndoPak: 'الۡمُفۡلِحُوۡنَ‏', textUthmani: 'ٱلْمُفْلِحُونَ', verseKey: '2:5', isAyahEnd: false),
-        const Mushaf16Word(id: 42, position: 3, lineNumber: 8, textIndoPak: '٥', textUthmani: '٥', verseKey: '2:5', isAyahEnd: true),
+        const Mushaf16Word(
+            id: 40,
+            position: 1,
+            lineNumber: 8,
+            textIndoPak: 'هُمُ',
+            textUthmani: 'هُمُ',
+            verseKey: '2:5',
+            isAyahEnd: false),
+        const Mushaf16Word(
+            id: 41,
+            position: 2,
+            lineNumber: 8,
+            textIndoPak: 'الۡمُفۡلِحُوۡنَ‏',
+            textUthmani: 'ٱلْمُفْلِحُونَ',
+            verseKey: '2:5',
+            isAyahEnd: false),
+        const Mushaf16Word(
+            id: 42,
+            position: 3,
+            lineNumber: 8,
+            textIndoPak: '٥',
+            textUthmani: '٥',
+            verseKey: '2:5',
+            isAyahEnd: true),
       ];
 
       final lines = <Mushaf16Line>[
-        const Mushaf16Line(lineNumber: 1, words: [], isSurahHeader: true, surahNumber: 2, surahName: 'سُورَةُ البَقَرَةِ', surahEnglishName: 'Al-Baqarah'),
+        const Mushaf16Line(
+            lineNumber: 1,
+            words: [],
+            isSurahHeader: true,
+            surahNumber: 2,
+            surahName: 'سُورَةُ البَقَرَةِ',
+            surahEnglishName: 'Al-Baqarah'),
         const Mushaf16Line(lineNumber: 2, words: [], isBismillah: true),
         for (var i = 3; i <= 8; i++)
           Mushaf16Line(
@@ -831,24 +1160,153 @@ class QuranService {
   };
 
   static const Map<int, int> juzStartPages = {
-    1: 1, 2: 22, 3: 42, 4: 62, 5: 82, 6: 102, 7: 122, 8: 142, 9: 162, 10: 182,
-    11: 202, 12: 222, 13: 242, 14: 262, 15: 282, 16: 302, 17: 322, 18: 342, 19: 362, 20: 382,
-    21: 402, 22: 422, 23: 442, 24: 462, 25: 482, 26: 502, 27: 522, 28: 542, 29: 562, 30: 582,
+    1: 1,
+    2: 22,
+    3: 42,
+    4: 62,
+    5: 82,
+    6: 102,
+    7: 122,
+    8: 142,
+    9: 162,
+    10: 182,
+    11: 202,
+    12: 222,
+    13: 242,
+    14: 262,
+    15: 282,
+    16: 302,
+    17: 322,
+    18: 342,
+    19: 362,
+    20: 382,
+    21: 402,
+    22: 422,
+    23: 442,
+    24: 462,
+    25: 482,
+    26: 502,
+    27: 522,
+    28: 542,
+    29: 562,
+    30: 582,
   };
 
   static const Map<int, int> surahStartPages = {
-    1: 1, 2: 2, 3: 50, 4: 77, 5: 106, 6: 128, 7: 151, 8: 177, 9: 187, 10: 208,
-    11: 221, 12: 235, 13: 249, 14: 255, 15: 262, 16: 267, 17: 282, 18: 293, 19: 305, 20: 312,
-    21: 322, 22: 332, 23: 342, 24: 350, 25: 359, 26: 367, 27: 377, 28: 385, 29: 396, 30: 404,
-    31: 411, 32: 415, 33: 418, 34: 428, 35: 434, 36: 440, 37: 446, 38: 453, 39: 458, 40: 467,
-    41: 477, 42: 483, 43: 489, 44: 496, 45: 499, 46: 502, 47: 507, 48: 511, 49: 515, 50: 518,
-    51: 520, 52: 523, 53: 526, 54: 528, 55: 531, 56: 534, 57: 537, 58: 542, 59: 545, 60: 549,
-    61: 551, 62: 553, 63: 554, 64: 556, 65: 558, 66: 560, 67: 562, 68: 564, 69: 566, 70: 568,
-    71: 570, 72: 572, 73: 574, 74: 575, 75: 577, 76: 578, 77: 580, 78: 582, 79: 583, 80: 585,
-    81: 586, 82: 587, 83: 587, 84: 589, 85: 590, 86: 591, 87: 591, 88: 592, 89: 593, 90: 594,
-    91: 595, 92: 595, 93: 596, 94: 596, 95: 597, 96: 597, 97: 598, 98: 598, 99: 599, 100: 599,
-    101: 600, 102: 600, 103: 601, 104: 601, 105: 601, 106: 602, 107: 602, 108: 602, 109: 603, 110: 603,
-    111: 603, 112: 604, 113: 604, 114: 604,
+    1: 1,
+    2: 2,
+    3: 50,
+    4: 77,
+    5: 106,
+    6: 128,
+    7: 151,
+    8: 177,
+    9: 187,
+    10: 208,
+    11: 221,
+    12: 235,
+    13: 249,
+    14: 255,
+    15: 262,
+    16: 267,
+    17: 282,
+    18: 293,
+    19: 305,
+    20: 312,
+    21: 322,
+    22: 332,
+    23: 342,
+    24: 350,
+    25: 359,
+    26: 367,
+    27: 377,
+    28: 385,
+    29: 396,
+    30: 404,
+    31: 411,
+    32: 415,
+    33: 418,
+    34: 428,
+    35: 434,
+    36: 440,
+    37: 446,
+    38: 453,
+    39: 458,
+    40: 467,
+    41: 477,
+    42: 483,
+    43: 489,
+    44: 496,
+    45: 499,
+    46: 502,
+    47: 507,
+    48: 511,
+    49: 515,
+    50: 518,
+    51: 520,
+    52: 523,
+    53: 526,
+    54: 528,
+    55: 531,
+    56: 534,
+    57: 537,
+    58: 542,
+    59: 545,
+    60: 549,
+    61: 551,
+    62: 553,
+    63: 554,
+    64: 556,
+    65: 558,
+    66: 560,
+    67: 562,
+    68: 564,
+    69: 566,
+    70: 568,
+    71: 570,
+    72: 572,
+    73: 574,
+    74: 575,
+    75: 577,
+    76: 578,
+    77: 580,
+    78: 582,
+    79: 583,
+    80: 585,
+    81: 586,
+    82: 587,
+    83: 587,
+    84: 589,
+    85: 590,
+    86: 591,
+    87: 591,
+    88: 592,
+    89: 593,
+    90: 594,
+    91: 595,
+    92: 595,
+    93: 596,
+    94: 596,
+    95: 597,
+    96: 597,
+    97: 598,
+    98: 598,
+    99: 599,
+    100: 599,
+    101: 600,
+    102: 600,
+    103: 601,
+    104: 601,
+    105: 601,
+    106: 602,
+    107: 602,
+    108: 602,
+    109: 603,
+    110: 603,
+    111: 603,
+    112: 604,
+    113: 604,
+    114: 604,
   };
 }
 
@@ -1003,8 +1461,11 @@ class Mushaf16Word {
       id: (json['id'] as num?)?.toInt() ?? 0,
       position: (json['position'] as num?)?.toInt() ?? 0,
       lineNumber: (json['line_number'] as num?)?.toInt() ?? 1,
-      textIndoPak: json['text_indopak']?.toString() ?? '',
-      textUthmani: json['text_uthmani']?.toString() ?? json['text']?.toString() ?? '',
+      textIndoPak: json['text_indopak_nastaleeq'] ??
+          json['text_indopak']?.toString() ??
+          '',
+      textUthmani:
+          json['text_uthmani']?.toString() ?? json['text']?.toString() ?? '',
       verseKey: verseKey,
       isAyahEnd: charType == 'end',
       translation: trans?['text']?.toString(),
@@ -1035,7 +1496,7 @@ class Mushaf16Line {
   bool get isEmpty => words.isEmpty && !isSurahHeader && !isBismillah;
 }
 
-/// Full 16-line Mushaf page data (1..604).
+/// Full IndoPak 16-line Mushaf page data (1..548).
 class Mushaf16Page {
   const Mushaf16Page({
     required this.pageNumber,
@@ -1053,4 +1514,3 @@ class Mushaf16Page {
   final String surahArabicName;
   final List<Mushaf16Line> lines; // 16 lines
 }
-

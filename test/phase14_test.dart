@@ -7,8 +7,13 @@ import 'package:noor_ai_companion/data/app_state.dart';
 import 'package:noor_ai_companion/data/knowledge_search.dart';
 import 'package:noor_ai_companion/data/quran_service.dart';
 import 'package:noor_ai_companion/data/share_content.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+  });
+
   group('Phase 14 — Share Studio content library', () {
     test('has at least 12 Ayah, 12 Hadith and Dua cards', () {
       expect(ShareContent.ayahCards.length, greaterThanOrEqualTo(12));

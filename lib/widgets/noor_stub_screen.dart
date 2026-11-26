@@ -31,7 +31,7 @@ class NoorStubScreen extends StatelessWidget {
           children: [
             Chip(
               label: Text('Design Page ${page.toString().padLeft(2, '0')}'),
-              backgroundColor: NoorColors.emeraldSoft,
+              backgroundColor: NoorTheme.softSurface(context),
             ),
             const SizedBox(height: 16),
             Text(title, style: Theme.of(context).textTheme.headlineMedium),

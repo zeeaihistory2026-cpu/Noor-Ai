@@ -4,15 +4,14 @@ import 'package:noor_ai_companion/data/notification_service.dart';
 import 'package:noor_ai_companion/data/prayer_service.dart';
 
 void main() {
-  test('Phase 8 — NotificationPlan builds Salah reminders at prayer-15min',
-      () {
+  test('Phase 8 — NotificationPlan builds Salah reminders at prayer-15min', () {
     final day = PrayerDay.sample();
     final plan = NotificationPlan.buildSalahPlan(
       day: day,
       toggles: const {},
       includePast: true,
     );
-    expect(plan.length, 5);
+    expect(plan.length, 10);
     expect(
       plan.first.scheduledAt,
       day.timings['Fajr']!.subtract(const Duration(minutes: 15)),
@@ -45,7 +44,9 @@ void main() {
       toggles: const {},
       now: lateAfternoon,
     );
-    final fajrEntries = plan.where((p) => p.prayerName == 'Fajr').toList();
+    final fajrEntries = plan
+        .where((p) => p.prayerName == 'Fajr' && p.title.endsWith('reminder'))
+        .toList();
     expect(fajrEntries, hasLength(1));
     expect(
       fajrEntries.single.scheduledAt,

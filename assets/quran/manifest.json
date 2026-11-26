@@ -1,0 +1,32 @@
+{
+  "sources": [
+    "https://alquran.cloud/api",
+    "https://api-docs.quran.com/docs/tutorials/fonts/page-layout/",
+    "https://api.qurancdn.com/api/qdc"
+  ],
+  "mushaf": 7,
+  "pages": 548,
+  "verses": 6236,
+  "artifacts": [
+    {
+      "file": "quran-uthmani.json.gz",
+      "sha256": "5f8fece4d774798d0b1168bb35fcc78a2b212035fa446c0c2de93d99d6c42fff",
+      "bytes": 345286
+    },
+    {
+      "file": "en.sahih.json.gz",
+      "sha256": "529cc1d10fcfdc31a274c9caa26089089263e8623012b29d4ce386bb8ba0caa0",
+      "bytes": 346449
+    },
+    {
+      "file": "ur.jalandhry.json.gz",
+      "sha256": "ff08ddc6b645412485af8d5102cb22c73f290a0b0ed6b10c310a25ec69642143",
+      "bytes": 414095
+    },
+    {
+      "file": "mushaf16.json.gz",
+      "sha256": "ff7d4724e6383ab000bc0676042d6443279b735ef2154ed48a048508b00d7785",
+      "bytes": 1813983
+    }
+  ]
+}

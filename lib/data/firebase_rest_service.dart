@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'auth_service.dart';
 import 'user_data_service.dart';
+import 'session_store.dart';
 
 /// Firebase backend via REST API (no native SDK needed).
 /// - Auth: Firebase Auth REST API
@@ -12,7 +13,12 @@ import 'user_data_service.dart';
 ///
 /// Project: noor-ai-916ed
 /// Accounts survive uninstalls — stored in Firebase, not on device.
-class FirebaseRestService implements AuthService {
+class FirebaseRestService implements AuthService, PasswordResetService {
+  FirebaseRestService({http.Client? client})
+      : _client = client ?? http.Client();
+  final http.Client _client;
+  static const requestTimeout = Duration(seconds: 12);
+
   /// Compile-time configurable API Key via `--dart-define=FIREBASE_API_KEY=...` with default fallback.
   static const apiKey = String.fromEnvironment(
     'FIREBASE_API_KEY',
@@ -70,18 +76,22 @@ class FirebaseRestService implements AuthService {
 
   Future<void> _loadSession() async {
     if (_idToken != null) return;
-    final prefs = await SharedPreferences.getInstance();
-    _idToken = decryptToken(prefs.getString(_kIdToken));
-    _uid = decryptToken(prefs.getString(_kUid));
+    _idToken = await SessionStore.read(_kIdToken);
+    _uid = await SessionStore.read(_kUid);
   }
 
-  Future<void> _saveSession(String idToken, String uid, String refreshToken, {String? name, String? email}) async {
+  Future<void> _saveSession(String idToken, String uid, String refreshToken,
+      {String? name, String? email}) async {
     _idToken = idToken;
     _uid = uid;
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_kIdToken, encryptToken(idToken));
-    await prefs.setString(_kUid, encryptToken(uid));
-    await prefs.setString(_kRefreshToken, encryptToken(refreshToken));
+    if (await SessionStore.read(_kUid) != uid) {
+      await prefs.remove(_kName);
+      await prefs.remove(_kEmail);
+    }
+    await SessionStore.write(_kIdToken, idToken);
+    await SessionStore.write(_kUid, uid);
+    await SessionStore.write(_kRefreshToken, refreshToken);
     if (name != null && name.isNotEmpty) {
       await prefs.setString(_kName, encryptToken(name));
     }
@@ -94,34 +104,31 @@ class FirebaseRestService implements AuthService {
     _idToken = null;
     _uid = null;
     final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_kIdToken);
-    await prefs.remove(_kUid);
-    await prefs.remove(_kRefreshToken);
+    await SessionStore.clear();
     await prefs.remove(_kName);
     await prefs.remove(_kEmail);
   }
 
   @override
   Future<bool> hasSession() async {
-    final prefs = await SharedPreferences.getInstance();
-    final uid = decryptToken(prefs.getString(_kUid));
-    final token = decryptToken(prefs.getString(_kIdToken));
-    final refresh = decryptToken(prefs.getString(_kRefreshToken));
+    final uid = await SessionStore.read(_kUid);
+    final token = await SessionStore.read(_kIdToken);
+    final refresh = await SessionStore.read(_kRefreshToken);
     return (uid != null && uid.isNotEmpty) &&
-        ((token != null && token.isNotEmpty) || (refresh != null && refresh.isNotEmpty));
+        ((token != null && token.isNotEmpty) ||
+            (refresh != null && refresh.isNotEmpty));
   }
 
   /// Refresh the ID token using the refresh token.
   Future<bool> _refreshToken() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final refreshToken = decryptToken(prefs.getString(_kRefreshToken));
+      final refreshToken = await SessionStore.read(_kRefreshToken);
       if (refreshToken == null || refreshToken.isEmpty) return false;
-      final resp = await http.post(
+      final resp = await _client.post(
         Uri.parse('https://securetoken.googleapis.com/v1/token?key=$apiKey'),
         headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-        body: 'grant_type=refresh_token&refresh_token=$refreshToken',
-      );
+        body: {'grant_type': 'refresh_token', 'refresh_token': refreshToken},
+      ).timeout(requestTimeout);
       if (resp.statusCode != 200) return false;
       final data = jsonDecode(resp.body);
       await _saveSession(
@@ -142,15 +149,17 @@ class FirebaseRestService implements AuthService {
         name: name, email: email, password: password);
     if (error != null) return AuthResult.failure(error);
     try {
-      final resp = await http.post(
-        Uri.parse('$_authBase/accounts:signUp?key=$apiKey'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'email': email.trim(),
-          'password': password,
-          'returnSecureToken': true,
-        }),
-      );
+      final resp = await _client
+          .post(
+            Uri.parse('$_authBase/accounts:signUp?key=$apiKey'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'email': email.trim(),
+              'password': password,
+              'returnSecureToken': true,
+            }),
+          )
+          .timeout(requestTimeout);
       final data = jsonDecode(resp.body);
       if (resp.statusCode != 200) {
         return AuthResult.failure(
@@ -163,17 +172,35 @@ class FirebaseRestService implements AuthService {
         name: name.trim(),
         email: email.trim(),
       );
-      // Store profile in Firestore
-      await _setDoc('users/${data['localId']}', {
-        'name': name.trim(),
-        'email': email.trim(),
-        'createdAt': DateTime.now().toIso8601String(),
-      });
+      // Account creation is already successful. Ancillary profile writes must
+      // never turn a valid account into a misleading signup failure.
+      try {
+        await _client
+            .post(
+              Uri.parse('$_authBase/accounts:update?key=$apiKey'),
+              headers: {'Content-Type': 'application/json'},
+              body: jsonEncode({
+                'idToken': data['idToken'],
+                'displayName': name.trim(),
+                'returnSecureToken': false
+              }),
+            )
+            .timeout(const Duration(seconds: 4));
+      } catch (_) {}
+      try {
+        await _setDoc('users/${data['localId']}', {
+          'name': name.trim(),
+          'email': email.trim(),
+          'createdAt': DateTime.now().toIso8601String(),
+        });
+      } catch (_) {}
       unawaited(UserDataService.instance.flushOutbox());
       return AuthResult.success(
-          AuthProfile(name: name.trim(), email: email.trim()));
+          AuthProfile(name: name.trim(), email: email.trim()),
+          isLocalOnly: false);
     } catch (e) {
-      return const AuthResult.failure('Network error. Check connection and try again.');
+      return const AuthResult.failure(
+          'Network error. Check connection and try again.');
     }
   }
 
@@ -185,15 +212,17 @@ class FirebaseRestService implements AuthService {
     final error = AuthValidator.validateLogin(email: email, password: password);
     if (error != null) return AuthResult.failure(error);
     try {
-      final resp = await http.post(
-        Uri.parse('$_authBase/accounts:signInWithPassword?key=$apiKey'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'email': email.trim(),
-          'password': password,
-          'returnSecureToken': true,
-        }),
-      );
+      final resp = await _client
+          .post(
+            Uri.parse('$_authBase/accounts:signInWithPassword?key=$apiKey'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              'email': email.trim(),
+              'password': password,
+              'returnSecureToken': true,
+            }),
+          )
+          .timeout(requestTimeout);
       final data = jsonDecode(resp.body);
       if (resp.statusCode != 200) {
         return AuthResult.failure(
@@ -207,16 +236,42 @@ class FirebaseRestService implements AuthService {
       );
       // Load profile from Firestore
       final profile = await _getDoc('users/${data['localId']}');
-      final name = profile?['name']?.toString() ?? '';
+      final name =
+          profile?['name']?.toString() ?? data['displayName']?.toString() ?? '';
       if (name.isNotEmpty) {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString(_kName, encryptToken(name));
       }
       unawaited(UserDataService.instance.flushOutbox());
-      return AuthResult.success(
-          AuthProfile(name: name, email: email.trim()));
+      return AuthResult.success(AuthProfile(name: name, email: email.trim()),
+          isLocalOnly: false);
     } catch (e) {
-      return const AuthResult.failure('Network error. Check connection and try again.');
+      return const AuthResult.failure(
+          'Network error. Check connection and try again.');
+    }
+  }
+
+  @override
+  Future<String?> sendPasswordReset(String email) async {
+    final invalid = AuthValidator.validateEmail(email);
+    if (invalid != null) return invalid;
+    try {
+      final resp = await _client
+          .post(
+            Uri.parse('$_authBase/accounts:sendOobCode?key=$apiKey'),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode(
+                {'requestType': 'PASSWORD_RESET', 'email': email.trim()}),
+          )
+          .timeout(requestTimeout);
+      if (resp.statusCode == 200) return null;
+      final data = jsonDecode(resp.body);
+      final code = data['error']?['message']?.toString() ?? 'UNKNOWN';
+      // Match Firebase's enumeration-safe response for unknown addresses.
+      if (code == 'EMAIL_NOT_FOUND') return null;
+      return _friendlyError(code);
+    } catch (_) {
+      return 'Couldn’t send the reset link. Check your connection and try again.';
     }
   }
 
@@ -241,7 +296,9 @@ class FirebaseRestService implements AuthService {
         final name = (profile['name'] ?? '').toString();
         final email = (profile['email'] ?? cachedEmail).toString();
         if (name.isNotEmpty) await prefs.setString(_kName, encryptToken(name));
-        if (email.isNotEmpty) await prefs.setString(_kEmail, encryptToken(email));
+        if (email.isNotEmpty) {
+          await prefs.setString(_kEmail, encryptToken(email));
+        }
         return AuthProfile(name: name, email: email);
       }
     } catch (e) {
@@ -266,7 +323,9 @@ class FirebaseRestService implements AuthService {
         final name = (profile['name'] ?? '').toString();
         final email = (profile['email'] ?? '').toString();
         if (name.isNotEmpty) await prefs.setString(_kName, encryptToken(name));
-        if (email.isNotEmpty) await prefs.setString(_kEmail, encryptToken(email));
+        if (email.isNotEmpty) {
+          await prefs.setString(_kEmail, encryptToken(email));
+        }
       }
     } catch (e) {
       debugPrint('FirebaseRestService: _syncProfileInBackground error: $e');
@@ -285,7 +344,7 @@ class FirebaseRestService implements AuthService {
     await _loadSession();
     if (_idToken == null) return null;
     try {
-      var resp = await http.get(
+      var resp = await _client.get(
         Uri.parse('$_firestoreBase/$path'),
         headers: {'Authorization': 'Bearer $_idToken'},
       ).timeout(const Duration(seconds: 4));
@@ -293,7 +352,7 @@ class FirebaseRestService implements AuthService {
       if (resp.statusCode == 401) {
         final refreshed = await _refreshToken();
         if (!refreshed) return null;
-        resp = await http.get(
+        resp = await _client.get(
           Uri.parse('$_firestoreBase/$path'),
           headers: {'Authorization': 'Bearer $_idToken'},
         ).timeout(const Duration(seconds: 4));
@@ -309,14 +368,16 @@ class FirebaseRestService implements AuthService {
   Future<void> _setDoc(String path, Map<String, dynamic> data) async {
     await _loadSession();
     if (_idToken == null) return;
-    await http.patch(
-      Uri.parse('$_firestoreBase/$path'),
-      headers: {
-        'Authorization': 'Bearer $_idToken',
-        'Content-Type': 'application/json',
-      },
-      body: jsonEncode({'fields': _toFirestore(data)}),
-    );
+    await _client
+        .patch(
+          Uri.parse('$_firestoreBase/$path'),
+          headers: {
+            'Authorization': 'Bearer $_idToken',
+            'Content-Type': 'application/json',
+          },
+          body: jsonEncode({'fields': _toFirestore(data)}),
+        )
+        .timeout(const Duration(seconds: 4));
   }
 
   Map<String, dynamic> _fromFirestore(Map<String, dynamic> fields) {
@@ -363,7 +424,13 @@ class FirebaseRestService implements AuthService {
       case 'INVALID_EMAIL':
         return 'Please enter a valid email address.';
       case 'WEAK_PASSWORD':
-        return 'Password is too weak. Use at least 6 characters.';
+        return 'Password is too weak. Use at least 8 characters.';
+      case 'TOO_MANY_ATTEMPTS_TRY_LATER':
+        return 'Too many attempts. Please wait a little before trying again.';
+      case 'USER_DISABLED':
+        return 'This account is disabled. Please contact support.';
+      case 'OPERATION_NOT_ALLOWED':
+        return 'Email sign-in is unavailable. Please try again later or continue as a guest.';
       case 'EMAIL_NOT_FOUND':
         return 'No account found with this email.';
       case 'INVALID_PASSWORD':

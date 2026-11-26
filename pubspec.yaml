@@ -1,7 +1,7 @@
 name: noor_ai_companion
 description: MuslimGo — Faith • Guidance • Growth. Flutter app.
 publish_to: 'none'
-version: 1.0.1+16
+version: 1.0.4+19
 
 environment:
   sdk: ^3.5.0
@@ -25,6 +25,11 @@ dependencies:
   path_provider: ^2.1.6
   archive: ^4.5.2
   app_settings: ^9.0.0
+  flutter_tts: ^4.2.5
+  adhan_dart: ^2.0.1
+  flutter_secure_storage: ^11.2.0
+  hijri: ^3.0.1
+  workmanager: ^0.10.10
   # Phase 8: real local notifications wired in
   # lib/data/notification_service*.dart (see SCAFFOLD_STATUS Phase 8).
 
@@ -37,9 +42,25 @@ flutter:
   uses-material-design: true
   assets:
     - assets/images/
+    - assets/quran/
   # Phase 12: bundled sacred-text fonts (SIL OFL 1.1; licence texts
   # sit beside the font files in assets/fonts/).
   fonts:
+    - family: Manrope
+      fonts:
+        - asset: assets/fonts/Manrope-Variable.ttf
+          weight: 400
+        - asset: assets/fonts/Manrope-Variable.ttf
+          weight: 500
+        - asset: assets/fonts/Manrope-Variable.ttf
+          weight: 600
+        - asset: assets/fonts/Manrope-Variable.ttf
+          weight: 700
+        - asset: assets/fonts/Manrope-Variable.ttf
+          weight: 800
+    - family: IndopakNastaleeq
+      fonts:
+        - asset: assets/fonts/IndopakNastaleeq-Regular.ttf
     - family: AmiriQuran
       fonts:
         - asset: assets/fonts/AmiriQuran-Regular.ttf

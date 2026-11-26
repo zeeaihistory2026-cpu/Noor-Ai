@@ -11,7 +11,6 @@ pluginManagement {
     includeBuild("$flutterSdkPath/packages/flutter_tools/gradle")
 
     repositories {
-        maven { url = uri("file:///home/hatch/workspace/gradle-local-repo") }
         google()
         mavenCentral()
         gradlePluginPortal()

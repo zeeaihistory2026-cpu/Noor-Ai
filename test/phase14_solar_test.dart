@@ -95,10 +95,10 @@ void main() {
   });
 
   group('Phase 4 — NoorController Theme Preferences & Reactive Mode', () {
-    test('controller defaults to solar switching', () {
+    test('controller defaults to bright light mode', () {
       final controller = NoorController();
-      expect(controller.themePreference, NoorThemePreference.solar);
-      expect(controller.themePreferenceLabel, contains('Solar'));
+      expect(controller.themePreference, NoorThemePreference.light);
+      expect(controller.themePreferenceLabel, 'Light');
     });
 
     test('explicit light and dark preferences override solar time', () async {

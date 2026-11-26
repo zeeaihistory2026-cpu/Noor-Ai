@@ -35,10 +35,9 @@ class AuthProfile {
 }
 
 class AuthResult {
-  const AuthResult.success(this.profile)
+  const AuthResult.success(this.profile, {this.isLocalOnly = true})
       : ok = true,
-        error = null,
-        isLocalOnly = true;
+        error = null;
 
   const AuthResult.failure(this.error)
       : ok = false,
@@ -51,6 +50,10 @@ class AuthResult {
 
   /// True while only [LocalAuthService] exists (no backend).
   final bool isLocalOnly;
+}
+
+abstract interface class PasswordResetService {
+  Future<String?> sendPasswordReset(String email);
 }
 
 abstract interface class AuthService {

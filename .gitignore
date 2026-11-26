@@ -33,3 +33,7 @@ GoogleService-Info.plist
 
 # Test artifacts
 test/failures/
+
+# Local audit logs
+audit-*.log
+__pycache__/

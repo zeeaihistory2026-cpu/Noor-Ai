@@ -54,7 +54,7 @@ void main() {
         toggles: _allOn,
         now: now,
       );
-      final fajr = plan.where((p) => p.prayerName == 'Fajr').toList();
+      final fajr = plan.where((p) => p.prayerName == 'Fajr' && p.title.endsWith('reminder')).toList();
       expect(fajr, hasLength(1));
       expect(fajr.single.scheduledAt,
           DateTime(2026, 10, 14, 4, 57)); // tomorrow Fajr - 15 min
@@ -81,7 +81,7 @@ void main() {
       // Both days are future at 00:30, so tomorrow's Fajr is planned
       // too — intentional 48h coverage (distinct dates, stable ids),
       // not a duplicate.
-      final fajrAll = plan.where((p) => p.prayerName == 'Fajr').toList();
+      final fajrAll = plan.where((p) => p.prayerName == 'Fajr' && p.title.endsWith('reminder')).toList();
       expect(fajrAll, hasLength(2));
       expect(
         fajrAll.map((p) => p.scheduledAt).toSet(),
@@ -104,10 +104,10 @@ void main() {
       expect(
           salah.every((p) => p.scheduledAt.day == 14), isTrue);
       // ...and tomorrow's full set is there, starting with Fajr.
-      final fajr = salah.where((p) => p.prayerName == 'Fajr').toList();
+      final fajr = salah.where((p) => p.prayerName == 'Fajr' && p.title.endsWith('reminder')).toList();
       expect(fajr, hasLength(1));
       expect(fajr.single.scheduledAt, DateTime(2026, 10, 14, 4, 57));
-      final dhuhr = salah.where((p) => p.prayerName == 'Dhuhr').toList();
+      final dhuhr = salah.where((p) => p.prayerName == 'Dhuhr' && p.title.endsWith('reminder')).toList();
       expect(dhuhr, hasLength(1));
       expect(dhuhr.single.scheduledAt, DateTime(2026, 10, 14, 12, 9));
     });

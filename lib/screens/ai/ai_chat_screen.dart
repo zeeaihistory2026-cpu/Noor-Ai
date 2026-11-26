@@ -5,6 +5,7 @@ import '../../data/knowledge_search.dart';
 import '../../theme/noor_theme.dart';
 import '../../widgets/noor_components.dart';
 import 'ai_answer_sources_screen.dart';
+import '../../data/noor_store.dart';
 
 /// Page 23 — AI Chat Conversation. Emerald header (AI Companion /
 /// Islamic Q&A · Sample answers (offline)), user/AI bubbles,
@@ -57,6 +58,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
   final _focus = FocusNode();
   final _scrollController = ScrollController();
   List<KnowledgeResult>? _lastResults;
+  List<String>? _lastSourceRefs;
   bool _lastLive = false;
   String? _lastQuestion;
   String? _pendingPrefix;
@@ -144,15 +146,21 @@ class _AiChatScreenState extends State<AiChatScreen> {
                     'gratitude, anxiety, anger or knowledge.',
           ));
         } else {
+          final summaryText = response.isLive
+              ? 'Live Qur’an search found these referenced verses. '
+                  'Read each in context from its source.'
+              : 'These are referenced sources from the offline '
+                  'topic index. Read each in context from its source.';
           _messages.add(_ChatEntry.answer(
-            response.isLive
-                ? 'Live Qur’an search found these referenced verses. '
-                    'Read each in context from its source.'
-                : 'These are referenced sources from the offline '
-                    'topic index. Read each in context from its source.',
+            summaryText,
             results: response.results,
             isLive: response.isLive,
           ));
+          NoorStore.saveAiConversation(
+            question: text,
+            answer: summaryText,
+            sourceRefs: response.results.map((r) => r.reference).toList(),
+          );
         }
       });
       _scrollToBottom();
@@ -162,9 +170,16 @@ class _AiChatScreenState extends State<AiChatScreen> {
     final answer = await _ai.ask(text);
     if (!mounted) return;
     setState(() {
+      _lastResults = null;
+      _lastSourceRefs = answer.sourceRefs;
       _messages.add(_ChatEntry.answer(answer.text));
       _sending = false;
     });
+    NoorStore.saveAiConversation(
+      question: text,
+      answer: answer.text,
+      sourceRefs: answer.sourceRefs,
+    );
     _scrollToBottom();
   }
 
@@ -188,8 +203,12 @@ class _AiChatScreenState extends State<AiChatScreen> {
       builder: (_) => AiAnswerSourcesScreen(
         question: _lastQuestion,
         results: _lastResults,
+        sourceRefs: _lastResults == null ? _lastSourceRefs : null,
         summary: _lastResults == null
-            ? null
+            ? (_lastQuestion == null
+                ? null
+                : _messages.lastWhere((m) => !m.isUser,
+                    orElse: () => const _ChatEntry.answer('')).text)
             : 'Databank search results with their full references. '
                 'Brief excerpts are shown for orientation; read the '
                 'complete text at the source.',
@@ -201,7 +220,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: NoorColors.cream,
+      backgroundColor: NoorTheme.background(context, light: NoorColors.cream),
       body: SafeArea(
         child: Column(children: [
           Container(
@@ -209,6 +228,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
             padding: const EdgeInsets.fromLTRB(6, 10, 6, 20),
             child: Row(children: [
               IconButton(
+                tooltip: 'Back',
                 icon: const Icon(Icons.arrow_back_ios_new,
                     color: Colors.white, size: 19),
                 onPressed: () => Navigator.of(context).maybePop(),
@@ -224,48 +244,48 @@ class _AiChatScreenState extends State<AiChatScreen> {
                 ]),
               ),
               IconButton(
-                tooltip: 'Chat options',
-                icon: const Icon(Icons.more_vert, color: Colors.white),
-                // Phase 16 audit: real conversation actions — copy the
-                // latest AI answer, or clear back to the welcome thread.
-                onPressed: () => showNoorOverflowSheet(context,
-                    title: 'AI Companion',
-                    actions: [
-                      (
-                        Icons.copy_outlined,
-                        'Copy last answer',
-                        () async {
-                          final last = _messages.lastWhere(
-                              (m) => !m.isUser,
-                              orElse: () => const _ChatEntry.answer(''));
-                          await Clipboard.setData(
-                              ClipboardData(text: last.text));
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                    content: Text('Answer copied')));
-                          }
-                        }
-                      ),
-                      (
-                        Icons.delete_outline,
-                        'Clear conversation',
-                        () => setState(() {
-                          _messages.clear();
-                          _lastResults = null;
-                        })
-                      ),
-                    ])),
+                  tooltip: 'Chat options',
+                  icon: const Icon(Icons.more_vert, color: Colors.white),
+                  // Phase 16 audit: real conversation actions — copy the
+                  // latest AI answer, or clear back to the welcome thread.
+                  onPressed: () => showNoorOverflowSheet(context,
+                          title: 'AI Companion',
+                          actions: [
+                            (
+                              Icons.copy_outlined,
+                              'Copy last answer',
+                              () async {
+                                final last = _messages.lastWhere(
+                                    (m) => !m.isUser,
+                                    orElse: () => const _ChatEntry.answer(''));
+                                await Clipboard.setData(
+                                    ClipboardData(text: last.text));
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                          content: Text('Answer copied')));
+                                }
+                              }
+                            ),
+                            (
+                              Icons.delete_outline,
+                              'Clear conversation',
+                              () => setState(() {
+                                    _messages.clear();
+                                    _lastResults = null;
+                                  })
+                            ),
+                          ])),
             ]),
           ),
           Container(
             width: double.infinity,
-            color: NoorColors.emeraldSoft,
+            color: NoorTheme.softSurface(context),
             padding: const EdgeInsets.symmetric(vertical: 5),
             child: Text(
               _ai.isLive ? 'Live AI connected' : _ai.modeLabel,
               textAlign: TextAlign.center,
-              style: NoorType.meta.copyWith(color: NoorColors.emeraldDark),
+              style: NoorType.meta.copyWith(color: NoorTheme.muted(context)),
             ),
           ),
           Expanded(
@@ -315,11 +335,11 @@ class _AiChatScreenState extends State<AiChatScreen> {
                       alignment: Alignment.centerLeft,
                       child: TextButton.icon(
                         onPressed: _openSources,
-                        icon: const Icon(Icons.library_books_outlined,
-                            size: 17, color: NoorColors.emerald),
-                        label: const Text('Show sources',
+                        icon: Icon(Icons.library_books_outlined,
+                            size: 17, color: NoorTheme.accent(context)),
+                        label: Text('Show sources',
                             style: TextStyle(
-                                color: NoorColors.emerald,
+                                color: NoorTheme.accent(context),
                                 fontWeight: FontWeight.w700)),
                       ),
                     ),
@@ -338,9 +358,9 @@ class _AiChatScreenState extends State<AiChatScreen> {
                 hintText: _messages.isEmpty
                     ? 'Ask a question about Islam...'
                     : 'Ask a follow-up...',
-                hintStyle: NoorType.secondary.copyWith(color: NoorColors.muted),
+                hintStyle: NoorType.secondary.copyWith(color: null),
                 filled: true,
-                fillColor: Colors.white,
+                fillColor: NoorTheme.surface(context),
                 contentPadding:
                     const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                 suffixIcon: Container(
@@ -397,7 +417,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
         if (_pendingPrefix != null) ...[
           const SizedBox(height: 8),
           Text('Add your topic after “${_pendingPrefix!.trim()}”.',
-              style: NoorType.meta.copyWith(color: NoorColors.muted)),
+              style: NoorType.meta.copyWith(color: null)),
         ],
       ]);
 
@@ -406,7 +426,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
           button: true,
           label: label,
           child: Material(
-              color: Colors.white,
+              color: NoorTheme.surface(context, light: Colors.white),
               borderRadius: BorderRadius.circular(999),
               child: InkWell(
                   onTap: onTap,
@@ -416,9 +436,9 @@ class _AiChatScreenState extends State<AiChatScreen> {
                           horizontal: 12, vertical: 10),
                       decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(999),
-                          border: Border.all(color: NoorColors.hairline)),
+                          border: Border.all(color: NoorTheme.border(context))),
                       child: Row(mainAxisSize: MainAxisSize.min, children: [
-                        Icon(icon, size: 16, color: NoorColors.emeraldDark),
+                        Icon(icon, size: 16, color: null),
                         const SizedBox(width: 7),
                         Flexible(
                             child: Text(label,
@@ -428,7 +448,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
                       ])))));
 
   Widget _resultCard(KnowledgeResult r) => Material(
-        color: Colors.white,
+        color: NoorTheme.surface(context, light: Colors.white),
         borderRadius: BorderRadius.circular(16),
         child: InkWell(
           onTap: () => Navigator.of(context).push(MaterialPageRoute(
@@ -445,7 +465,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: NoorColors.hairline)),
+                border: Border.all(color: NoorTheme.border(context))),
             child:
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Row(children: [
@@ -461,9 +481,9 @@ class _AiChatScreenState extends State<AiChatScreen> {
                 Expanded(
                     child: Text(r.sourceLabel,
                         style:
-                            NoorType.meta.copyWith(color: NoorColors.muted))),
+                            NoorType.meta.copyWith(color: null))),
                 const Icon(Icons.open_in_new,
-                    size: 16, color: NoorColors.muted),
+                    size: 16, color: null),
               ]),
               const SizedBox(height: 9),
               if (r.arabicText != null) ...[
@@ -474,12 +494,12 @@ class _AiChatScreenState extends State<AiChatScreen> {
               ],
               Text(r.briefExcerpt,
                   style: NoorType.secondary
-                      .copyWith(color: NoorColors.ink, height: 1.5)),
+                      .copyWith(color: null, height: 1.5)),
               const SizedBox(height: 7),
               Text(r.teaching, style: NoorType.meta.copyWith(height: 1.45)),
               const SizedBox(height: 8),
               Text(KnowledgeSearchService.scholarNote,
-                  style: NoorType.meta.copyWith(color: NoorColors.mutedDark)),
+                  style: NoorType.meta.copyWith(color: null)),
             ]),
           ),
         ),
@@ -491,7 +511,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
           constraints: const BoxConstraints(maxWidth: 290),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           decoration: BoxDecoration(
-            color: user ? NoorColors.emeraldDark : NoorColors.hairlineSoft,
+            color: user ? NoorColors.emeraldDark : NoorTheme.surface(context),
             borderRadius: BorderRadius.only(
               topLeft: const Radius.circular(20),
               topRight: const Radius.circular(20),
@@ -501,7 +521,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
           ),
           child: Text(text,
               style: NoorType.body.copyWith(
-                  color: user ? Colors.white : NoorColors.ink, height: 1.5)),
+                  color: NoorTheme.foreground(context, light: user ? Colors.white : NoorColors.ink), height: 1.5)),
         ),
       );
 
@@ -512,22 +532,21 @@ class _AiChatScreenState extends State<AiChatScreen> {
             Container(
               width: 64,
               height: 64,
-              decoration: const BoxDecoration(
-                color: NoorColors.emeraldSoft,
+              decoration: BoxDecoration(
+                color: NoorTheme.softSurface(context),
                 shape: BoxShape.circle,
               ),
               child: const Icon(Icons.auto_awesome,
-                  color: NoorColors.emeraldDark, size: 30),
+                  color: null, size: 30),
             ),
             const SizedBox(height: 16),
-            const Text('Assalamu Alaikum',
-                style: NoorType.screenTitle),
+            const Text('Assalamu Alaikum', style: NoorType.screenTitle),
             const SizedBox(height: 6),
             Text(
               'Ask Noor AI for referenced guidance grounded in the Qur’an, authentic Hadith, and recognized scholarship.',
               textAlign: TextAlign.center,
-              style: NoorType.secondary.copyWith(
-                  color: NoorColors.mutedDark, height: 1.5),
+              style: NoorType.secondary
+                  .copyWith(color: null, height: 1.5),
             ),
             const SizedBox(height: 24),
             Align(
@@ -568,7 +587,7 @@ class _AiChatScreenState extends State<AiChatScreen> {
   Widget _promptSuggestionTile(
           IconData icon, String title, VoidCallback onTap) =>
       Material(
-        color: Colors.white,
+        color: NoorTheme.surface(context, light: Colors.white),
         borderRadius: BorderRadius.circular(14),
         child: InkWell(
           onTap: onTap,
@@ -577,21 +596,21 @@ class _AiChatScreenState extends State<AiChatScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: NoorColors.hairline),
+              border: Border.all(color: NoorTheme.border(context)),
             ),
             child: Row(
               children: [
-                Icon(icon, size: 18, color: NoorColors.emeraldDark),
+                Icon(icon, size: 18, color: null),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
                     title,
                     style: NoorType.secondary.copyWith(
-                        color: NoorColors.ink, fontWeight: FontWeight.w600),
+                        color: null, fontWeight: FontWeight.w600),
                   ),
                 ),
                 const Icon(Icons.arrow_forward_ios,
-                    size: 13, color: NoorColors.muted),
+                    size: 13, color: null),
               ],
             ),
           ),

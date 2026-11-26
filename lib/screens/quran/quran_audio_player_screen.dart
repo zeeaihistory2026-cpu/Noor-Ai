@@ -1,9 +1,10 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
 import '../../data/quran_service.dart';
-import '../../data/sample_data.dart';
+import '../../data/quran_playback_plan.dart';
 import '../../theme/noor_theme.dart';
 import '../../widgets/noor_components.dart';
 
@@ -54,9 +55,9 @@ const List<QuranReciter> _allReciters = [
     edition: 'ar.abdulbasitmurattal',
   ),
   QuranReciter(
-    name: 'Saad Al-Ghamdi',
+    name: 'Mahmoud Khalil Al-Husary',
     subtext: 'Murattal • Saudi Arabia',
-    edition: 'ar.ghamadi',
+    edition: 'ar.husary',
   ),
   QuranReciter(
     name: 'Maher Al-Muaiqly',
@@ -81,7 +82,9 @@ const List<QuranReciter> _allReciters = [
 ];
 
 class QuranAudioPlayerScreen extends StatefulWidget {
-  const QuranAudioPlayerScreen({super.key, this.surah = 18});
+  const QuranAudioPlayerScreen(
+      {super.key, this.surah = 18, this.initialAyah = 1});
+  final int initialAyah;
 
   /// Surah number 1..114. Default 18 (Al-Kahf) preserves the Page 05
   /// design and the existing goldens.
@@ -92,7 +95,7 @@ class QuranAudioPlayerScreen extends StatefulWidget {
 }
 
 class _QuranAudioPlayerScreenState extends State<QuranAudioPlayerScreen> {
-  double _seek = 154; // Sample seek (02:34 of 34:56) until live.
+  double _seek = 0; // Sample seek (02:34 of 34:56) until live.
   bool _playing = false;
   bool _autoplay = true;
   int _repeat = 3;
@@ -114,6 +117,12 @@ class _QuranAudioPlayerScreenState extends State<QuranAudioPlayerScreen> {
   double _speed = 1.0;
   int _repeatMode = 0; // 0 off, 1 repeat ayah
   bool _saved = false;
+  int _rangeStart = 1;
+  int? _rangeEnd;
+  List<int> _sourceToAyah = [];
+  bool _advancing = false;
+  bool _rebuilding = false;
+  int _loadRequest = 0;
 
   // Phase 8 live wiring (sample fallback until loaded).
   List<String> _audioUrls = const [];
@@ -124,20 +133,37 @@ class _QuranAudioPlayerScreenState extends State<QuranAudioPlayerScreen> {
   (String, String, String, String)? _upNextB;
   // Header + stats for the chosen surah (drawn values for 18).
   String _surahTitle = 'Surah Al-Kahf';
-  String _surahMeaning = 'The Cave';
-  String _juzLabel = '15';
-  String _pageLabel = '293';
+  String _surahMeaning = '';
+  String _juzLabel = '—';
+
+  (String, String, String, String) _summary(int number) {
+    final info = QuranService.surahInfoMap[number]!;
+    return ('$number', 'Surah ${info.$1}', 'Surah $number', '${info.$3} Ayahs');
+  }
 
   @override
   void initState() {
     super.initState();
-    _currentSurah = widget.surah;
-    _ayahIndex = _currentSurah == 18 ? 17 : 0;
+    _currentSurah = widget.surah.clamp(1, 114);
+    final info = QuranService.surahInfoMap[_currentSurah];
+    _surahTitle = 'Surah ${info?.$1 ?? _currentSurah}';
+    _ayahCount = info?.$3 ?? 1;
+    _upNextA = _summary(QuranService.nextSurahNumber(_currentSurah));
+    _upNextB = _summary(QuranService.nextSurahNumber(
+        QuranService.nextSurahNumber(_currentSurah)));
+    _ayahIndex = (widget.initialAyah - 1).clamp(0, _ayahCount - 1);
     _stateSub = _player.playerStateStream.listen((state) {
       if (!mounted) return;
-      setState(() => _playing = state.playing);
-      if (state.processingState == ProcessingState.completed && !_autoplay) {
-        _player.stop();
+      final completed = state.processingState == ProcessingState.completed;
+      setState(() => _playing = state.playing && !completed);
+      if (completed &&
+          _autoplay &&
+          _rangeEnd == null &&
+          !_advancing &&
+          !_rebuilding) {
+        _advancing = true;
+        _switchSurah(QuranService.nextSurahNumber(_currentSurah))
+            .whenComplete(() => _advancing = false);
       }
     });
     _posSub = _player.positionStream.listen((pos) {
@@ -154,8 +180,13 @@ class _QuranAudioPlayerScreenState extends State<QuranAudioPlayerScreen> {
       setState(() => _duration = dur);
     });
     _idxSub = _player.currentIndexStream.listen((idx) {
-      if (!mounted || idx == null) return;
-      setState(() => _ayahIndex = idx);
+      if (!mounted ||
+          idx == null ||
+          _rebuilding ||
+          idx >= _sourceToAyah.length) {
+        return;
+      }
+      setState(() => _ayahIndex = _sourceToAyah[idx]);
     });
     _loadLive();
   }
@@ -173,33 +204,133 @@ class _QuranAudioPlayerScreenState extends State<QuranAudioPlayerScreen> {
 
   /// Loads the per-ayah CDN playlist into the real player.
   Future<void> _initPlayer() async {
-    if (_audioUrls.isEmpty) return;
+    if (_audioUrls.isEmpty || !mounted) return;
+    _rebuilding = true;
+    setState(() => _playerReady = false);
     try {
-      await _player.setAudioSources(
-        [for (final url in _audioUrls) AudioSource.uri(Uri.parse(url))],
-        initialIndex: _ayahIndex.clamp(0, _audioUrls.length - 1),
-        initialPosition: Duration.zero,
-      );
+      final plan = buildQuranPlaybackPlan(
+          ayahCount: _audioUrls.length,
+          firstAyah: _rangeStart,
+          lastAyah: _rangeEnd,
+          repeats: _repeatMode == 1 ? _repeat : 1,
+          pauseSeconds: !kIsWeb &&
+                  defaultTargetPlatform == TargetPlatform.android &&
+                  _repeatMode == 1
+              ? _pauseSec
+              : 0);
+      _sourceToAyah = plan.map((step) => step.ayahIndex).toList();
+      final initial = _sourceToAyah.indexOf(_ayahIndex);
+      await _player.setAudioSources([
+        for (final step in plan)
+          if (step.isSilence)
+            SilenceAudioSource(duration: Duration(seconds: step.silenceSeconds))
+          else
+            AudioSource.uri(Uri.parse(_audioUrls[step.ayahIndex])),
+      ],
+          initialIndex: initial < 0 ? 0 : initial,
+          initialPosition: Duration.zero);
       await _player.setLoopMode(LoopMode.off);
       await _player.setSpeed(_speed);
       if (mounted) setState(() => _playerReady = true);
     } catch (_) {
-      // Stream/CDN unreachable: keep the honest sample UI state.
       if (mounted) setState(() => _playerReady = false);
+    } finally {
+      _rebuilding = false;
     }
   }
 
   Future<void> _togglePlay() async {
-    if (_playerReady) {
-      if (_player.playing) {
-        await _player.pause();
-      } else {
-        await _player.play();
-      }
-    } else {
-      // Offline/sample fallback: UI state only, as in Phase 8.
-      setState(() => _playing = !_playing);
+    if (_rebuilding) return;
+    if (!_playerReady) await _initPlayer();
+    if (!mounted) return;
+    if (!_playerReady) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text(
+              'Audio could not load. Check your connection and tap Play to retry.')));
+      return;
     }
+    if (_player.playing) {
+      await _player.pause();
+    } else {
+      if (_player.processingState == ProcessingState.completed) {
+        await _player.seek(Duration.zero, index: 0);
+      }
+      unawaited(_player.play().catchError((Object error) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+              content: Text(
+                  'Audio playback failed. Check your connection and retry.')));
+        }
+      }));
+    }
+  }
+
+  Future<void> _reconfigure() async {
+    final resume = _player.playing;
+    await _player.pause();
+    await _initPlayer();
+    if (resume && _playerReady) unawaited(_player.play());
+  }
+
+  Future<void> _pickRange() async {
+    final start = TextEditingController(text: '$_rangeStart');
+    final end = TextEditingController(text: '${_rangeEnd ?? _ayahCount}');
+    final form = GlobalKey<FormState>();
+    final selected = await showDialog<(int, int)>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+              title: const Text('Ayah playback range'),
+              content: Form(
+                  key: form,
+                  child: Column(mainAxisSize: MainAxisSize.min, children: [
+                    TextFormField(
+                        controller: start,
+                        keyboardType: TextInputType.number,
+                        decoration:
+                            const InputDecoration(labelText: 'First ayah'),
+                        validator: (value) {
+                          final n = int.tryParse(value ?? '');
+                          return n == null || n < 1 || n > _ayahCount
+                              ? 'Enter 1–$_ayahCount'
+                              : null;
+                        }),
+                    TextFormField(
+                        controller: end,
+                        keyboardType: TextInputType.number,
+                        decoration:
+                            const InputDecoration(labelText: 'Last ayah'),
+                        validator: (value) {
+                          final n = int.tryParse(value ?? '');
+                          return n == null ||
+                                  n < (int.tryParse(start.text) ?? 1) ||
+                                  n > _ayahCount
+                              ? 'Enter a valid ending ayah'
+                              : null;
+                        }),
+                  ])),
+              actions: [
+                TextButton(
+                    onPressed: () => Navigator.pop(dialogContext),
+                    child: const Text('Cancel')),
+                FilledButton(
+                    onPressed: () {
+                      if (form.currentState!.validate()) {
+                        Navigator.pop(dialogContext,
+                            (int.parse(start.text), int.parse(end.text)));
+                      }
+                    },
+                    child: const Text('Apply'))
+              ],
+            ));
+    start.dispose();
+    end.dispose();
+    if (selected == null || !mounted) return;
+    setState(() {
+      _rangeStart = selected.$1;
+      _rangeEnd = selected.$2;
+      _ayahIndex = selected.$1 - 1;
+    });
+    await _reconfigure();
   }
 
   void _cycleSpeed() {
@@ -216,14 +347,11 @@ class _QuranAudioPlayerScreenState extends State<QuranAudioPlayerScreen> {
     if (_playerReady) _player.setSpeed(s);
   }
 
-  void _openPlayerOptions() => showNoorOverflowSheet(context,
-      title: 'Playback options',
-      actions: [
+  void _openPlayerOptions() =>
+      showNoorOverflowSheet(context, title: 'Playback options', actions: [
         for (final s in const [1.0, 1.25, 1.5, 1.75, 2.0])
           (
-            s == _speed
-                ? Icons.check_circle
-                : Icons.speed_outlined,
+            s == _speed ? Icons.check_circle : Icons.speed_outlined,
             'Speed ${s}x${s == _speed ? ' (current)' : ''}',
             () => _pickSpeed(s)
           ),
@@ -237,10 +365,12 @@ class _QuranAudioPlayerScreenState extends State<QuranAudioPlayerScreen> {
 
   Future<void> _loadLive({bool autoPlay = false}) async {
     final surah = _currentSurah;
+    final request = ++_loadRequest;
     try {
       final detail = await QuranService().fetchSurah(surah);
-      final urls = QuranService.surahAudioUrls(detail, edition: _selectedReciter.edition);
-      if (!mounted) return;
+      final urls = QuranService.surahAudioUrls(detail,
+          edition: _selectedReciter.edition);
+      if (!mounted || request != _loadRequest) return;
       setState(() {
         _audioUrls = urls;
         if (detail.ayahs.isNotEmpty) {
@@ -248,20 +378,24 @@ class _QuranAudioPlayerScreenState extends State<QuranAudioPlayerScreen> {
           _ayahIndex = _ayahIndex.clamp(0, _ayahCount - 1);
           final first = detail.ayahs.first;
           _juzLabel = first.juz?.toString() ?? '—';
-          _pageLabel = first.page?.toString() ?? '—';
         }
         _live = _currentAudioUrl.isNotEmpty;
       });
       await _initPlayer();
       if (autoPlay && _playerReady) {
-        await _player.play();
+        unawaited(_player.play().catchError((Object error) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                content: Text('Audio playback failed. Please retry.')));
+          }
+        }));
       }
     } catch (_) {
       /* sample fallback stays; never break the player screen */
     }
     try {
       final list = await QuranService().fetchSurahListOrFallback();
-      if (!mounted) return;
+      if (!mounted || request != _loadRequest || surah != _currentSurah) return;
       setState(() {
         final metas = {for (final m in list) m.number: m};
         final here = metas[surah];
@@ -302,6 +436,17 @@ class _QuranAudioPlayerScreenState extends State<QuranAudioPlayerScreen> {
     }
     setState(() {
       _currentSurah = newSurah;
+      _surahTitle =
+          'Surah ${QuranService.surahInfoMap[newSurah]?.$1 ?? newSurah}';
+      _surahMeaning = '';
+      _ayahCount = QuranService.surahInfoMap[newSurah]?.$3 ?? 1;
+      _juzLabel = '—';
+      _audioUrls = [];
+      _upNextA = _summary(QuranService.nextSurahNumber(newSurah));
+      _upNextB = _summary(
+          QuranService.nextSurahNumber(QuranService.nextSurahNumber(newSurah)));
+      _rangeStart = 1;
+      _rangeEnd = null;
       _ayahIndex = 0;
       _seek = 0;
       _position = Duration.zero;
@@ -310,8 +455,10 @@ class _QuranAudioPlayerScreenState extends State<QuranAudioPlayerScreen> {
     await _loadLive(autoPlay: true);
   }
 
-  void _nextSurah() => _switchSurah(QuranService.nextSurahNumber(_currentSurah));
-  void _prevSurah() => _switchSurah(QuranService.previousSurahNumber(_currentSurah));
+  void _nextSurah() =>
+      _switchSurah(QuranService.nextSurahNumber(_currentSurah));
+  void _prevSurah() =>
+      _switchSurah(QuranService.previousSurahNumber(_currentSurah));
 
   Future<void> _switchReciter(QuranReciter reciter) async {
     if (reciter.edition == _selectedReciter.edition) return;
@@ -326,7 +473,10 @@ class _QuranAudioPlayerScreenState extends State<QuranAudioPlayerScreen> {
     await _loadLive(autoPlay: wasPlaying);
     if (savedAyah < _audioUrls.length && _playerReady) {
       try {
-        await _player.seek(Duration.zero, index: savedAyah);
+        await _player.seek(Duration.zero,
+            index: _sourceToAyah
+                .indexOf(savedAyah)
+                .clamp(0, _sourceToAyah.length - 1));
         if (wasPlaying) await _player.play();
       } catch (_) {}
     }
@@ -335,7 +485,7 @@ class _QuranAudioPlayerScreenState extends State<QuranAudioPlayerScreen> {
   void _openReciterPicker() {
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.white,
+      backgroundColor: NoorTheme.surface(context),
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
@@ -352,7 +502,7 @@ class _QuranAudioPlayerScreenState extends State<QuranAudioPlayerScreen> {
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: NoorColors.hairline,
+                    color: NoorTheme.border(context),
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -360,35 +510,46 @@ class _QuranAudioPlayerScreenState extends State<QuranAudioPlayerScreen> {
               const SizedBox(height: 14),
               Row(
                 children: [
-                  const Icon(Icons.record_voice_over, color: NoorColors.emeraldDark),
+                  const Icon(Icons.record_voice_over, color: null),
                   const SizedBox(width: 8),
-                  Text('Choose Reciter (Qari)', style: NoorType.section.copyWith(color: NoorColors.emeraldDark)),
+                  Text('Choose Reciter (Qari)',
+                      style: NoorType.section.copyWith(color: null)),
                 ],
               ),
               const SizedBox(height: 12),
               ..._allReciters.map((r) {
                 final isSelected = r.edition == _selectedReciter.edition;
                 return ListTile(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                   leading: CircleAvatar(
                     radius: 20,
-                    backgroundColor: isSelected ? NoorColors.emeraldDark : NoorColors.cream,
+                    backgroundColor:
+                        isSelected ? NoorColors.emeraldDark : NoorTheme.surface(context),
                     child: Icon(
                       Icons.person,
-                      color: isSelected ? NoorColors.gold : NoorColors.emeraldDark,
+                      color: NoorTheme.foreground(context,
+                          light: isSelected
+                              ? NoorColors.gold
+                              : NoorColors.emeraldDark),
                       size: 22,
                     ),
                   ),
                   title: Text(
                     r.name,
                     style: NoorType.body.copyWith(
-                      color: isSelected ? NoorColors.emeraldDark : NoorColors.ink,
-                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                      color: NoorTheme.foreground(context,
+                          light: isSelected
+                              ? NoorColors.emeraldDark
+                              : NoorColors.ink),
+                      fontWeight:
+                          isSelected ? FontWeight.w700 : FontWeight.w500,
                     ),
                   ),
-                  subtitle: Text(r.subtext, style: NoorType.meta.copyWith(color: NoorColors.muted)),
+                  subtitle: Text(r.subtext,
+                      style: NoorType.meta.copyWith(color: NoorTheme.muted(context))),
                   trailing: isSelected
-                      ? const Icon(Icons.check_circle, color: NoorColors.emeraldDark)
+                      ? const Icon(Icons.check_circle, color: null)
                       : null,
                   onTap: () {
                     Navigator.pop(ctx);
@@ -422,7 +583,7 @@ class _QuranAudioPlayerScreenState extends State<QuranAudioPlayerScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
+      backgroundColor: NoorTheme.surface(context),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -441,7 +602,8 @@ class _QuranAudioPlayerScreenState extends State<QuranAudioPlayerScreen> {
 
             return Container(
               height: MediaQuery.of(context).size.height * 0.78,
-              padding: EdgeInsets.fromLTRB(16, 12, 16, MediaQuery.of(context).viewInsets.bottom + 16),
+              padding: EdgeInsets.fromLTRB(
+                  16, 12, 16, MediaQuery.of(context).viewInsets.bottom + 16),
               child: Column(
                 children: [
                   Center(
@@ -449,7 +611,7 @@ class _QuranAudioPlayerScreenState extends State<QuranAudioPlayerScreen> {
                       width: 40,
                       height: 4,
                       decoration: BoxDecoration(
-                        color: NoorColors.hairline,
+                        color: NoorTheme.border(context),
                         borderRadius: BorderRadius.circular(2),
                       ),
                     ),
@@ -457,11 +619,12 @@ class _QuranAudioPlayerScreenState extends State<QuranAudioPlayerScreen> {
                   const SizedBox(height: 14),
                   Row(
                     children: [
-                      const Icon(Icons.queue_music_rounded, color: NoorColors.emeraldDark),
+                      const Icon(Icons.queue_music_rounded, color: null),
                       const SizedBox(width: 8),
-                      Text('Select Any Surah (1–114)', style: NoorType.section.copyWith(color: NoorColors.emeraldDark)),
+                      Text('Select Any Surah (1–114)',
+                          style: NoorType.section.copyWith(color: null)),
                       const Spacer(),
-                      IconButton(
+                      IconButton(tooltip: 'Close', 
                         icon: const Icon(Icons.close, size: 20),
                         onPressed: () => Navigator.pop(ctx),
                       ),
@@ -472,10 +635,12 @@ class _QuranAudioPlayerScreenState extends State<QuranAudioPlayerScreen> {
                     autofocus: false,
                     decoration: InputDecoration(
                       hintText: 'Search Surah name or number (1–114)...',
-                      prefixIcon: const Icon(Icons.search, color: NoorColors.emeraldDark, size: 20),
+                      prefixIcon:
+                          const Icon(Icons.search, color: null, size: 20),
                       filled: true,
-                      fillColor: NoorColors.cream,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      fillColor: NoorTheme.background(context),
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 10),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(14),
                         borderSide: BorderSide.none,
@@ -490,56 +655,78 @@ class _QuranAudioPlayerScreenState extends State<QuranAudioPlayerScreen> {
                     child: ListView.separated(
                       physics: const BouncingScrollPhysics(),
                       itemCount: filtered.length,
-                      separatorBuilder: (_, __) => const Divider(height: 1, color: NoorColors.hairlineSoft),
+                      separatorBuilder: (_, __) => Divider(
+                          height: 1, color: NoorTheme.border(context)),
                       itemBuilder: (_, i) {
                         final s = filtered[i];
                         final isSelected = s.number == _currentSurah;
                         return ListTile(
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 2),
                           leading: Container(
                             width: 36,
                             height: 36,
                             alignment: Alignment.center,
                             decoration: BoxDecoration(
-                              color: isSelected ? NoorColors.emeraldDark : NoorColors.emeraldSoft,
+                              color: isSelected
+                                  ? NoorColors.emeraldDark
+                                  : NoorTheme.surface(context,
+                                      light: NoorColors.emeraldSoft),
                               shape: BoxShape.circle,
                             ),
                             child: Text(
                               '${s.number}',
-                              style: TextStyle(
-                                color: isSelected ? Colors.white : NoorColors.emeraldDark,
+                              style: NoorType.secondary.copyWith(
+                                color: NoorTheme.foreground(context,
+                                    light: isSelected
+                                        ? Colors.white
+                                        : NoorColors.emeraldDark),
                                 fontWeight: FontWeight.bold,
-                                fontSize: 13,
                               ),
                             ),
                           ),
                           title: Row(
                             children: [
-                              Text(
-                                s.englishName,
-                                style: NoorType.body.copyWith(
-                                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                                  color: isSelected ? NoorColors.emeraldDark : NoorColors.ink,
+                              Expanded(
+                                child: Text(
+                                  s.englishName,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: NoorType.body.copyWith(
+                                    fontWeight: isSelected
+                                        ? FontWeight.w700
+                                        : FontWeight.w500,
+                                    color: isSelected
+                                        ? NoorTheme.accent(context)
+                                        : NoorTheme.foreground(context),
+                                  ),
                                 ),
                               ),
-                              const Spacer(),
-                              Text(
-                                s.arabicName,
-                                textDirection: TextDirection.rtl,
-                                style: NoorType.arabic(
-                                  size: 16,
-                                  color: isSelected ? NoorColors.emeraldDark : NoorColors.ink,
+                              const SizedBox(width: 8),
+                              Flexible(
+                                child: Text(
+                                  s.arabicName,
+                                  textDirection: TextDirection.rtl,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: NoorType.arabic(
+                                    size: 16,
+                                    color: isSelected
+                                        ? NoorTheme.accent(context)
+                                        : NoorTheme.foreground(context),
+                                  ),
                                 ),
                               ),
                             ],
                           ),
                           subtitle: Text(
                             '${s.englishNameTranslation} • ${s.numberOfAyahs} Ayahs',
-                            style: NoorType.meta.copyWith(color: NoorColors.muted),
+                            style: NoorType.meta.copyWith(color: NoorTheme.muted(context)),
                           ),
                           trailing: isSelected
-                              ? const Icon(Icons.graphic_eq, color: NoorColors.emeraldDark)
-                              : const Icon(Icons.play_circle_outline, color: NoorColors.muted, size: 22),
+                              ? const Icon(Icons.graphic_eq, color: null)
+                              : const Icon(Icons.play_circle_outline,
+                                  color: null, size: 22),
                           onTap: () {
                             Navigator.pop(ctx);
                             _switchSurah(s.number);
@@ -557,23 +744,19 @@ class _QuranAudioPlayerScreenState extends State<QuranAudioPlayerScreen> {
     );
   }
 
-
-
   String get _currentAudioUrl => _audioUrls.isEmpty
       ? ''
       : _audioUrls[_ayahIndex.clamp(0, _audioUrls.length - 1)];
 
   void _skip(int delta) {
+    final target = (_ayahIndex + delta)
+        .clamp(_rangeStart - 1, (_rangeEnd ?? _ayahCount) - 1);
     if (_playerReady) {
-      if (delta > 0) {
-        _player.seekToNext();
-      } else {
-        _player.seekToPrevious();
-      }
-      return;
+      final index = _sourceToAyah.indexOf(target);
+      if (index >= 0) _player.seek(Duration.zero, index: index);
     }
     setState(() {
-      _ayahIndex = (_ayahIndex + delta).clamp(0, _ayahCount - 1);
+      _ayahIndex = target;
       _seek = 0;
       _position = Duration.zero;
     });
@@ -582,33 +765,33 @@ class _QuranAudioPlayerScreenState extends State<QuranAudioPlayerScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: NoorColors.emeraldDark,
+      backgroundColor: NoorTheme.background(context),
       body: SafeArea(
         child: Column(children: [
           // Header: back / Now Playing / Surah Picker / bookmark •••
           Padding(
             padding: const EdgeInsets.fromLTRB(8, 8, 8, 4),
             child: Row(children: [
-              IconButton(
-                icon: const Icon(Icons.arrow_back, color: Colors.white),
+              IconButton(tooltip: 'Back', 
+                icon: const Icon(Icons.arrow_back, color: null),
                 onPressed: () => Navigator.of(context).maybePop(),
               ),
               Expanded(
                   child: Text('Now Playing',
                       textAlign: TextAlign.center,
-                      style: NoorType.section.copyWith(color: Colors.white))),
+                      style: NoorType.section.copyWith(color: null))),
               IconButton(
                   tooltip: 'Select Surah (1–114)',
-                  icon: const Icon(Icons.queue_music_rounded, color: Colors.white),
+                  icon: const Icon(Icons.queue_music_rounded, color: null),
                   onPressed: _openSurahPicker),
               IconButton(
                   icon: Icon(_saved ? Icons.bookmark : Icons.bookmark_border,
-                      color: Colors.white),
+                      color: null),
                   tooltip: _saved ? 'Saved' : 'Save this Surah',
                   onPressed: () => setState(() => _saved = !_saved)),
               IconButton(
                   tooltip: 'Playback options',
-                  icon: const Icon(Icons.more_horiz, color: Colors.white),
+                  icon: const Icon(Icons.more_horiz, color: null),
                   onPressed: _openPlayerOptions),
             ]),
           ),
@@ -620,37 +803,54 @@ class _QuranAudioPlayerScreenState extends State<QuranAudioPlayerScreen> {
                 // Cream arch card with real design art (Page 05 crop).
                 Container(
                   decoration: BoxDecoration(
-                    color: NoorColors.cream,
+                    color: NoorTheme.surface(context, light: NoorColors.cream),
                     borderRadius: BorderRadius.circular(NoorRadius.heroCard),
                   ),
                   child: Column(children: [
-                    ClipRRect(
-                      borderRadius: const BorderRadius.vertical(
-                          top: Radius.circular(NoorRadius.heroCard)),
-                      // The arch art's own aspect (Phase 11b): the
-                      // fixed 190 height cropped the arch apex and
-                      // sides; now the whole arch sits in its box.
-                      child: AspectRatio(
-                          aspectRatio: 417 / 255,
-                          child: Image.asset(NoorAssets.playerArch,
-                              width: double.infinity,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Container(
-                                  height: 190, color: NoorColors.cream))),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 20, vertical: 24),
+                      decoration: const BoxDecoration(
+                        gradient: LinearGradient(colors: [
+                          NoorColors.emeraldDark,
+                          NoorColors.emeraldMid
+                        ]),
+                        borderRadius: BorderRadius.vertical(
+                            top: Radius.circular(NoorRadius.heroCard)),
+                      ),
+                      child: Column(children: [
+                        const Icon(Icons.menu_book_outlined,
+                            size: 32, color: NoorColors.gold),
+                        const SizedBox(height: 8),
+                        Text(
+                          'سُورَةُ ${QuranService.surahInfoMap[_currentSurah]?.$2 ?? ""}',
+                          key: const ValueKey('audio-surah-arabic'),
+                          textDirection: TextDirection.rtl,
+                          textAlign: TextAlign.center,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: NoorType.arabic(size: 30, color: Colors.white),
+                        ),
+                      ]),
                     ),
                     const SizedBox(height: 4),
                     InkWell(
                       onTap: _openSurahPicker,
                       borderRadius: BorderRadius.circular(12),
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 4),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Text(_surahTitle, style: NoorType.screenTitle),
+                            Flexible(
+                                child: Text(_surahTitle,
+                                    textAlign: TextAlign.center,
+                                    style: NoorType.screenTitle)),
                             const SizedBox(width: 4),
                             const Icon(Icons.arrow_drop_down_circle_outlined,
-                                size: 18, color: NoorColors.emeraldDark),
+                                size: 18, color: null),
                           ],
                         ),
                       ),
@@ -658,7 +858,9 @@ class _QuranAudioPlayerScreenState extends State<QuranAudioPlayerScreen> {
                     const SizedBox(height: 3),
                     Text(
                         _live
-                            ? '$_surahMeaning  •  Ayah ${_ayahIndex + 1}'
+                            ? (_surahMeaning.isEmpty
+                                ? 'Ayah ${_ayahIndex + 1}'
+                                : '$_surahMeaning  •  Ayah ${_ayahIndex + 1}')
                             : _surahMeaning,
                         style: NoorType.meta),
                     const SizedBox(height: 16),
@@ -667,7 +869,7 @@ class _QuranAudioPlayerScreenState extends State<QuranAudioPlayerScreen> {
                       child: Row(children: [
                         Expanded(child: _Stat('Ayah', '1 – $_ayahCount')),
                         Expanded(child: _Stat('Juz', _juzLabel)),
-                        Expanded(child: _Stat('Page', _pageLabel)),
+                        Expanded(child: _Stat('Surah', '$_currentSurah')),
                       ]),
                     ),
                     const SizedBox(height: 18),
@@ -680,13 +882,13 @@ class _QuranAudioPlayerScreenState extends State<QuranAudioPlayerScreen> {
                   borderRadius: BorderRadius.circular(NoorRadius.card),
                   child: Container(
                     decoration: BoxDecoration(
-                        color: Colors.white10,
+                        color: NoorTheme.surface(context),
                         borderRadius: BorderRadius.circular(NoorRadius.card)),
                     padding: const EdgeInsets.all(12),
                     child: Row(children: [
                       CircleAvatar(
                         radius: 20,
-                        backgroundColor: NoorColors.cream,
+                        backgroundColor: NoorTheme.background(context),
                         backgroundImage: AssetImage(_selectedReciter.avatar),
                       ),
                       const SizedBox(width: 12),
@@ -695,23 +897,21 @@ class _QuranAudioPlayerScreenState extends State<QuranAudioPlayerScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text('Reciter (Tap to change)',
-                                  style: NoorType.meta.copyWith(color: Colors.white60)),
+                                  style: NoorType.meta.copyWith(color: NoorTheme.muted(context))),
                               Text(_selectedReciter.name,
-                                  style: NoorType.body.copyWith(color: Colors.white)),
+                                  style: NoorType.body.copyWith(color: null)),
                             ]),
                       ),
-                      const Icon(Icons.keyboard_arrow_down, color: Colors.white),
+                      const Icon(Icons.keyboard_arrow_down, color: null),
                     ]),
                   ),
                 ),
                 const SizedBox(height: 14),
                 // Seek
                 Row(children: [
-                  Text(
-                      _playerReady
-                          ? _fmt(_position)
-                          : SampleData.playerPosition,
-                      style: NoorType.tabular(NoorType.meta.copyWith(color: Colors.white70))),
+                  Text(_playerReady ? _fmt(_position) : '00:00',
+                      style: NoorType.tabular(
+                          NoorType.meta.copyWith(color: null))),
                   Expanded(
                     child: Slider(
                       value: _seek.clamp(
@@ -725,8 +925,11 @@ class _QuranAudioPlayerScreenState extends State<QuranAudioPlayerScreen> {
                               ? _duration.inSeconds
                               : 2096)
                           .toDouble(),
-                      activeColor: Colors.white,
-                      inactiveColor: Colors.white24,
+                      activeColor: Theme.of(context).colorScheme.primary,
+                      inactiveColor:
+                          Theme.of(context).colorScheme.outlineVariant,
+                      semanticFormatterCallback: (v) =>
+                          _fmt(Duration(seconds: v.round())),
                       onChanged: (v) {
                         setState(() => _seek = v);
                         if (_playerReady) {
@@ -735,11 +938,9 @@ class _QuranAudioPlayerScreenState extends State<QuranAudioPlayerScreen> {
                       },
                     ),
                   ),
-                  Text(
-                      _playerReady
-                          ? _fmt(_duration)
-                          : SampleData.playerDuration,
-                      style: NoorType.tabular(NoorType.meta.copyWith(color: Colors.white70))),
+                  Text(_playerReady ? _fmt(_duration) : '00:00',
+                      style: NoorType.tabular(
+                          NoorType.meta.copyWith(color: null))),
                 ]),
                 // Transport
                 Row(
@@ -753,34 +954,36 @@ class _QuranAudioPlayerScreenState extends State<QuranAudioPlayerScreen> {
                     IconButton(
                       tooltip: 'Previous Surah',
                       icon: const Icon(Icons.skip_previous,
-                          color: Colors.white70, size: 26),
+                          color: null, size: 26),
                       onPressed: _prevSurah,
                     ),
                     IconButton(
                         tooltip: 'Previous Ayah',
                         icon: const Icon(Icons.fast_rewind,
-                            color: Colors.white, size: 28),
+                            color: null, size: 28),
                         onPressed: () => _skip(-1)),
                     Container(
                       width: 62,
                       height: 62,
                       decoration: const BoxDecoration(
-                          color: Colors.white, shape: BoxShape.circle),
+                          color: NoorColors.emeraldDark,
+                          shape: BoxShape.circle),
                       child: IconButton(
+                        tooltip:
+                            _playing ? 'Pause recitation' : 'Play recitation',
                         icon: Icon(_playing ? Icons.pause : Icons.play_arrow,
-                            color: NoorColors.emeraldDark, size: 32),
+                            color: Colors.white, size: 32),
                         onPressed: _togglePlay,
                       ),
                     ),
                     IconButton(
                         tooltip: 'Next Ayah',
                         icon: const Icon(Icons.fast_forward,
-                            color: Colors.white, size: 28),
+                            color: null, size: 28),
                         onPressed: () => _skip(1)),
                     IconButton(
                       tooltip: 'Next Surah',
-                      icon: const Icon(Icons.skip_next,
-                          color: Colors.white70, size: 26),
+                      icon: const Icon(Icons.skip_next, color: null, size: 26),
                       onPressed: _nextSurah,
                     ),
                   ],
@@ -789,82 +992,110 @@ class _QuranAudioPlayerScreenState extends State<QuranAudioPlayerScreen> {
                 // Cream controls panel
                 Container(
                   decoration: BoxDecoration(
-                      color: NoorColors.cream,
+                      color:
+                          NoorTheme.surface(context, light: NoorColors.cream),
                       borderRadius: BorderRadius.circular(NoorRadius.heroCard)),
                   padding: const EdgeInsets.all(18),
                   child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceAround,
-                          children: [
-                            Semantics(
-                                button: true,
-                                label: 'Playback speed',
-                                child: InkWell(
-                                    onTap: _cycleSpeed,
-                                    borderRadius: BorderRadius.circular(12),
-                                    child: _action('${_speed}x', 'Speed'))),
-                            _actionIcon(Icons.timer_outlined, 'Timer',
-                                soon: true),
-                            _actionIcon(Icons.nightlight_outlined, 'Sleep',
-                                soon: true),
-                            _actionIcon(Icons.download_outlined, 'Download',
-                                soon: true),
-                            _actionIcon(Icons.share_outlined, 'Share',
-                                soon: true),
-                          ],
-                        ),
+                        Material(
+                            color: Colors.transparent,
+                            child: ListTile(
+                              contentPadding: EdgeInsets.zero,
+                              leading: const Icon(Icons.speed),
+                              title: const Text('Playback speed',
+                                  style: NoorType.body),
+                              subtitle: const Text('Tap to change speed',
+                                  style: NoorType.meta),
+                              trailing:
+                                  Text('$_speed×', style: NoorType.cardTitle),
+                              onTap: _cycleSpeed,
+                            )),
                         const SizedBox(height: 20),
-                        const Text('Playback Range',
-                            style: NoorType.body),
+                        const Text('Playback Range', style: NoorType.body),
                         const SizedBox(height: 10),
                         Row(children: [
                           Expanded(
-                              child: _rangeChip('Surah (1 – $_ayahCount)', true)),
+                              child: InkWell(
+                                  onTap: () {
+                                    setState(() {
+                                      _rangeStart = 1;
+                                      _rangeEnd = null;
+                                    });
+                                    _reconfigure();
+                                  },
+                                  child: _rangeChip('Surah (1 – $_ayahCount)',
+                                      _rangeEnd == null))),
                           const SizedBox(width: 10),
-                          Expanded(child: _rangeChip('Ayah Range', false)),
+                          Expanded(
+                              child: InkWell(
+                                  onTap: _pickRange,
+                                  child: _rangeChip(
+                                      _rangeEnd == null
+                                          ? 'Ayah Range'
+                                          : '$_rangeStart–$_rangeEnd',
+                                      _rangeEnd != null))),
                         ]),
                         const SizedBox(height: 18),
-                        const Text('Repetition Settings',
-                            style: NoorType.body),
+                        const Text('Repetition Settings', style: NoorType.body),
                         const SizedBox(height: 10),
-                        Row(children: [
-                          Expanded(
-                              child: _stepper(
+                        Builder(builder: (context) {
+                          final repA = _stepper(
                             'Repeat',
                             'How many times',
                             '$_repeat',
-                            () => setState(
-                                () => _repeat = (_repeat - 1).clamp(1, 10)),
-                            () => setState(
-                                () => _repeat = (_repeat + 1).clamp(1, 10)),
-                          )),
-                          const SizedBox(width: 12),
-                          Expanded(
-                              child: _stepper(
+                            () => setState(() {
+                              _repeat = (_repeat - 1).clamp(1, 10);
+                              _reconfigure();
+                            }),
+                            () => setState(() {
+                              _repeat = (_repeat + 1).clamp(1, 10);
+                              _reconfigure();
+                            }),
+                          );
+                          final repB = _stepper(
                             'Pause',
                             'Gap between repeats',
                             '$_pauseSec sec',
-                            () => setState(
-                                () => _pauseSec = (_pauseSec - 1).clamp(0, 10)),
-                            () => setState(
-                                () => _pauseSec = (_pauseSec + 1).clamp(0, 10)),
-                          )),
-                        ]),
+                            () => setState(() {
+                              _pauseSec = (_pauseSec - 1).clamp(0, 10);
+                              _reconfigure();
+                            }),
+                            () => setState(() {
+                              _pauseSec = (_pauseSec + 1).clamp(0, 10);
+                              _reconfigure();
+                            }),
+                          );
+                          final stack =
+                              MediaQuery.textScalerOf(context).scale(1) > 1.3 ||
+                                  MediaQuery.sizeOf(context).width < 340;
+                          if (stack) {
+                            return Column(
+                                crossAxisAlignment:
+                                    CrossAxisAlignment.stretch,
+                                children: [
+                                  repA,
+                                  const SizedBox(height: 12),
+                                  repB,
+                                ]);
+                          }
+                          return Row(children: [
+                            Expanded(child: repA),
+                            const SizedBox(width: 12),
+                            Expanded(child: repB),
+                          ]);
+                        }),
                         const SizedBox(height: 18),
                         Row(children: [
                           const Expanded(
-                              child: Text('Up Next',
-                                  style: NoorType.body)),
-                          const Text('Autoplay',
-                              style: NoorType.meta),
+                              child: Text('Up Next', style: NoorType.body)),
+                          const Text('Autoplay', style: NoorType.meta),
                           Semantics(
                               label: 'Autoplay',
                               toggled: _autoplay,
                               child: Switch(
                                   value: _autoplay,
-                                  activeThumbColor: NoorColors.emerald,
                                   onChanged: (v) =>
                                       setState(() => _autoplay = v))),
                         ]),
@@ -873,7 +1104,7 @@ class _QuranAudioPlayerScreenState extends State<QuranAudioPlayerScreen> {
                             _upNextA?.$2 ?? 'Surah Maryam',
                             _upNextA?.$3 ?? 'Juz 16  •  Page 305',
                             _upNextA?.$4 ?? '98 Ayahs'),
-                        const Divider(color: NoorColors.hairline),
+                        Divider(color: NoorTheme.border(context)),
                         _upNext(
                             _upNextB?.$1 ?? '20',
                             _upNextB?.$2 ?? 'Surah Taha',
@@ -898,96 +1129,70 @@ class _QuranAudioPlayerScreenState extends State<QuranAudioPlayerScreen> {
         onTap: () async {
           final next = active ? 0 : 1;
           setState(() => _repeatMode = next);
-          if (_playerReady) {
-            await _player.setLoopMode(next == 1 ? LoopMode.one : LoopMode.off);
-          }
+          await _reconfigure();
         },
         borderRadius: BorderRadius.circular(24),
-        child: SizedBox(
-          width: 48,
-          height: 62,
-          child: Column(children: [
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+            child: Column(children: [
             Icon(icon,
-                color: active ? NoorColors.gold : Colors.white, size: 22),
+                color: active
+                    ? Theme.of(context).colorScheme.primary
+                    : Theme.of(context).colorScheme.onSurface,
+                size: 22),
             const SizedBox(height: 4),
             Text(label,
                 textAlign: TextAlign.center,
-                style: NoorType.meta.copyWith(color: active ? NoorColors.gold : Colors.white70)),
-          ]),
+                style: NoorType.meta.copyWith(
+                    color: active
+                        ? Theme.of(context).colorScheme.primary
+                        : Theme.of(context).colorScheme.onSurface)),
+            ]),
+          ),
         ),
       ));
-
-  Widget _action(String glyph, String label) => Column(children: [
-        Container(
-          width: 46,
-          height: 46,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: NoorColors.hairline)),
-          child: Text(glyph,
-              style: NoorType.secondary.copyWith(color: NoorColors.emeraldDark)),
-        ),
-        const SizedBox(height: 6),
-        Text(label, style: NoorType.meta),
-      ]);
-
-  Widget _actionIcon(IconData icon, String label, {bool soon = false}) =>
-      Semantics(
-          enabled: !soon,
-          label: soon ? '$label — coming soon' : label,
-          child: Column(children: [
-            Container(
-              width: 46,
-              height: 46,
-              decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: NoorColors.hairline)),
-              child: Icon(icon, color: NoorColors.emeraldDark, size: 21),
-            ),
-            const SizedBox(height: 6),
-            Text(label, style: NoorType.meta),
-            if (soon)
-              Text('Soon',
-                  style: NoorType.meta.copyWith(color: NoorColors.mutedDark)),
-          ]));
 
   Widget _rangeChip(String label, bool on) => Container(
         padding: const EdgeInsets.symmetric(vertical: 11),
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: on ? NoorColors.emeraldDark : Colors.white,
+          color: on ? NoorColors.emeraldDark : NoorTheme.surface(context),
           borderRadius: BorderRadius.circular(12),
-          border: on ? null : Border.all(color: NoorColors.hairline),
+          border: on ? null : Border.all(color: NoorTheme.border(context)),
         ),
         child: Text(label,
-            style: NoorType.secondary.copyWith(color: on ? Colors.white : NoorColors.ink)),
+            style: NoorType.secondary.copyWith(
+                color: on
+                    ? Colors.white
+                    : Theme.of(context).colorScheme.onSurface)),
       );
 
   Widget _stepper(String title, String sub, String value, VoidCallback minus,
           VoidCallback plus) =>
       Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(title,
-            style:
-                NoorType.secondary),
-        Text(sub,
-            style: NoorType.meta.copyWith(color: NoorColors.muted)),
+        Text(title, style: NoorType.secondary),
+        Text(sub, style: NoorType.meta.copyWith(color: NoorTheme.muted(context))),
         const SizedBox(height: 8),
         Container(
           decoration: BoxDecoration(
-              color: Colors.white,
+              color: NoorTheme.surface(context, light: Colors.white),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: NoorColors.hairline)),
+              border: Border.all(color: NoorTheme.border(context))),
           child: Row(children: [
             IconButton(
-                icon: const Icon(Icons.remove, size: 17), onPressed: minus),
+                tooltip: 'Decrease $title',
+                icon: const Icon(Icons.remove, size: 17),
+                onPressed: minus),
             Expanded(
                 child: Text(value,
                     textAlign: TextAlign.center,
                     style: const TextStyle(fontWeight: FontWeight.w700))),
-            IconButton(icon: const Icon(Icons.add, size: 17), onPressed: plus),
+            IconButton(
+                tooltip: 'Increase $title',
+                icon: const Icon(Icons.add, size: 17),
+                onPressed: plus),
           ]),
         ),
       ]);
@@ -1004,24 +1209,22 @@ class _QuranAudioPlayerScreenState extends State<QuranAudioPlayerScreen> {
           width: 34,
           height: 34,
           alignment: Alignment.center,
-          decoration: const BoxDecoration(
-              color: NoorColors.emeraldSoft, shape: BoxShape.circle),
-          child: Text(n,
-              style: NoorType.meta.copyWith(color: NoorColors.emeraldDark)),
+          decoration: BoxDecoration(
+              color: NoorTheme.surface(context, light: NoorColors.emeraldSoft),
+              shape: BoxShape.circle),
+          child: Text(n, style: NoorType.meta.copyWith(color: NoorTheme.muted(context))),
         ),
         const SizedBox(width: 12),
         Expanded(
-            child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-              Text(title,
-                  style: const TextStyle(fontWeight: FontWeight.w700)),
-              Text(meta,
-                  style: NoorType.meta.copyWith(color: NoorColors.muted)),
-            ])),
-        Text(ayahs,
-            style: NoorType.meta.copyWith(color: NoorColors.muted)),
-        const Icon(Icons.more_vert, size: 18, color: NoorColors.muted),
+            child:
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
+          Text(meta, style: NoorType.meta.copyWith(color: NoorTheme.muted(context))),
+        ])),
+        Text(ayahs, style: NoorType.meta.copyWith(color: NoorTheme.muted(context))),
+        ExcludeSemantics(
+            child: Icon(Icons.chevron_right,
+                size: 19, color: NoorTheme.muted(context))),
       ]),
     );
     if (target == null || target == _currentSurah) return row;
@@ -1042,10 +1245,8 @@ class _Stat extends StatelessWidget {
   final String value;
   @override
   Widget build(BuildContext context) => Column(children: [
-        Text(label,
-            style: NoorType.meta.copyWith(color: NoorColors.muted)),
+        Text(label, style: NoorType.meta.copyWith(color: NoorTheme.muted(context))),
         const SizedBox(height: 4),
-        Text(value,
-            style: NoorType.body),
+        Text(value, style: NoorType.body),
       ]);
 }

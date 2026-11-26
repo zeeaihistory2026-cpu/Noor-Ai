@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
@@ -31,6 +32,20 @@ class NoorNotifications {
   static final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();
   static bool _ready = false;
+  static bool _requestedExactPermission = false;
+  static void Function(String?)? onNotificationTap;
+  static String? pendingPayload;
+  static bool _readLaunch = false;
+  @visibleForTesting
+  static void resetForTesting() {
+    _ready = false;
+    _denied = false;
+    _readLaunch = false;
+    _requestedExactPermission = false;
+    pendingPayload = null;
+    onNotificationTap = null;
+  }
+
   static bool _denied = false;
 
   static bool get isSupported => !kIsWeb;
@@ -42,22 +57,34 @@ class NoorNotifications {
 
   static const String prayerChannelId = 'noor_prayer';
   static const String dailyChannelId = 'noor_daily';
+  static const String azanChannelId = 'noor_azan_v1';
 
   /// Initialise plugin + timezone db and request permission.
   /// Returns true only when scheduling is actually possible.
-  static Future<bool> ensureReady() async {
-    if (_ready) return true;
-    if (_denied) return false;
+  static Future<bool> ensureReady({bool requestPermission = true}) async {
+    if (_ready) {
+      if (defaultTargetPlatform != TargetPlatform.android) return true;
+      final android = _plugin.resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin>();
+      if (await android?.areNotificationsEnabled() == true) {
+        _denied = false;
+        await _requestExactIfNeeded(android, requestPermission);
+        return true;
+      }
+      _ready = false;
+    }
     try {
       tz_data.initializeTimeZones();
       try {
         final info = await FlutterTimezone.getLocalTimezone();
         tz.setLocalLocation(tz.getLocation(info.identifier));
       } catch (e) {
-        debugPrint('NoorNotifications: Timezone initialization failed, falling back to UTC: $e');
+        debugPrint(
+            'NoorNotifications: Timezone initialization failed, falling back to UTC: $e');
       }
 
-      const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
+      const androidInit =
+          AndroidInitializationSettings('@drawable/ic_notification');
       const iosInit = DarwinInitializationSettings(
         requestAlertPermission: false,
         requestBadgePermission: false,
@@ -71,40 +98,50 @@ class NoorNotifications {
         macOS: iosInit,
         linux: linuxInit,
       );
-      await _plugin.initialize(settings: settings);
+      await _plugin.initialize(
+          settings: settings,
+          onDidReceiveNotificationResponse: (response) {
+            pendingPayload = response.payload;
+            onNotificationTap?.call(response.payload);
+          });
+      if (!_readLaunch) {
+        _readLaunch = true;
+        final launch = await _plugin.getNotificationAppLaunchDetails();
+        if (launch?.didNotificationLaunchApp == true) {
+          pendingPayload = launch?.notificationResponse?.payload;
+        }
+      }
 
       if (defaultTargetPlatform == TargetPlatform.android) {
         final android = _plugin.resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin>();
-        final granted = await android?.requestNotificationsPermission();
+        final granted = requestPermission
+            ? await android?.requestNotificationsPermission()
+            : await android?.areNotificationsEnabled();
         if (granted == false) {
           _denied = true;
           return false;
         }
         // Exact prayer-time alarms need a separate user grant on
         // Android 14+. Ask once; if refused we fall back to inexact.
-        try {
-          final canExact = await android?.canScheduleExactNotifications();
-          if (canExact == false) {
-            await android?.requestExactAlarmsPermission();
-          }
-        } catch (e) {
-          debugPrint('NoorNotifications: Exact alarm permission request error: $e');
-        }
+        await _requestExactIfNeeded(android, requestPermission);
       } else if (defaultTargetPlatform == TargetPlatform.iOS) {
         final ios = _plugin.resolvePlatformSpecificImplementation<
             IOSFlutterLocalNotificationsPlugin>();
-        final granted = await ios?.requestPermissions(
-          alert: true,
-          badge: true,
-          sound: true,
-        );
+        final granted = !requestPermission
+            ? false
+            : await ios?.requestPermissions(
+                alert: true,
+                badge: true,
+                sound: true,
+              );
         if (granted == false) {
           _denied = true;
           return false;
         }
       }
 
+      _denied = false;
       _ready = true;
       return true;
     } catch (e, st) {
@@ -113,11 +150,43 @@ class NoorNotifications {
     }
   }
 
+  static Future<void> _requestExactIfNeeded(
+      AndroidFlutterLocalNotificationsPlugin? android,
+      bool requestPermission) async {
+    if (!requestPermission || _requestedExactPermission) return;
+    try {
+      if (await android?.canScheduleExactNotifications() == false) {
+        _requestedExactPermission = true;
+        await android?.requestExactAlarmsPermission();
+      }
+    } catch (error) {
+      debugPrint(
+          'Exact-alarm access unavailable; inexact fallback remains active: $error');
+    }
+  }
+
   /// Replaces whatever MuslimGo previously scheduled with [plan]
   /// (from NotificationPlan.buildFullPlan) and returns how many
   /// entries were actually scheduled. Past entries are skipped.
-  static Future<int> schedulePlan(List<PlannedNotification> plan) async {
-    if (!await ensureReady()) return 0;
+  static Future<void> _scheduleQueue = Future.value();
+
+  static Future<int> schedulePlan(List<PlannedNotification> plan,
+      {bool requestPermission = true}) {
+    final completion = Completer<int>();
+    _scheduleQueue = _scheduleQueue.catchError((Object _) {}).then((_) async {
+      try {
+        completion.complete(
+            await _schedulePlan(plan, requestPermission: requestPermission));
+      } catch (e, st) {
+        completion.completeError(e, st);
+      }
+    });
+    return completion.future;
+  }
+
+  static Future<int> _schedulePlan(List<PlannedNotification> plan,
+      {required bool requestPermission}) async {
+    if (!await ensureReady(requestPermission: requestPermission)) return 0;
     try {
       await _plugin.cancelAll();
     } catch (e) {
@@ -155,7 +224,8 @@ class NoorNotifications {
           );
           scheduled++;
         } catch (err) {
-          debugPrint('NoorNotifications: Failed scheduling notification ${entry.id}: $err');
+          debugPrint(
+              'NoorNotifications: Failed scheduling notification ${entry.id}: $err');
         }
       }
     }
@@ -165,54 +235,45 @@ class NoorNotifications {
   /// Specifically schedules alerts for the upcoming next namaz (both lead-time and prayer time).
   static Future<bool> scheduleNextPrayerReminder(NextPrayer next) async {
     if (!await ensureReady()) return false;
+    final when = next.time;
+    final now = DateTime.now();
+    if (!when.isAfter(now)) return false;
+    final entries = <PlannedNotification>[
+      PlannedNotification(
+          id: 9991,
+          title: 'Time for ${next.displayName}',
+          body: 'It is now time for ${next.displayName}.',
+          group: 'Salah',
+          scheduledAt: when,
+          prayerName: next.name),
+      if (when.subtract(const Duration(minutes: 15)).isAfter(now))
+        PlannedNotification(
+            id: 9992,
+            title: '${next.displayName} reminder',
+            body: '${next.displayName} begins in 15 minutes.',
+            group: 'Salah',
+            scheduledAt: when.subtract(const Duration(minutes: 15)),
+            prayerName: next.name),
+    ];
     try {
-      final name = next.displayName;
-      final when = tz.TZDateTime.from(next.time, tz.local);
-      final now = tz.TZDateTime.now(tz.local);
-      if (when.isBefore(now)) return false;
-
-      const details = NotificationDetails(
-        android: AndroidNotificationDetails(
-          prayerChannelId,
-          'Prayer reminders',
-          channelDescription: 'A short reminder before each prayer time',
-          importance: Importance.high,
-          priority: Priority.high,
-        ),
-        iOS: DarwinNotificationDetails(
-          presentAlert: true,
-          presentBadge: true,
-          presentSound: true,
-        ),
-      );
-
-      // 1. Alert at prayer time
-      await _plugin.zonedSchedule(
-        id: 9991,
-        title: 'Time for $name',
-        body: 'It is now time for $name (${next.timeLabel}). Hayya ‘ala-s-Salah.',
-        scheduledDate: when,
-        notificationDetails: details,
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-        payload: 'Salah|$name',
-      );
-
-      // 2. Alert 15 minutes before if still in future
-      final leadWhen = when.subtract(const Duration(minutes: 15));
-      if (leadWhen.isAfter(now)) {
-        await _plugin.zonedSchedule(
-          id: 9992,
-          title: '$name reminder',
-          body: '$name begins in 15 minutes (${next.timeLabel}). Prepare for prayer.',
-          scheduledDate: leadWhen,
-          notificationDetails: details,
-          androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-          payload: 'Salah|$name',
-        );
+      for (final entry in entries) {
+        Future<void> schedule(AndroidScheduleMode mode) =>
+            _plugin.zonedSchedule(
+                id: entry.id,
+                title: entry.title,
+                body: entry.body,
+                scheduledDate: tz.TZDateTime.from(entry.scheduledAt, tz.local),
+                notificationDetails: _detailsFor(entry),
+                androidScheduleMode: mode,
+                payload: 'Salah|${next.name}');
+        try {
+          await schedule(AndroidScheduleMode.exactAllowWhileIdle);
+        } catch (_) {
+          await schedule(AndroidScheduleMode.inexactAllowWhileIdle);
+        }
       }
       return true;
-    } catch (e) {
-      debugPrint('NoorNotifications: scheduleNextPrayerReminder failed: $e');
+    } catch (_) {
       return false;
     }
   }
@@ -224,6 +285,7 @@ class NoorNotifications {
     required String body,
     String? payload,
     bool isSalah = false,
+    bool playAzan = false,
   }) async {
     if (!await ensureReady()) return false;
     try {
@@ -241,7 +303,15 @@ class NoorNotifications {
         presentBadge: true,
         presentSound: true,
       );
-      final details = NotificationDetails(android: android, iOS: ios, macOS: ios);
+      final details = playAzan
+          ? _detailsFor(PlannedNotification(
+              id: id,
+              group: 'Salah',
+              title: 'Time for Azan',
+              body: body,
+              scheduledAt: DateTime.now(),
+              prayerName: 'Azan'))
+          : NotificationDetails(android: android, iOS: ios, macOS: ios);
       await _plugin.show(
         id: id,
         title: title,
@@ -266,14 +336,28 @@ class NoorNotifications {
 
   static NotificationDetails _detailsFor(PlannedNotification entry) {
     final isSalah = entry.group == 'Salah';
+    final isAzan = isSalah && entry.title.startsWith('Time for ');
     final android = AndroidNotificationDetails(
-      isSalah ? prayerChannelId : dailyChannelId,
-      isSalah ? 'Prayer reminders' : 'Daily MuslimGo reminders',
+      isAzan
+          ? azanChannelId
+          : isSalah
+              ? prayerChannelId
+              : dailyChannelId,
+      isAzan
+          ? 'Azan at prayer time'
+          : isSalah
+              ? 'Prayer reminders'
+              : 'Daily MuslimGo reminders',
       channelDescription: isSalah
           ? 'A short reminder before each prayer time'
           : 'Adhkar, Dua and Hadith reminders',
       importance: isSalah ? Importance.high : Importance.defaultImportance,
       priority: isSalah ? Priority.high : Priority.defaultPriority,
+      sound: isAzan ? const RawResourceAndroidNotificationSound('azan') : null,
+      playSound: true,
+      audioAttributesUsage: isAzan
+          ? AudioAttributesUsage.alarm
+          : AudioAttributesUsage.notification,
     );
     const ios = DarwinNotificationDetails(
       presentAlert: true,

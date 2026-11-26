@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import '../../data/sample_data.dart';
 import '../../theme/noor_theme.dart';
 import '../../widgets/noor_components.dart';
+import '../../widgets/quran_resume_card.dart';
+import '../../data/offline_quran.dart';
+import '../../data/daily_content_service.dart';
 import '../library/saved_content_screen.dart';
 import 'quran_audio_player_screen.dart';
 import 'quran_reader_screen.dart';
@@ -23,8 +26,27 @@ class QuranHomeScreen extends StatefulWidget {
 class _QuranHomeScreenState extends State<QuranHomeScreen> {
   int _tab = 0;
 
-  void _openReader() => Navigator.of(context)
-      .push(MaterialPageRoute(builder: (_) => const QuranReaderScreen()));
+  Future<void> _openJuz() async {
+    final juz = await showModalBottomSheet<int>(
+        context: context,
+        builder: (context) => SafeArea(
+              child: ListView(children: [
+                const ListTile(
+                    title: Text('Choose Juz', style: NoorType.cardTitle)),
+                for (var i = 1; i <= 30; i++)
+                  ListTile(
+                      title: Text('Juz $i'),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => Navigator.pop(context, i)),
+              ]),
+            ));
+    if (juz == null) return;
+    final page = await OfflineQuran.pageForJuz(juz);
+    if (!mounted) return;
+    await Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => HifzMushafScreen(initialPage: page)));
+  }
+
   void _openList() => Navigator.of(context)
       .push(MaterialPageRoute(builder: (_) => const SurahListScreen()));
   void _openPlayer() => Navigator.of(context)
@@ -38,17 +60,22 @@ class _QuranHomeScreenState extends State<QuranHomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: ListView(
+    final daily = DailyContentService.getAyah();
+    return Scaffold(
+      backgroundColor: NoorTheme.background(context),
+      body: SafeArea(
+        child: ListView(
         padding: EdgeInsets.zero,
         children: [
           NoorDarkHeader(
             title: 'Quran',
             leading: IconButton(
+                tooltip: 'Search Quran',
                 icon: const Icon(Icons.search, color: Colors.white),
                 onPressed: _openList),
             actions: [
               IconButton(
+                  tooltip: 'Saved content',
                   icon: const Icon(Icons.bookmark_border, color: Colors.white),
                   onPressed: _openSaved),
             ],
@@ -60,6 +87,7 @@ class _QuranHomeScreenState extends State<QuranHomeScreen> {
                   _openSaved();
                 } else {
                   setState(() => _tab = i);
+                  if (i == 1) _openJuz();
                 }
               },
             ),
@@ -79,57 +107,27 @@ class _QuranHomeScreenState extends State<QuranHomeScreen> {
                     borderRadius: BorderRadius.circular(NoorRadius.card),
                     child: AspectRatio(
                       aspectRatio: 454 / 184,
-                      child: Image.asset(NoorAssets.quranBannerVerse,
-                          cacheWidth: 1170,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => Container(
-                              color: NoorColors.cream,
-                              alignment: Alignment.center,
-                              child: const Padding(
-                                padding: EdgeInsets.all(16),
-                                child: Text(SampleData.quranBannerTranslation,
-                                    textAlign: TextAlign.center),
-                              ))),
+                      child: ExcludeSemantics(
+                          child: Image.asset(NoorAssets.quranBannerVerse,
+                              cacheWidth: 1170,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => Container(
+                                  color: NoorTheme.surface(context,
+                                      light: NoorColors.cream),
+                                  alignment: Alignment.center,
+                                  child: const Padding(
+                                    padding: EdgeInsets.all(16),
+                                    child: Text(
+                                        SampleData.quranBannerTranslation,
+                                        textAlign: TextAlign.center),
+                                  )))),
                     ),
                   ),
                 ),
                 const SizedBox(height: 22),
-                _sectionRow('Continue Reading', onViewAll: _openList),
+                _sectionRow('Continue Reading'),
                 const SizedBox(height: 12),
-                NoorCard(
-                  onTap: _openReader,
-                  child: Row(children: [
-                    // Calligraphy roundel cropped from Page 01.
-                    ClipOval(
-                      child: Image.asset(NoorAssets.surahCalligraphy,
-                          width: 54,
-                          cacheWidth: 162,
-                          height: 54,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => Container(
-                              width: 54,
-                              height: 54,
-                              color: NoorColors.emeraldDark)),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(SampleData.continueQuranSurah,
-                                style: NoorType.cardTitle),
-                            const SizedBox(height: 3),
-                            Text(SampleData.continueQuranDetail,
-                                style: NoorType.meta.copyWith(color: NoorColors.muted)),
-                            const SizedBox(height: 3),
-                            Text(SampleData.continueQuranNote,
-                                style: NoorType.meta.copyWith(color: NoorColors.muted)),
-                          ]),
-                    ),
-                    FilledButton(
-                        onPressed: _openReader, child: const Text('Read Now')),
-                  ]),
-                ),
+                const QuranResumeCard(),
                 const SizedBox(height: 22),
                 _sectionRow('Surahs', onViewAll: _openList),
                 const SizedBox(height: 12),
@@ -139,22 +137,25 @@ class _QuranHomeScreenState extends State<QuranHomeScreen> {
                     children: [
                       for (var i = 0; i < 5; i++) ...[
                         if (i > 0)
-                          const Divider(
+                          Divider(
                               height: 1,
                               indent: 16,
                               endIndent: 16,
-                              color: NoorColors.hairlineSoft),
+                              color: NoorTheme.border(context)),
                         _surahRow(SampleData.surahs[i],
-                            bookmarked: i == 1, onTap: _openReader),
+                            onTap: () => Navigator.of(context).push(
+                                MaterialPageRoute(
+                                    builder: (_) => QuranReaderScreen(
+                                        surah: SampleData.surahs[i].$1)))),
                       ],
                     ],
                   ),
                 ),
                 const SizedBox(height: 16),
                 NoorCard(
-                  onTap: _openPlayer,
                   child: Row(children: [
-                    ClipRRect(
+                    ExcludeSemantics(
+                        child: ClipRRect(
                       borderRadius: BorderRadius.circular(16),
                       child: Image.asset(NoorAssets.quranRehal,
                           width: 76,
@@ -164,8 +165,8 @@ class _QuranHomeScreenState extends State<QuranHomeScreen> {
                           errorBuilder: (_, __, ___) => Container(
                               width: 76,
                               height: 76,
-                              color: NoorColors.emeraldSoft)),
-                    ),
+                              color: NoorTheme.softSurface(context))),
+                    )),
                     const SizedBox(width: 14),
                     Expanded(
                       child: Column(
@@ -176,7 +177,8 @@ class _QuranHomeScreenState extends State<QuranHomeScreen> {
                             const SizedBox(height: 4),
                             Text(
                                 'Listen to beautiful recitations by renowned Qaris.',
-                                style: NoorType.meta.copyWith(color: NoorColors.muted,
+                                style: NoorType.meta.copyWith(
+                                    color: NoorTheme.muted(context),
                                     height: 1.45)),
                             const SizedBox(height: 10),
                             FilledButton.icon(
@@ -200,19 +202,21 @@ class _QuranHomeScreenState extends State<QuranHomeScreen> {
                         const SizedBox(height: 14),
                         Center(
                           child: Text(
-                            'وَاذْكُر رَّبَّكَ إِذَا نَسِيتَ',
+                            daily.arabic,
                             textDirection: TextDirection.rtl,
-                            style: NoorType.screenTitle.copyWith(color: NoorColors.emeraldDark),
+                            style: NoorType.arabic(
+                                size: 24, color: NoorTheme.accent(context)),
                           ),
                         ),
                         const SizedBox(height: 8),
-                        const Center(
-                            child: Text(SampleData.dailyVerseTranslation,
+                        Center(
+                            child: Text(daily.translation,
                                 style: NoorType.secondary)),
                         const SizedBox(height: 5),
                         Center(
-                            child: Text(SampleData.dailyVerseSource,
-                                style: NoorType.meta.copyWith(color: NoorColors.muted))),
+                            child: Text(daily.reference,
+                                style: NoorType.meta
+                                    .copyWith(color: NoorTheme.muted(context)))),
                       ]),
                 ),
                 const SizedBox(height: 16),
@@ -255,7 +259,8 @@ class _QuranHomeScreenState extends State<QuranHomeScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text('Quick Actions',
-                            style: NoorType.cardTitle.copyWith(color: Colors.white)),
+                            style: NoorType.cardTitle
+                                .copyWith(color: Colors.white)),
                         const SizedBox(height: 14),
                         Row(children: [
                           _quickAction(Icons.search, 'Search', _openList),
@@ -272,26 +277,32 @@ class _QuranHomeScreenState extends State<QuranHomeScreen> {
           ),
         ],
       ),
+      ),
     );
   }
 
   Widget _sectionRow(String title, {VoidCallback? onViewAll}) => Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(title,
-              style:
-                  NoorType.cardTitle),
+          Expanded(
+              child: Semantics(
+                  header: true,
+                  child: Text(title, style: NoorType.cardTitle))),
           if (onViewAll != null)
-            Semantics(button: true, child: GestureDetector(
-              onTap: onViewAll,
-              child: Text('View All',
-                  style: NoorType.secondary.copyWith(color: NoorColors.emerald)),
-            )),
+            TextButton(
+              onPressed: onViewAll,
+              style: TextButton.styleFrom(
+                minimumSize: const Size(48, 48),
+                foregroundColor: NoorTheme.accent(context),
+                textStyle: NoorType.secondary,
+              ),
+              child: const Text('View All'),
+            ),
         ],
       );
 
   Widget _surahRow((int, String, String, int, int, String) s,
-          {required bool bookmarked, required VoidCallback onTap}) =>
+          {required VoidCallback onTap}) =>
       InkWell(
         onTap: onTap,
         child: Padding(
@@ -301,50 +312,60 @@ class _QuranHomeScreenState extends State<QuranHomeScreen> {
               width: 34,
               height: 34,
               alignment: Alignment.center,
-              decoration: const BoxDecoration(
-                  color: NoorColors.emeraldSoft, shape: BoxShape.circle),
+              decoration: BoxDecoration(
+                  color: NoorTheme.softSurface(context),
+                  shape: BoxShape.circle),
               child: Text('${s.$1}',
-                  style: NoorType.secondary.copyWith(color: NoorColors.emeraldDark)),
+                  style: NoorType.secondary
+                      .copyWith(color: NoorTheme.accent(context))),
             ),
             const SizedBox(width: 13),
             Expanded(
-              child: Text(s.$2,
-                  style: NoorType.body),
+              child: Text(s.$2, style: NoorType.body),
             ),
             Expanded(
               child: Text(s.$3,
-                  style:
-                      NoorType.meta.copyWith(color: NoorColors.muted)),
+                  style: NoorType.meta
+                      .copyWith(color: NoorTheme.muted(context))),
             ),
             Text('${s.$4} Verses',
-                style: NoorType.meta.copyWith(color: NoorColors.muted)),
+                style: NoorType.meta.copyWith(color: NoorTheme.muted(context))),
             const SizedBox(width: 10),
-            Icon(bookmarked ? Icons.bookmark : Icons.bookmark_border,
-                size: 19,
-                color: bookmarked ? NoorColors.emerald : NoorColors.muted),
+            ExcludeSemantics(
+                child: Icon(Icons.chevron_right,
+                    size: 19, color: NoorTheme.muted(context))),
           ]),
         ),
       );
 
   Widget _quickAction(IconData icon, String label, VoidCallback onTap) =>
       Expanded(
-        child: Semantics(button: true, child: GestureDetector(
-          onTap: onTap,
-          child: Column(children: [
-            Container(
-              width: 52,
-              height: 52,
-              decoration: BoxDecoration(
-                color: Colors.white12,
+        child: Semantics(
+            button: true,
+            label: label,
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: onTap,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.white24),
-              ),
-              child: Icon(icon, color: Colors.white, size: 22),
+              child: ConstrainedBox(
+                  constraints:
+                      const BoxConstraints(minWidth: 48, minHeight: 48),
+                  child: Column(children: [
+                Container(
+                  width: 52,
+                  height: 52,
+                  decoration: BoxDecoration(
+                    color: Colors.white12,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.white24),
+                  ),
+                  child: Icon(icon, color: Colors.white, size: 22),
+                ),
+                const SizedBox(height: 7),
+                Text(label, style: NoorType.meta.copyWith(color: Colors.white)),
+              ])),
+            )),
             ),
-            const SizedBox(height: 7),
-            Text(label,
-                style: NoorType.meta.copyWith(color: Colors.white)),
-          ]),
-        )),
       );
 }

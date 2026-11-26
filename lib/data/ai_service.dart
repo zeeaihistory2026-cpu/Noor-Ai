@@ -82,7 +82,7 @@ class LocalAiService implements AiService {
       return const AiAnswer(
         text: 'Consistency in Salah grows from fixed anchors: pray '
             'on time, keep wudu early, and review your day in the '
-            'Salah Tracker. Sources can be opened from Page 24.',
+            'Salah Tracker. Sources can be opened via Show sources.',
         sourceRefs: ['Quran 29:45', 'Sahih al-Bukhari 527'],
         isSample: true,
       );
@@ -91,7 +91,7 @@ class LocalAiService implements AiService {
       return const AiAnswer(
         text: 'Morning and evening adhkar are a daily protection '
             'and remembrance routine. Open the Dua & Adhkar Library '
-            '(Page 18) for the categories drawn in your design.',
+            'for the categories drawn in your design.',
         sourceRefs: [SampleData.duaSource],
         isSample: true,
       );

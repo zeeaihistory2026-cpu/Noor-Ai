@@ -1,176 +1,112 @@
 import 'package:flutter/material.dart';
-import '../../data/daily_content_service.dart';
-import '../../data/sample_data.dart';
+import '../../data/location_service.dart';
+import '../../data/noor_controller.dart';
+import '../../data/noor_store.dart';
+import '../../data/notification_plan.dart';
+import '../../data/prayer_service.dart';
 import '../../theme/noor_theme.dart';
-import '../../widgets/noor_share_card.dart';
 import '../worship/reminder_center_screen.dart';
-import '../quran/quran_audio_player_screen.dart';
-import '../quran/hifz_mushaf_screen.dart';
+import '../worship/salah_tracker_screen.dart';
+import '../worship/zikr_tasbih_screen.dart';
 import 'ayat_of_the_day_screen.dart';
-import 'hadith_of_the_day_screen.dart';
 import 'dua_of_the_day_screen.dart';
+import 'hadith_of_the_day_screen.dart';
 
-/// Page 35 — Notifications. Emerald header, Today group
-/// (Fajr reminder / Daily Dua / Quran) and Earlier group
-/// (Hifz plan / Hadith / AI insight) outline cards with pale
-/// initial circles, exactly as drawn.
-class NotificationsScreen extends StatelessWidget {
+class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
   @override
-  Widget build(BuildContext context) {
-    final todayAyah = DailyContentService.getAyahOfDay();
-    final todayHadith = DailyContentService.getHadithOfDay();
-    final todayDua = DailyContentService.getDuaOfDay();
-
-    final notifToday = [
-      ('Fajr reminder', 'Fajr begins in 15 minutes. Prepare for prayer.', 'F'),
-      ('Ayat of the Day', '“${todayAyah.translation}” (${todayAyah.surahReference})', 'A'),
-      ('Daily Zikr', 'Take a peaceful moment for SubhanAllah, Alhamdulillah & Allahu Akbar.', 'Z'),
-      ('Daily Dua', '“${todayDua.transliteration}” - ${todayDua.translation}', 'D'),
-      ('Hadith of the Day', '“${todayHadith.translation}” (${todayHadith.source})', 'H'),
-      ('Quote of the Day', '“Patience is not the ability to wait, but how you act while waiting.”', 'Q'),
-      ('Quran', 'Continue Surah Al-Kahf from Ayah 18.', 'Q'),
-    ];
-
-    return Scaffold(
-        backgroundColor: NoorColors.cream,
-        body: SafeArea(
-            child: Column(children: [
-          NoorPlainHeader(title: 'Notifications', moreActions: [
-            (
-              Icons.tune,
-              'Notification settings',
-              () => Navigator.of(context).push(MaterialPageRoute(
-                  builder: (_) => const ReminderCenterScreen()))
-            ),
-          ]),
-          Expanded(
-              child: ListView(
-                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
-                  children: [
-                const Text('Today',
-                    style:
-                        NoorType.cardTitle),
-                const SizedBox(height: 12),
-                for (var i = 0; i < notifToday.length; i++)
-                  _row(
-                    context,
-                    notifToday[i],
-                    time: _timeForIndex(i),
-                    unread: i < 2,
-                  ),
-                const SizedBox(height: 20),
-                const Text('Earlier',
-                    style:
-                        NoorType.cardTitle),
-                const SizedBox(height: 12),
-                for (var i = 0; i < SampleData.notifEarlier.length; i++)
-                  _row(
-                    context,
-                    SampleData.notifEarlier[i],
-                    time: _earlierTimeForIndex(i),
-                  ),
-              ])),
-        ])),
-      );
-  }
-
-  static String _timeForIndex(int i) {
-    const times = [
-      '5:21 AM',
-      '6:00 AM',
-      '7:15 AM',
-      '8:00 AM',
-      '12:00 PM',
-      '4:00 PM',
-      '6:30 PM',
-    ];
-    return i < times.length ? times[i] : 'Today';
-  }
-
-  static String _earlierTimeForIndex(int i) {
-    const times = ['Yesterday', 'Yesterday', '2 days ago', '3 days ago'];
-    return i < times.length ? times[i] : 'Earlier';
-  }
-
-  Widget _row(BuildContext context, (String, String, String) n,
-          {String time = '', bool unread = false}) =>
-      Padding(
-        padding: const EdgeInsets.only(bottom: 10),
-        child: Material(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(NoorRadius.card),
-          child: InkWell(
-            onTap: () => _handleTap(context, n.$1),
-            borderRadius: BorderRadius.circular(NoorRadius.card),
-            child: Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(NoorRadius.card),
-                    border: Border.all(color: NoorColors.hairline)),
-                child: Row(children: [
-                  CircleAvatar(
-                      radius: 21,
-                      backgroundColor: NoorColors.emeraldSoft,
-                      child: Icon(_iconFor(n.$1),
-                          color: NoorColors.emeraldDark, size: 20)),
-                  const SizedBox(width: 14),
-                  Expanded(
-                      child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                        Row(children: [
-                          Expanded(
-                              child: Text(n.$1,
-                                  style: NoorType.body)),
-                          if (unread)
-                            Container(
-                                width: 8,
-                                height: 8,
-                                decoration: const BoxDecoration(
-                                    color: NoorColors.goldDeep,
-                                    shape: BoxShape.circle))
-                        ]),
-                        const SizedBox(height: 3),
-                        Text(n.$2, style: NoorType.secondary),
-                        const SizedBox(height: 4),
-                        Text(time, style: NoorType.meta),
-                      ])),
-                ])),
-          ),
-        ),
-      );
-
-  void _handleTap(BuildContext context, String title) {
-    if (title.contains('reminder') || title.contains('Salah') || title.contains('Fajr') || title.contains('Zikr')) {
-      Navigator.of(context).push(MaterialPageRoute(builder: (_) => const ReminderCenterScreen()));
-    } else if (title.contains('Ayat')) {
-      Navigator.of(context).push(MaterialPageRoute(builder: (_) => const AyatOfTheDayScreen()));
-    } else if (title.contains('Hadith')) {
-      Navigator.of(context).push(MaterialPageRoute(builder: (_) => const HadithOfTheDayScreen()));
-    } else if (title.contains('Dua')) {
-      Navigator.of(context).push(MaterialPageRoute(builder: (_) => const DuaOfTheDayScreen()));
-    } else if (title.contains('Quran')) {
-      Navigator.of(context).push(MaterialPageRoute(builder: (_) => const QuranAudioPlayerScreen()));
-    } else if (title.contains('Hifz')) {
-      Navigator.of(context).push(MaterialPageRoute(builder: (_) => const HifzMushafScreen()));
-    }
-  }
+  State<NotificationsScreen> createState() => _NotificationsScreenState();
 }
 
-IconData _iconFor(String title) => switch (title) {
-      'Fajr reminder' ||
-      'Dhuhr reminder' ||
-      'Asr reminder' ||
-      'Maghrib reminder' ||
-      'Isha reminder' =>
-        Icons.alarm_outlined,
-      'Ayat of the Day' => Icons.auto_stories_outlined,
-      'Daily Zikr' || 'Daily Zikr & Tasbih' => Icons.fingerprint_rounded,
-      'Daily Dua' || 'Dua of the Day' => Icons.pan_tool_outlined,
-      'Quran' => Icons.menu_book_outlined,
-      'Hifz plan' => Icons.school_outlined,
-      'Hadith' || 'Hadith of the Day' => Icons.bookmark_border_outlined,
-      'Quote of the Day' => Icons.format_quote_rounded,
-      _ => Icons.lightbulb_outline,
+class _NotificationsScreenState extends State<NotificationsScreen> {
+  late Future<List<PlannedNotification>> _plan;
+  @override
+  void initState() {
+    super.initState();
+    _plan = _load();
+  }
+
+  Future<List<PlannedNotification>> _load() async {
+    final location = await LocationService().getSavedLocation();
+    final method = await NoorStore.getCalculationMethod();
+    final school = await NoorStore.getMadhhab() == 'Hanafi' ? 1 : 0;
+    final day = PrayerService.calculateOffline(
+        location: location,
+        date: PrayerService.nowInLocation(location),
+        method: method,
+        school: school);
+    final days = await PrayerService().upcomingDays(today: day, count: 2);
+    return NotificationPlan.buildUpcomingPlan(
+            days: days, toggles: await NoorStore.getAllReminderToggles())
+        .take(30)
+        .toList();
+  }
+
+  void _open(PlannedNotification entry) {
+    final Widget page = switch (entry.prayerName) {
+      'Ayat of the Day' => const AyatOfTheDayScreen(),
+      'Dua of the Day' => const DuaOfTheDayScreen(),
+      'Hadith of the Day' => const HadithOfTheDayScreen(),
+      'Morning Adhkar' ||
+      'Evening Adhkar' =>
+        const ZikrTasbihScreen(initialTab: 1),
+      'Daily Zikr & Tasbih' => const ZikrTasbihScreen(),
+      _ => const SalahTrackerScreen(),
     };
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) => page));
+  }
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+        appBar: AppBar(title: const Text('Notifications'), actions: [
+          IconButton(
+              tooltip: 'Reminder settings',
+              icon: const Icon(Icons.tune),
+              onPressed: () async {
+                await Navigator.of(context).push(MaterialPageRoute(
+                    builder: (_) => const ReminderCenterScreen()));
+                if (mounted) setState(() => _plan = _load());
+              })
+        ]),
+        body: FutureBuilder<List<PlannedNotification>>(
+            future: _plan,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState != ConnectionState.done) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (snapshot.hasError) {
+                return Center(
+                    child: TextButton(
+                        onPressed: () => setState(() => _plan = _load()),
+                        child: const Text('Couldn’t load reminders. Retry')));
+              }
+              final entries = snapshot.data ?? [];
+              final zone = PrayerService.zoneFor(
+                  NoorScope.of(context)?.currentLocation.timeZone);
+              return ListView(padding: const EdgeInsets.all(20), children: [
+                const Text('Upcoming reminders', style: NoorType.screenTitle),
+                const SizedBox(height: 8),
+                const Text(
+                    'This is your reminder plan. Delivery and sound depend on notification and alarm permissions; review them in Reminder settings.',
+                    style: NoorType.secondary),
+                const SizedBox(height: 20),
+                if (entries.isEmpty)
+                  const Text(
+                      'All reminders are off. Enable the ones you want in Reminder settings.'),
+                for (final entry in entries)
+                  Card(
+                      child: ListTile(
+                    leading: Icon(entry.group == 'Salah'
+                        ? Icons.mosque_outlined
+                        : Icons.auto_stories_outlined),
+                    title: Text(entry.title),
+                    subtitle: Text(
+                        '${entry.body}\n${entry.scheduledAt.day}/${entry.scheduledAt.month} · ${PrayerService.formatTime(entry.scheduledAt)}${zone == null ? '' : ' · ${zone.name}'}'),
+                    isThreeLine: true,
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => _open(entry),
+                  )),
+              ]);
+            }),
+      );
+}

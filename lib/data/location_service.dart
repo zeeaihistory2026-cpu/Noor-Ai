@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 
 import '../theme/noor_theme.dart';
@@ -12,6 +13,9 @@ class LocationModel {
     required this.latitude,
     required this.longitude,
     this.isLive = false,
+    this.timeZone,
+    this.locationSource = 'city',
+    this.accuracyMeters,
   });
 
   final String city;
@@ -19,8 +23,19 @@ class LocationModel {
   final double latitude;
   final double longitude;
   final bool isLive;
+  final String? timeZone;
+  final String locationSource;
+  final double? accuracyMeters;
 
-  String get label => '$city, $country';
+  String get sourceLabel => locationSource == 'device'
+      ? 'Device location'
+      : locationSource == 'ip'
+          ? 'Approximate network location'
+          : 'Selected city';
+
+  String get label => locationSource == 'device' && city == 'Current location'
+      ? 'Current location (GPS)'
+      : '$city, $country';
 
   Map<String, dynamic> toJson() => {
         'city': city,
@@ -28,6 +43,9 @@ class LocationModel {
         'latitude': latitude,
         'longitude': longitude,
         'isLive': isLive,
+        'timeZone': timeZone,
+        'locationSource': locationSource,
+        'accuracyMeters': accuracyMeters,
       };
 
   factory LocationModel.fromJson(Map<String, dynamic> json) => LocationModel(
@@ -36,6 +54,10 @@ class LocationModel {
         latitude: (json['latitude'] as num?)?.toDouble() ?? 24.8608,
         longitude: (json['longitude'] as num?)?.toDouble() ?? 67.0011,
         isLive: json['isLive'] as bool? ?? false,
+        timeZone: json['timeZone'] as String?,
+        locationSource: json['locationSource'] as String? ??
+            (json['isLive'] == true ? 'ip' : 'city'),
+        accuracyMeters: (json['accuracyMeters'] as num?)?.toDouble(),
       );
 
   static const LocationModel defaultLocation = LocationModel(
@@ -44,6 +66,7 @@ class LocationModel {
     latitude: 24.8608,
     longitude: 67.0011,
     isLive: false,
+    timeZone: 'Asia/Karachi',
   );
 }
 
@@ -51,6 +74,16 @@ class LocationService {
   LocationService({http.Client? client}) : _client = client ?? http.Client();
 
   final http.Client _client;
+
+  Future<LocationModel> fetchDeviceLocation() async {
+    final value = await const MethodChannel('com.noorai.com/location')
+        .invokeMapMethod<String, dynamic>('currentLocation')
+        .timeout(const Duration(seconds: 35));
+    if (value == null) throw StateError('Device location unavailable');
+    final model = LocationModel.fromJson(value);
+    await saveLocation(model);
+    return model;
+  }
 
   /// Detects real live location via secure IP-based geolocation.
   /// Works across Android, iOS, Windows, and Web with zero native permissions or GPS popups required.
@@ -73,6 +106,8 @@ class LocationService {
               latitude: lat,
               longitude: lon,
               isLive: true,
+              timeZone: (data['timezone'] as Map?)?['id']?.toString(),
+              locationSource: 'ip',
             );
             await saveLocation(model);
             return model;
@@ -100,6 +135,8 @@ class LocationService {
             latitude: lat,
             longitude: lon,
             isLive: true,
+            timeZone: data['timezone']?.toString(),
+            locationSource: 'ip',
           );
           await saveLocation(model);
           return model;
@@ -120,7 +157,9 @@ class LocationService {
   }
 
   /// Gets the currently saved location, or returns default Karachi.
-  Future<LocationModel> getSavedLocation() async {
+  Future<LocationModel> getSavedLocation() => _readSavedLocation();
+
+  static Future<LocationModel> _readSavedLocation() async {
     try {
       final raw = await NoorStore.cachedJson('location.current');
       if (raw != null && raw.isNotEmpty) {
@@ -131,17 +170,13 @@ class LocationService {
       final country = await NoorStore.getCountry();
       // Match from curated list if coordinates exist
       for (final c in popularCities) {
-        if (c.city.toLowerCase() == city.toLowerCase()) {
+        if (c.city.toLowerCase() == city.toLowerCase() &&
+            c.country.toLowerCase() == country.toLowerCase()) {
           return c;
         }
       }
-      return LocationModel(
-        city: city,
-        country: country,
-        latitude: LocationModel.defaultLocation.latitude,
-        longitude: LocationModel.defaultLocation.longitude,
-        isLive: false,
-      );
+      // Do not label Karachi coordinates as an unknown legacy city.
+      return LocationModel.defaultLocation;
     } catch (_) {
       return LocationModel.defaultLocation;
     }
@@ -149,33 +184,153 @@ class LocationService {
 
   /// Popular cities for quick selection
   static const List<LocationModel> popularCities = [
-    LocationModel(city: 'Karachi', country: 'Pakistan', latitude: 24.8608, longitude: 67.0011),
-    LocationModel(city: 'Lahore', country: 'Pakistan', latitude: 31.5204, longitude: 74.3587),
-    LocationModel(city: 'Islamabad', country: 'Pakistan', latitude: 33.6844, longitude: 73.0479),
-    LocationModel(city: 'Rawalpindi', country: 'Pakistan', latitude: 33.5651, longitude: 73.0169),
-    LocationModel(city: 'Faisalabad', country: 'Pakistan', latitude: 31.4504, longitude: 73.1350),
-    LocationModel(city: 'Multan', country: 'Pakistan', latitude: 30.1575, longitude: 71.5249),
-    LocationModel(city: 'Peshawar', country: 'Pakistan', latitude: 34.0151, longitude: 71.5249),
-    LocationModel(city: 'Quetta', country: 'Pakistan', latitude: 30.1798, longitude: 66.9750),
-    LocationModel(city: 'Makkah', country: 'Saudi Arabia', latitude: 21.4225, longitude: 39.8262),
-    LocationModel(city: 'Madinah', country: 'Saudi Arabia', latitude: 24.5247, longitude: 39.5692),
-    LocationModel(city: 'Riyadh', country: 'Saudi Arabia', latitude: 24.7136, longitude: 46.6753),
-    LocationModel(city: 'Jeddah', country: 'Saudi Arabia', latitude: 21.5433, longitude: 39.1728),
-    LocationModel(city: 'Dubai', country: 'United Arab Emirates', latitude: 25.2048, longitude: 55.2708),
-    LocationModel(city: 'Abu Dhabi', country: 'United Arab Emirates', latitude: 24.4539, longitude: 54.3773),
-    LocationModel(city: 'Doha', country: 'Qatar', latitude: 25.2854, longitude: 51.5310),
-    LocationModel(city: 'Istanbul', country: 'Turkey', latitude: 41.0082, longitude: 28.9784),
-    LocationModel(city: 'Cairo', country: 'Egypt', latitude: 30.0444, longitude: 31.2357),
-    LocationModel(city: 'London', country: 'United Kingdom', latitude: 51.5074, longitude: -0.1278),
-    LocationModel(city: 'Birmingham', country: 'United Kingdom', latitude: 52.4862, longitude: -1.8904),
-    LocationModel(city: 'New York', country: 'United States', latitude: 40.7128, longitude: -74.0060),
-    LocationModel(city: 'Toronto', country: 'Canada', latitude: 43.6532, longitude: -79.3832),
-    LocationModel(city: 'Kuala Lumpur', country: 'Malaysia', latitude: 3.1390, longitude: 101.6869),
-    LocationModel(city: 'Jakarta', country: 'Indonesia', latitude: -6.2088, longitude: 106.8456),
-    LocationModel(city: 'Dhaka', country: 'Bangladesh', latitude: 23.8103, longitude: 90.4125),
+    LocationModel(
+        city: 'Karachi',
+        country: 'Pakistan',
+        latitude: 24.8608,
+        longitude: 67.0011,
+        timeZone: 'Asia/Karachi'),
+    LocationModel(
+        city: 'Lahore',
+        country: 'Pakistan',
+        latitude: 31.5204,
+        longitude: 74.3587,
+        timeZone: 'Asia/Karachi'),
+    LocationModel(
+        city: 'Islamabad',
+        country: 'Pakistan',
+        latitude: 33.6844,
+        longitude: 73.0479,
+        timeZone: 'Asia/Karachi'),
+    LocationModel(
+        city: 'Rawalpindi',
+        country: 'Pakistan',
+        latitude: 33.5651,
+        longitude: 73.0169,
+        timeZone: 'Asia/Karachi'),
+    LocationModel(
+        city: 'Faisalabad',
+        country: 'Pakistan',
+        latitude: 31.4504,
+        longitude: 73.1350,
+        timeZone: 'Asia/Karachi'),
+    LocationModel(
+        city: 'Multan',
+        country: 'Pakistan',
+        latitude: 30.1575,
+        longitude: 71.5249,
+        timeZone: 'Asia/Karachi'),
+    LocationModel(
+        city: 'Peshawar',
+        country: 'Pakistan',
+        latitude: 34.0151,
+        longitude: 71.5249,
+        timeZone: 'Asia/Karachi'),
+    LocationModel(
+        city: 'Quetta',
+        country: 'Pakistan',
+        latitude: 30.1798,
+        longitude: 66.9750,
+        timeZone: 'Asia/Karachi'),
+    LocationModel(
+        city: 'Makkah',
+        country: 'Saudi Arabia',
+        latitude: 21.4225,
+        longitude: 39.8262,
+        timeZone: 'Asia/Riyadh'),
+    LocationModel(
+        city: 'Madinah',
+        country: 'Saudi Arabia',
+        latitude: 24.5247,
+        longitude: 39.5692,
+        timeZone: 'Asia/Riyadh'),
+    LocationModel(
+        city: 'Riyadh',
+        country: 'Saudi Arabia',
+        latitude: 24.7136,
+        longitude: 46.6753,
+        timeZone: 'Asia/Riyadh'),
+    LocationModel(
+        city: 'Jeddah',
+        country: 'Saudi Arabia',
+        latitude: 21.5433,
+        longitude: 39.1728,
+        timeZone: 'Asia/Riyadh'),
+    LocationModel(
+        city: 'Dubai',
+        country: 'United Arab Emirates',
+        latitude: 25.2048,
+        longitude: 55.2708,
+        timeZone: 'Asia/Dubai'),
+    LocationModel(
+        city: 'Abu Dhabi',
+        country: 'United Arab Emirates',
+        latitude: 24.4539,
+        longitude: 54.3773,
+        timeZone: 'Asia/Dubai'),
+    LocationModel(
+        city: 'Doha',
+        country: 'Qatar',
+        latitude: 25.2854,
+        longitude: 51.5310,
+        timeZone: 'Asia/Qatar'),
+    LocationModel(
+        city: 'Istanbul',
+        country: 'Turkey',
+        latitude: 41.0082,
+        longitude: 28.9784,
+        timeZone: 'Europe/Istanbul'),
+    LocationModel(
+        city: 'Cairo',
+        country: 'Egypt',
+        latitude: 30.0444,
+        longitude: 31.2357,
+        timeZone: 'Africa/Cairo'),
+    LocationModel(
+        city: 'London',
+        country: 'United Kingdom',
+        latitude: 51.5074,
+        longitude: -0.1278,
+        timeZone: 'Europe/London'),
+    LocationModel(
+        city: 'Birmingham',
+        country: 'United Kingdom',
+        latitude: 52.4862,
+        longitude: -1.8904,
+        timeZone: 'Europe/London'),
+    LocationModel(
+        city: 'New York',
+        country: 'United States',
+        latitude: 40.7128,
+        longitude: -74.0060,
+        timeZone: 'America/New_York'),
+    LocationModel(
+        city: 'Toronto',
+        country: 'Canada',
+        latitude: 43.6532,
+        longitude: -79.3832,
+        timeZone: 'America/Toronto'),
+    LocationModel(
+        city: 'Kuala Lumpur',
+        country: 'Malaysia',
+        latitude: 3.1390,
+        longitude: 101.6869,
+        timeZone: 'Asia/Kuala_Lumpur'),
+    LocationModel(
+        city: 'Jakarta',
+        country: 'Indonesia',
+        latitude: -6.2088,
+        longitude: 106.8456,
+        timeZone: 'Asia/Jakarta'),
+    LocationModel(
+        city: 'Dhaka',
+        country: 'Bangladesh',
+        latitude: 23.8103,
+        longitude: 90.4125,
+        timeZone: 'Asia/Dhaka'),
   ];
 
-  static Future<LocationModel> getCachedLocation() => LocationService().getSavedLocation();
+  static Future<LocationModel> getCachedLocation() => _readSavedLocation();
 
   /// Displays an interactive modal sheet allowing the user to detect live location
   /// or pick any city.
@@ -208,7 +363,15 @@ class _LocationPickerSheetState extends State<_LocationPickerSheet> {
   Future<void> _detectLiveLocation() async {
     setState(() => _detecting = true);
     final service = LocationService();
-    final result = await service.fetchLiveLocation();
+    LocationModel? result;
+    String? error;
+    try {
+      result = await service.fetchDeviceLocation();
+    } catch (e) {
+      error = e is PlatformException
+          ? e.message
+          : 'Could not get a fresh device location. Please select your city.';
+    }
     if (!mounted) return;
     setState(() => _detecting = false);
     if (result != null) {
@@ -222,8 +385,9 @@ class _LocationPickerSheetState extends State<_LocationPickerSheet> {
       Navigator.of(context).pop(result);
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Could not auto-detect location. Please select your city below.'),
+        SnackBar(
+          content: Text(error ??
+              'Could not auto-detect location. Please select your city below.'),
           backgroundColor: Colors.redAccent,
         ),
       );
@@ -236,7 +400,8 @@ class _LocationPickerSheetState extends State<_LocationPickerSheet> {
     final filtered = LocationService.popularCities.where((c) {
       if (_search.isEmpty) return true;
       final q = _search.toLowerCase();
-      return c.city.toLowerCase().contains(q) || c.country.toLowerCase().contains(q);
+      return c.city.toLowerCase().contains(q) ||
+          c.country.toLowerCase().contains(q);
     }).toList();
 
     return Container(
@@ -268,7 +433,9 @@ class _LocationPickerSheetState extends State<_LocationPickerSheet> {
                     child: Text(
                       'Select Location',
                       style: NoorType.screenTitle.copyWith(
-                        color: isDark ? NoorColors.darkTextPrimary : NoorColors.ink,
+                        color: isDark
+                            ? NoorColors.darkTextPrimary
+                            : NoorColors.ink,
                       ),
                     ),
                   ),
@@ -297,7 +464,8 @@ class _LocationPickerSheetState extends State<_LocationPickerSheet> {
                     borderRadius: BorderRadius.circular(16),
                     onTap: _detecting ? null : _detectLiveLocation,
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 14),
                       child: Row(
                         children: [
                           Container(
@@ -318,7 +486,8 @@ class _LocationPickerSheetState extends State<_LocationPickerSheet> {
                                       ),
                                     ),
                                   )
-                                : const Icon(Icons.my_location, color: Colors.white, size: 20),
+                                : const Icon(Icons.my_location,
+                                    color: Colors.white, size: 20),
                           ),
                           const SizedBox(width: 14),
                           Expanded(
@@ -326,14 +495,16 @@ class _LocationPickerSheetState extends State<_LocationPickerSheet> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  _detecting ? 'Detecting your location...' : 'Use Live Location',
+                                  _detecting
+                                      ? 'Detecting your location...'
+                                      : 'Use device location',
                                   style: NoorType.cardTitle.copyWith(
                                     color: Colors.white,
                                   ),
                                 ),
                                 const SizedBox(height: 2),
                                 Text(
-                                  'Auto-detect city & prayer times via network',
+                                  'Use GPS for prayer times at your location',
                                   style: NoorType.meta.copyWith(
                                     color: Colors.white.withValues(alpha: 0.8),
                                   ),
@@ -341,7 +512,8 @@ class _LocationPickerSheetState extends State<_LocationPickerSheet> {
                               ],
                             ),
                           ),
-                          const Icon(Icons.arrow_forward_ios, color: Colors.white, size: 14),
+                          const Icon(Icons.arrow_forward_ios,
+                              color: Colors.white, size: 14),
                         ],
                       ),
                     ),
@@ -370,17 +542,20 @@ class _LocationPickerSheetState extends State<_LocationPickerSheet> {
                       : null,
                   filled: true,
                   fillColor: isDark ? NoorColors.darkSurface : NoorColors.cream,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
                     borderSide: BorderSide(
-                      color: isDark ? NoorColors.darkBorder : NoorColors.hairline,
+                      color:
+                          isDark ? NoorColors.darkBorder : NoorColors.hairline,
                     ),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
                     borderSide: BorderSide(
-                      color: isDark ? NoorColors.darkBorder : NoorColors.hairline,
+                      color:
+                          isDark ? NoorColors.darkBorder : NoorColors.hairline,
                     ),
                   ),
                 ),
@@ -399,34 +574,51 @@ class _LocationPickerSheetState extends State<_LocationPickerSheet> {
                 itemCount: filtered.length,
                 itemBuilder: (context, idx) {
                   final item = filtered[idx];
-                  final isCurrent = widget.current?.city.toLowerCase() == item.city.toLowerCase();
+                  final isCurrent = widget.current?.city.toLowerCase() ==
+                      item.city.toLowerCase();
                   return ListTile(
                     dense: true,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                    contentPadding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
                     leading: CircleAvatar(
                       radius: 16,
-                      backgroundColor: isCurrent ? NoorColors.emeraldDark : (isDark ? NoorColors.darkSurface : NoorColors.cream),
+                      backgroundColor: isCurrent
+                          ? NoorColors.emeraldDark
+                          : (isDark
+                              ? NoorColors.darkSurface
+                              : NoorColors.cream),
                       child: Icon(
                         Icons.location_city,
                         size: 16,
-                        color: isCurrent ? Colors.white : NoorColors.emeraldDark,
+                        color: isCurrent
+                            ? Colors.white
+                            : Theme.of(context).colorScheme.primary,
                       ),
                     ),
                     title: Text(
                       item.city,
                       style: TextStyle(
-                        fontWeight: isCurrent ? FontWeight.w700 : FontWeight.w600,
-                        color: isCurrent ? NoorColors.emeraldDark : (isDark ? NoorColors.darkTextPrimary : NoorColors.ink),
+                        fontWeight:
+                            isCurrent ? FontWeight.w700 : FontWeight.w600,
+                        color: isCurrent
+                            ? Theme.of(context).colorScheme.primary
+                            : (isDark
+                                ? NoorColors.darkTextPrimary
+                                : NoorColors.ink),
                       ),
                     ),
                     subtitle: Text(
                       item.country,
                       style: NoorType.meta.copyWith(
-                        color: isDark ? NoorColors.darkTextSecondary : NoorColors.muted,
+                        color: isDark
+                            ? NoorColors.darkTextSecondary
+                            : NoorColors.muted,
                       ),
                     ),
                     trailing: isCurrent
-                        ? const Icon(Icons.check_circle, color: NoorColors.emeraldDark, size: 18)
+                        ? Icon(Icons.check_circle,
+                            color: Theme.of(context).colorScheme.primary,
+                            size: 18)
                         : null,
                     onTap: () async {
                       await LocationService().saveLocation(item);

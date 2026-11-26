@@ -2,11 +2,15 @@ import 'dart:convert';
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
+import 'package:adhan_dart/adhan_dart.dart' as adhan;
+import 'package:timezone/timezone.dart' as tz;
+import 'package:timezone/data/latest_all.dart' as tz_data;
 import 'package:http/http.dart' as http;
 
 import 'location_service.dart';
 import 'noor_store.dart';
 import 'sample_data.dart';
+import 'app_state.dart';
 
 /// Phase 6 — live prayer data from the AlAdhan API.
 ///
@@ -32,9 +36,9 @@ class PrayerService {
 
   static const String baseUrl = 'https://api.aladhan.com/v1';
 
-  /// Calculation method 5 = University of Islamic Sciences, Karachi.
+  /// Calculation method 1 = University of Islamic Sciences, Karachi.
   /// Default for the Asia/Karachi user; also a [NoorStore] setting.
-  static const int defaultMethod = 5;
+  static const int defaultMethod = 1;
   static const String defaultCity = 'Karachi';
   static const String defaultCountry = 'Pakistan';
 
@@ -53,9 +57,12 @@ class PrayerService {
 
   static PrayerDay? _memoryCache;
   static final Map<String, PrayerDay> _memoryCacheMap = <String, PrayerDay>{};
-  static final Map<String, Future<PrayerDay>> _inFlightTimings = <String, Future<PrayerDay>>{};
-  static final Map<String, Future<String>> _inFlightHijri = <String, Future<String>>{};
-  static final Map<String, Future<double>> _inFlightQibla = <String, Future<double>>{};
+  static final Map<String, Future<PrayerDay>> _inFlightTimings =
+      <String, Future<PrayerDay>>{};
+  static final Map<String, Future<String>> _inFlightHijri =
+      <String, Future<String>>{};
+  static final Map<String, Future<double>> _inFlightQibla =
+      <String, Future<double>>{};
 
   /// Clears in-memory caches and in-flight futures. Useful for testing.
   static void clearCache() {
@@ -72,24 +79,120 @@ class PrayerService {
   /// with network -> persistent cache -> sample fallback.
   Future<PrayerDay> fetchTodayAuto({bool forceRefresh = false}) async {
     final loc = await LocationService().getSavedLocation();
-    if (loc.latitude != 0 && loc.longitude != 0) {
-      try {
-        final day = await fetchTimingsByCoordinates(
-          latitude: loc.latitude,
-          longitude: loc.longitude,
-          forceRefresh: forceRefresh,
-        );
-        return day;
-      } catch (e) {
-        debugPrint('PrayerService: fetchTodayAuto by coordinates failed: $e');
-      }
-    }
+    return fetchForLocationDate(loc, nowInLocation(loc),
+        forceRefresh: forceRefresh);
+  }
 
-    return await fetchTodayByCity(
-      city: loc.city,
-      country: loc.country,
-      forceRefresh: forceRefresh,
-    );
+  static bool _zonesReady = false;
+  static tz.Location? zoneFor(String? name) {
+    if (name == null || name.isEmpty) return null;
+    if (!_zonesReady) {
+      tz_data.initializeTimeZones();
+      _zonesReady = true;
+    }
+    try {
+      return tz.getLocation(name);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static DateTime nowInLocation(LocationModel location, [DateTime? now]) {
+    final zone = zoneFor(location.timeZone);
+    return zone == null
+        ? (now ?? DateTime.now())
+        : tz.TZDateTime.from(now ?? DateTime.now(), zone);
+  }
+
+  Future<PrayerDay> fetchForLocationDate(LocationModel location, DateTime date,
+      {bool forceRefresh = false}) async {
+    final method = await NoorStore.getCalculationMethod();
+    final school = await NoorStore.getMadhhab() == 'Hanafi' ? 1 : 0;
+    try {
+      if (location.latitude != 0 || location.longitude != 0) {
+        return await fetchTimingsByCoordinates(
+            latitude: location.latitude,
+            longitude: location.longitude,
+            date: date,
+            method: method,
+            school: school,
+            forceRefresh: forceRefresh);
+      }
+      return await fetchTimingsByCity(
+          city: location.city,
+          country: location.country,
+          date: date,
+          method: method,
+          school: school,
+          forceRefresh: forceRefresh);
+    } catch (_) {
+      return calculateOffline(
+          location: location, date: date, method: method, school: school);
+    }
+  }
+
+  /// Computes a fresh date-specific fallback; never borrows another city's cache.
+  static PrayerDay calculateOffline(
+      {required LocationModel location,
+      required DateTime date,
+      int method = defaultMethod,
+      int school = 1}) {
+    final params = switch (method) {
+      1 => adhan.CalculationMethodParameters.karachi(),
+      2 => adhan.CalculationMethodParameters.northAmerica(),
+      3 => adhan.CalculationMethodParameters.muslimWorldLeague(),
+      4 => adhan.CalculationMethodParameters.ummAlQura(),
+      5 => adhan.CalculationMethodParameters.egyptian(),
+      7 => adhan.CalculationMethodParameters.tehran(),
+      8 => adhan.CalculationMethodParameters.gulfRegion(),
+      9 => adhan.CalculationMethodParameters.kuwait(),
+      10 => adhan.CalculationMethodParameters.qatar(),
+      11 => adhan.CalculationMethodParameters.singapore(),
+      12 => adhan.CalculationMethodParameters.france(),
+      13 => adhan.CalculationMethodParameters.turkiye(),
+      _ => adhan.CalculationMethodParameters.muslimWorldLeague(),
+    };
+    params.madhab = school == 1 ? adhan.Madhab.hanafi : adhan.Madhab.shafi;
+    final coordinates =
+        adhan.Coordinates(location.latitude, location.longitude);
+    params.highLatitudeRule = adhan.HighLatitudeRule.recommended(coordinates);
+    final times = adhan.PrayerTimes(
+        coordinates: coordinates,
+        date: DateTime(date.year, date.month, date.day),
+        calculationParameters: params);
+    final zone = zoneFor(location.timeZone);
+    DateTime local(DateTime value) =>
+        zone == null ? value.toLocal() : tz.TZDateTime.from(value, zone);
+    return PrayerDay(
+        timings: {
+          'Fajr': local(times.fajr),
+          'Sunrise': local(times.sunrise),
+          'Dhuhr': local(times.dhuhr),
+          'Asr': local(times.asr),
+          'Maghrib': local(times.maghrib),
+          'Isha': local(times.isha)
+        },
+        hijriDisplay: '${NoorAppState.hijriFor(date)} (calculated)',
+        source: PrayerSource.calculated,
+        timeZone: location.timeZone);
+  }
+
+  /// Android alarms are kept a week ahead, including when the app is closed.
+  Future<List<PrayerDay>> upcomingDays(
+      {PrayerDay? today, int count = 7}) async {
+    final loc = await LocationService().getSavedLocation();
+    final now = nowInLocation(loc);
+    final method = await NoorStore.getCalculationMethod();
+    final school = await NoorStore.getMadhhab() == 'Hanafi' ? 1 : 0;
+    return [
+      today ?? await fetchForLocationDate(loc, now),
+      for (int i = 1; i < count; i++)
+        calculateOffline(
+            location: loc,
+            date: DateTime(now.year, now.month, now.day + i),
+            method: method,
+            school: school),
+    ];
   }
 
   /// Today's prayer times for a city, with cache + sample fallback.
@@ -101,7 +204,9 @@ class PrayerService {
   }) async {
     final m = method ?? await NoorStore.getCalculationMethod();
     final d = DateTime.now();
-    final key = '${_dateKey(d)}_${city.toLowerCase()}_${country.toLowerCase()}_$m';
+    final school = await NoorStore.getMadhhab() == 'Hanafi' ? 1 : 0;
+    final key =
+        '${_dateKey(d)}_${city.toLowerCase()}_${country.toLowerCase()}_${m}_s$school';
 
     if (!forceRefresh) {
       final mem = _memoryCacheMap[key];
@@ -120,6 +225,7 @@ class PrayerService {
         city: city,
         country: country,
         method: m,
+        school: school,
         date: d,
         forceRefresh: forceRefresh,
       );
@@ -127,8 +233,19 @@ class PrayerService {
       _memoryCache = day;
       return day;
     } catch (e) {
-      debugPrint('PrayerService: fetchTodayByCity error for $city, $country: $e');
-      return _memoryCacheMap[key] ?? _memoryCache ?? await _persistedCache() ?? PrayerDay.sample();
+      debugPrint(
+          'PrayerService: fetchTodayByCity error for $city, $country: $e');
+      for (final loc in LocationService.popularCities) {
+        if (loc.city.toLowerCase() == city.toLowerCase() &&
+            loc.country.toLowerCase() == country.toLowerCase()) {
+          return calculateOffline(
+              location: loc,
+              date: d,
+              method: m,
+              school: await NoorStore.getMadhhab() == 'Hanafi' ? 1 : 0);
+        }
+      }
+      return PrayerDay.sample();
     }
   }
 
@@ -138,11 +255,13 @@ class PrayerService {
     required String city,
     required String country,
     int method = defaultMethod,
+    int school = 0,
     DateTime? date,
     bool forceRefresh = false,
   }) async {
     final d = date ?? DateTime.now();
-    final key = '${_dateKey(d)}_${city.toLowerCase()}_${country.toLowerCase()}_$method';
+    final key =
+        '${_dateKey(d)}_${city.toLowerCase()}_${country.toLowerCase()}_${method}_s$school';
 
     if (!forceRefresh) {
       final mem = _memoryCacheMap[key];
@@ -164,7 +283,7 @@ class PrayerService {
           '$baseUrl/timingsByCity/${_dateKey(d)}'
           '?city=${Uri.encodeQueryComponent(city)}'
           '&country=${Uri.encodeQueryComponent(country)}'
-          '&method=$method',
+          '&method=$method&school=$school',
         );
         final res = await _client.get(uri).timeout(const Duration(seconds: 12));
         if (res.statusCode != 200) {
@@ -198,11 +317,13 @@ class PrayerService {
     required double latitude,
     required double longitude,
     int method = defaultMethod,
+    int school = 0,
     DateTime? date,
     bool forceRefresh = false,
   }) async {
     final d = date ?? DateTime.now();
-    final key = '${_dateKey(d)}_${latitude.toStringAsFixed(2)}_${longitude.toStringAsFixed(2)}_$method';
+    final key =
+        '${_dateKey(d)}_${latitude.toStringAsFixed(2)}_${longitude.toStringAsFixed(2)}_${method}_s$school';
 
     if (!forceRefresh) {
       final mem = _memoryCacheMap[key];
@@ -222,7 +343,7 @@ class PrayerService {
       try {
         final uri = Uri.parse(
           '$baseUrl/timings/${_dateKey(d)}'
-          '?latitude=$latitude&longitude=$longitude&method=$method',
+          '?latitude=$latitude&longitude=$longitude&method=$method&school=$school',
         );
         final res = await _client.get(uri).timeout(const Duration(seconds: 12));
         if (res.statusCode != 200) {
@@ -253,7 +374,8 @@ class PrayerService {
 
   /// Hijri date for [date] via AlAdhan gToH. Falls back to the
   /// Hijri date embedded in timings, then to the sample string.
-  Future<String> fetchHijriDisplay({DateTime? date, bool forceRefresh = false}) async {
+  Future<String> fetchHijriDisplay(
+      {DateTime? date, bool forceRefresh = false}) async {
     final d = date ?? DateTime.now();
     final key = 'prayer.hijri.${_dateKey(d)}';
 
@@ -275,7 +397,8 @@ class PrayerService {
           final body = jsonDecode(res.body) as Map<String, dynamic>;
           final hijri = (body['data'] as Map<String, dynamic>)['hijri']
               as Map<String, dynamic>;
-          final month = (hijri['month'] as Map<String, dynamic>)['en'] as String;
+          final month =
+              (hijri['month'] as Map<String, dynamic>)['en'] as String;
           final formatted = '${hijri['day']} $month ${hijri['year']} AH';
           await NoorStore.cacheJsonWithTtl(
             key,
@@ -285,7 +408,8 @@ class PrayerService {
           return formatted;
         }
       } catch (e) {
-        debugPrint('PrayerService: Hijri conversion request error for $key: $e');
+        debugPrint(
+            'PrayerService: Hijri conversion request error for $key: $e');
       } finally {
         _inFlightHijri.remove(key);
       }
@@ -305,7 +429,8 @@ class PrayerService {
     required double longitude,
     bool forceRefresh = false,
   }) async {
-    final key = 'prayer.qibla.${latitude.toStringAsFixed(3)}_${longitude.toStringAsFixed(3)}';
+    final key =
+        'prayer.qibla.${latitude.toStringAsFixed(3)}_${longitude.toStringAsFixed(3)}';
 
     if (!forceRefresh) {
       final cached = await NoorStore.cachedJsonWithTtl(key);
@@ -336,7 +461,8 @@ class PrayerService {
           }
         }
       } catch (e) {
-        debugPrint('PrayerService: Qibla network request error ($latitude, $longitude): $e');
+        debugPrint(
+            'PrayerService: Qibla network request error ($latitude, $longitude): $e');
       } finally {
         _inFlightQibla.remove(key);
       }
@@ -375,7 +501,8 @@ class PrayerService {
         source: PrayerSource.cache,
       );
     } catch (e) {
-      debugPrint('PrayerService: Failed to decode persisted city cache ($key): $e');
+      debugPrint(
+          'PrayerService: Failed to decode persisted city cache ($key): $e');
       return null;
     }
   }
@@ -389,7 +516,8 @@ class PrayerService {
         source: PrayerSource.cache,
       );
     } catch (e) {
-      debugPrint('PrayerService: Failed to decode persisted coord cache ($key): $e');
+      debugPrint(
+          'PrayerService: Failed to decode persisted coord cache ($key): $e');
       return null;
     }
   }
@@ -430,7 +558,7 @@ class PrayerService {
   }
 }
 
-enum PrayerSource { live, cache, sample }
+enum PrayerSource { live, cache, sample, calculated }
 
 /// One day of prayer times + Hijri date, however it was obtained.
 class PrayerDay {
@@ -438,6 +566,7 @@ class PrayerDay {
     required this.timings,
     required this.hijriDisplay,
     required this.source,
+    this.timeZone,
   });
 
   /// Prayer name -> local time. Keys from [PrayerService.prayerOrder].
@@ -447,6 +576,7 @@ class PrayerDay {
   final String hijriDisplay;
 
   final PrayerSource source;
+  final String? timeZone;
 
   bool get isLive => source == PrayerSource.live;
 
@@ -470,6 +600,8 @@ class PrayerDay {
       year = int.tryParse(dateStr.substring(6, 10)) ?? year;
     }
 
+    final timeZone = (data['meta'] as Map?)?['timezone']?.toString();
+    final zone = PrayerService.zoneFor(timeZone);
     final timings = <String, DateTime>{};
     for (final name in PrayerService.prayerOrder) {
       final raw = rawTimings[name]?.toString();
@@ -481,7 +613,9 @@ class PrayerDay {
       final h = int.tryParse(parts[0]);
       final m = int.tryParse(parts[1]);
       if (h == null || m == null) continue;
-      timings[name] = DateTime(year, month, dayNum, h, m);
+      timings[name] = zone == null
+          ? DateTime(year, month, dayNum, h, m)
+          : tz.TZDateTime(zone, year, month, dayNum, h, m);
     }
 
     var hijriDisplay = SampleData.hijriDate;
@@ -492,7 +626,10 @@ class PrayerDay {
       hijriDisplay = '${hijri['day']} $monthEn ${hijri['year']} AH';
     }
     return PrayerDay(
-        timings: timings, hijriDisplay: hijriDisplay, source: source);
+        timings: timings,
+        hijriDisplay: hijriDisplay,
+        source: source,
+        timeZone: timeZone);
   }
 
   /// The design's sample day (Pages 01/14) — offline fallback.
@@ -524,8 +661,10 @@ class PrayerDay {
   /// Normalizes prayer times to today's date so cached/stale days
   /// always compare accurately with the current time of day.
   /// After Isha, the next prayer is tomorrow's Fajr (isTomorrow: true).
-  NextPrayer nextPrayer({DateTime? now}) {
-    final n = now ?? DateTime.now();
+  NextPrayer nextPrayer({DateTime? now, PrayerDay? nextDay}) {
+    final zone = PrayerService.zoneFor(timeZone);
+    final instant = now ?? DateTime.now();
+    final n = zone == null ? instant : tz.TZDateTime.from(instant, zone);
     const obligatory = <String>['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'];
 
     // Map each prayer's hour and minute to today's calendar date:
@@ -533,7 +672,9 @@ class PrayerDay {
     for (final name in obligatory) {
       final t = timings[name] ?? (name == 'Dhuhr' ? timings['Zuhr'] : null);
       if (t != null) {
-        todayTimings[name] = DateTime(n.year, n.month, n.day, t.hour, t.minute);
+        todayTimings[name] = zone == null
+            ? DateTime(n.year, n.month, n.day, t.hour, t.minute)
+            : tz.TZDateTime(zone, n.year, n.month, n.day, t.hour, t.minute);
       }
     }
 
@@ -548,7 +689,17 @@ class PrayerDay {
     // All prayers for today have passed -> Tomorrow's Fajr
     final fajr = todayTimings['Fajr'] ?? timings['Fajr'];
     if (fajr != null) {
-      final tomorrowFajr = DateTime(n.year, n.month, n.day + 1, fajr.hour, fajr.minute);
+      final calculatedFajr = nextDay?.timings['Fajr'];
+      final isNextDate = calculatedFajr != null &&
+          calculatedFajr.year == DateTime(n.year, n.month, n.day + 1).year &&
+          calculatedFajr.month == DateTime(n.year, n.month, n.day + 1).month &&
+          calculatedFajr.day == DateTime(n.year, n.month, n.day + 1).day;
+      final tomorrowFajr = isNextDate
+          ? calculatedFajr
+          : zone == null
+              ? DateTime(n.year, n.month, n.day + 1, fajr.hour, fajr.minute)
+              : tz.TZDateTime(
+                  zone, n.year, n.month, n.day + 1, fajr.hour, fajr.minute);
       return NextPrayer(
         name: 'Fajr',
         time: tomorrowFajr,
@@ -571,26 +722,15 @@ class PrayerDay {
   /// In Islamic tradition, the day starts at Maghrib. Night prayer
   /// (Tahajjud), Isha and pre-Fajr hours are in the dark window.
   bool isNightTime([DateTime? now]) {
-    final n = now ?? DateTime.now();
+    final zone = PrayerService.zoneFor(timeZone);
+    final instant = now ?? DateTime.now();
+    final n = zone == null ? instant : tz.TZDateTime.from(instant, zone);
     final maghrib = timings['Maghrib'];
     final fajr = timings['Fajr'];
     if (maghrib != null && fajr != null) {
-      // Normalize to the same calendar day as the prayer timings
-      // so comparisons reflect time-of-day accurately.
-      final normalized = DateTime(
-        maghrib.year,
-        maghrib.month,
-        maghrib.day,
-        n.hour,
-        n.minute,
-        n.second,
-      );
-      // If after or at today's Maghrib -> Night time (post-Maghrib)
-      if (!normalized.isBefore(maghrib)) return true;
-      // If before today's Fajr -> Night time (pre-dawn/Tahajjud)
-      if (normalized.isBefore(fajr)) return true;
-      // Daytime between Fajr and Maghrib
-      return false;
+      final minute = n.hour * 60 + n.minute;
+      return minute >= maghrib.hour * 60 + maghrib.minute ||
+          minute < fajr.hour * 60 + fajr.minute;
     }
     // Fallback: 6 PM to 6 AM
     return n.hour >= 18 || n.hour < 6;

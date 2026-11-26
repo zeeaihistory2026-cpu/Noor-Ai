@@ -57,20 +57,6 @@ class _SavedContentScreenState extends State<SavedContentScreen> {
       ));
     }
 
-    // Default sample entries to give starter inspiration if not already added
-    for (var i = 0; i < SampleData.savedRows.length; i++) {
-      final sample = SampleData.savedRows[i];
-      if (!result.any((item) => item.title == sample.$1)) {
-        result.add(_SavedItemEntry(
-          id: 'sample_$i',
-          title: sample.$1,
-          subtitle: sample.$2,
-          tag: sample.$3,
-          isSample: true,
-        ));
-      }
-    }
-
     if (mounted) {
       setState(() {
         _items = result;
@@ -82,9 +68,11 @@ class _SavedContentScreenState extends State<SavedContentScreen> {
   bool _matches(String tag) {
     final f = SampleData.savedFilters[_filter];
     if (f == 'All') return true;
-    if (f == 'Quran') return tag.contains('Ayah') || tag.contains('Quran');
-    if (f == 'Hadith') return tag == 'Hadith';
-    if (f == 'Duas') return tag.contains('Dua');
+    if (f == 'Quran') {
+      return tag.toLowerCase().contains('aya') || tag.contains('Quran');
+    }
+    if (f == 'Hadith') return tag.toLowerCase().contains('hadith');
+    if (f == 'Duas') return tag.toLowerCase().contains('dua');
     return tag == 'AI Note' || tag.contains('Note');
   }
 
@@ -94,6 +82,9 @@ class _SavedContentScreenState extends State<SavedContentScreen> {
     });
     if (!item.isSample) {
       await NoorStore.removeRichItem(item.id);
+      if (await NoorStore.isBookmarked(item.id)) {
+        await NoorStore.toggleBookmark(item.id);
+      }
     }
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -134,24 +125,35 @@ class _SavedContentScreenState extends State<SavedContentScreen> {
                       scrollDirection: Axis.horizontal,
                       child: Row(
                         children: [
-                          for (var i = 0; i < SampleData.savedFilters.length; i++) ...[
+                          for (var i = 0;
+                              i < SampleData.savedFilters.length;
+                              i++) ...[
                             Semantics(
                               button: true,
                               label: SampleData.savedFilters[i],
                               child: Material(
                                 color: i == _filter
-                                    ? (isDark ? NoorColors.darkGold : NoorColors.emeraldDark)
-                                    : (isDark ? NoorColors.darkCard : NoorColors.emeraldSoft),
+                                    ? (isDark
+                                        ? NoorColors.darkGold
+                                        : NoorColors.emeraldDark)
+                                    : (isDark
+                                        ? NoorColors.darkCard
+                                        : NoorColors.emeraldSoft),
                                 borderRadius: BorderRadius.circular(99),
                                 child: InkWell(
                                   onTap: () => setState(() => _filter = i),
                                   borderRadius: BorderRadius.circular(99),
                                   child: Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 16, vertical: 12),
                                     decoration: BoxDecoration(
                                       color: i == _filter
-                                          ? (isDark ? NoorColors.darkGold : NoorColors.emeraldDark)
-                                          : (isDark ? NoorColors.darkCard : NoorColors.emeraldSoft),
+                                          ? (isDark
+                                              ? NoorColors.darkGold
+                                              : NoorColors.emeraldDark)
+                                          : (isDark
+                                              ? NoorColors.darkCard
+                                              : NoorColors.emeraldSoft),
                                       borderRadius: BorderRadius.circular(99),
                                     ),
                                     child: Text(
@@ -159,8 +161,12 @@ class _SavedContentScreenState extends State<SavedContentScreen> {
                                       style: NoorType.meta.copyWith(
                                         color: i == _filter
                                             ? Colors.white
-                                            : (isDark ? NoorColors.darkTextPrimary : NoorColors.ink),
-                                        fontWeight: i == _filter ? FontWeight.w700 : FontWeight.w500,
+                                            : (isDark
+                                                ? NoorColors.darkTextPrimary
+                                                : NoorColors.ink),
+                                        fontWeight: i == _filter
+                                            ? FontWeight.w700
+                                            : FontWeight.w500,
                                       ),
                                     ),
                                   ),
@@ -177,7 +183,8 @@ class _SavedContentScreenState extends State<SavedContentScreen> {
                       const Center(
                         child: Padding(
                           padding: EdgeInsets.symmetric(vertical: 40),
-                          child: CircularProgressIndicator(color: NoorColors.emeraldDark),
+                          child: CircularProgressIndicator(
+                              color: NoorColors.emeraldDark),
                         ),
                       )
                     else if (filteredRows.isEmpty)
@@ -188,17 +195,25 @@ class _SavedContentScreenState extends State<SavedContentScreen> {
                           color: isDark ? NoorColors.darkCard : Colors.white,
                           borderRadius: BorderRadius.circular(NoorRadius.card),
                           border: Border.all(
-                            color: isDark ? NoorColors.darkBorder : NoorColors.hairline,
+                            color: isDark
+                                ? NoorColors.darkBorder
+                                : NoorColors.hairline,
                           ),
                         ),
                         child: Column(
                           children: [
-                            Icon(Icons.bookmark_border, size: 40, color: isDark ? NoorColors.darkTextSecondary : NoorColors.muted),
+                            Icon(Icons.bookmark_border,
+                                size: 40,
+                                color: isDark
+                                    ? NoorColors.darkTextSecondary
+                                    : NoorTheme.muted(context)),
                             const SizedBox(height: 8),
                             Text(
                               'Nothing saved here yet.',
                               style: NoorType.body.copyWith(
-                                color: isDark ? NoorColors.darkTextSecondary : NoorColors.mutedDark,
+                                color: isDark
+                                    ? NoorColors.darkTextSecondary
+                                    : NoorTheme.muted(context),
                               ),
                             ),
                           ],
@@ -210,9 +225,12 @@ class _SavedContentScreenState extends State<SavedContentScreen> {
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
                             color: isDark ? NoorColors.darkCard : Colors.white,
-                            borderRadius: BorderRadius.circular(NoorRadius.card),
+                            borderRadius:
+                                BorderRadius.circular(NoorRadius.card),
                             border: Border.all(
-                              color: isDark ? NoorColors.darkBorder : NoorColors.hairline,
+                              color: isDark
+                                  ? NoorColors.darkBorder
+                                  : NoorColors.hairline,
                             ),
                             boxShadow: isDark ? null : NoorShadows.card,
                           ),
@@ -225,15 +243,20 @@ class _SavedContentScreenState extends State<SavedContentScreen> {
                                   subtitle: r.subtitle,
                                   semanticLabel: '${r.title}. ${r.subtitle}',
                                   trailing: Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 8, vertical: 4),
                                     decoration: BoxDecoration(
-                                      color: isDark ? NoorColors.darkSurface : NoorColors.emeraldSoft,
+                                      color: isDark
+                                          ? NoorColors.darkSurface
+                                          : NoorTheme.softSurface(context),
                                       borderRadius: BorderRadius.circular(6),
                                     ),
                                     child: Text(
                                       r.tag,
                                       style: NoorType.meta.copyWith(
-                                        color: isDark ? NoorColors.darkGold : NoorColors.emeraldDark,
+                                        color: isDark
+                                            ? NoorColors.darkGold
+                                            : NoorColors.emeraldDark,
                                         fontWeight: FontWeight.w700,
                                       ),
                                     ),
@@ -244,7 +267,9 @@ class _SavedContentScreenState extends State<SavedContentScreen> {
                                 icon: Icon(
                                   Icons.bookmark_remove_outlined,
                                   size: 20,
-                                  color: isDark ? NoorColors.darkTextSecondary : NoorColors.mutedDark,
+                                  color: isDark
+                                      ? NoorColors.darkTextSecondary
+                                      : NoorTheme.muted(context),
                                 ),
                                 tooltip: 'Remove bookmark',
                                 onPressed: () => _removeItem(r),
@@ -260,7 +285,9 @@ class _SavedContentScreenState extends State<SavedContentScreen> {
                         child: Text(
                           'End of saved items · ${filteredRows.length} shown',
                           style: NoorType.meta.copyWith(
-                            color: isDark ? NoorColors.darkTextSecondary : NoorColors.muted,
+                            color: isDark
+                                ? NoorColors.darkTextSecondary
+                                : NoorTheme.muted(context),
                           ),
                         ),
                       ),

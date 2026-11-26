@@ -23,7 +23,8 @@ class OnboardingScreen extends StatelessWidget {
       bottom: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          NoorPrimaryButton(label: 'Get Started', onPressed: () => _next(context)),
+          NoorPrimaryButton(
+              label: 'Get Started', onPressed: () => _next(context)),
           Padding(
             padding: const EdgeInsets.only(bottom: 20),
             child: TextButton(
@@ -32,7 +33,7 @@ class OnboardingScreen extends StatelessWidget {
               child: Text(
                 'Explore as Guest',
                 style: NoorType.secondary.copyWith(
-                  color: NoorColors.emeraldDark,
+                  color: null,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -42,8 +43,13 @@ class OnboardingScreen extends StatelessWidget {
       ),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 28),
-        child: Column(
-          children: [
+        child: LayoutBuilder(
+          builder: (context, constraints) => SingleChildScrollView(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: constraints.maxHeight),
+              child: IntrinsicHeight(
+                child: Column(
+                  children: [
             const SizedBox(height: 8),
             Align(
               alignment: Alignment.centerRight,
@@ -51,9 +57,8 @@ class OnboardingScreen extends StatelessWidget {
                 onPressed: () => _skipToApp(context),
                 style: TextButton.styleFrom(minimumSize: const Size(48, 44)),
                 child: Text('Skip',
-                    style: NoorType.body.copyWith(
-                        color: NoorColors.emeraldDark,
-                        fontWeight: FontWeight.w600)),
+                    style: NoorType.body
+                        .copyWith(color: null, fontWeight: FontWeight.w600)),
               ),
             ),
             const Spacer(),
@@ -62,11 +67,14 @@ class OnboardingScreen extends StatelessWidget {
               width: 260,
               height: 260,
               decoration: BoxDecoration(
-                  gradient: const RadialGradient(
-                    colors: [NoorColors.emeraldSoft, NoorColors.cream],
+                  gradient: RadialGradient(
+                    colors: Theme.of(context).brightness == Brightness.dark
+                        ? const [NoorColors.darkSurface, NoorColors.darkBg]
+                        : const [NoorColors.emeraldSoft, NoorColors.cream],
                   ),
                   shape: BoxShape.circle,
-                  border: Border.all(color: NoorColors.gold.withValues(alpha: 0.5), width: 2),
+                  border: Border.all(
+                      color: NoorColors.gold.withValues(alpha: 0.5), width: 2),
                   boxShadow: NoorShadows.hero),
               alignment: Alignment.center,
               child: Column(
@@ -85,24 +93,20 @@ class OnboardingScreen extends StatelessWidget {
                   const SizedBox(height: 16),
                   Text('MuslimGo AI',
                       style: NoorType.display.copyWith(
-                          fontSize: 24,
-                          color: NoorColors.emeraldDark,
-                          letterSpacing: 2)),
+                          fontSize: 24, color: NoorTheme.foreground(context), letterSpacing: 2)),
                   const SizedBox(height: 4),
                   Text('Faith • Guidance • Growth',
-                      style: NoorType.meta.copyWith(color: NoorColors.mutedDark)),
+                      style: NoorType.meta.copyWith(color: NoorTheme.muted(context))),
                 ],
               ),
             ),
             const SizedBox(height: 40),
             const Text(SampleData.onboardingTitle,
-                textAlign: TextAlign.center,
-                style: NoorType.display),
+                textAlign: TextAlign.center, style: NoorType.display),
             const SizedBox(height: 14),
             Text(SampleData.onboardingBody,
                 textAlign: TextAlign.center,
-                style: NoorType.body.copyWith(
-                    color: NoorColors.mutedDark, height: 1.5)),
+                style: NoorType.body.copyWith(color: NoorTheme.muted(context), height: 1.5)),
             const SizedBox(height: 24),
             // Step indicator for the setup flow (37 -> 38 -> 39 -> 40).
             Row(mainAxisAlignment: MainAxisAlignment.center, children: [
@@ -112,12 +116,18 @@ class OnboardingScreen extends StatelessWidget {
                   height: 8,
                   margin: const EdgeInsets.symmetric(horizontal: 3),
                   decoration: BoxDecoration(
-                      color: i == 0 ? NoorColors.emeraldDark : NoorColors.sand,
+                      color: i == 0
+                          ? NoorColors.emeraldDark
+                          : NoorTheme.surface(context, light: NoorColors.sand),
                       borderRadius: BorderRadius.circular(4)),
                 ),
             ]),
             const Spacer(flex: 2),
           ],
+        ),
+              ),
+            ),
+          ),
         ),
       ),
     );

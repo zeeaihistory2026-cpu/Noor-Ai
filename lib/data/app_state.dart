@@ -1,4 +1,5 @@
 import 'sample_data.dart';
+import 'package:hijri/hijri_calendar.dart';
 
 /// Phase 12 — the app's single source of truth.
 ///
@@ -51,7 +52,12 @@ class NoorAppState {
   /// date + weekday are derived from this value, so the two
   /// calendars can never be paired impossibly on screen again.
   static final DateTime demoDate = DateTime(2027, 1, 31);
-  static const String hijriLabel = SampleData.hijriDate; // 12 Sha'ban 1448 AH
+  static String hijriFor(DateTime date) {
+    final h = HijriCalendar.fromDate(date);
+    return '${h.hDay} ${h.longMonthName} ${h.hYear} AH';
+  }
+
+  static String get hijriLabel => hijriFor(DateTime.now());
 
   static const List<String> _weekdays = [
     'Monday',
@@ -78,9 +84,10 @@ class NoorAppState {
   ];
 
   /// "Sunday, 31 Jan 2027" — derived, never hand-typed per screen.
-  static String get gregorianLabel =>
-      '${_weekdays[demoDate.weekday - 1]}, ${demoDate.day} '
-      '${_months[demoDate.month - 1]} ${demoDate.year}';
+  static String formatGregorian(DateTime date) =>
+      '${_weekdays[date.weekday - 1]}, ${date.day} '
+      '${_months[date.month - 1]} ${date.year}';
+  static String get gregorianLabel => formatGregorian(DateTime.now());
 
   /// "Sunday, 31 Jan 2027 · 12 Sha'ban 1448 AH" — the one date line.
   static String get dateLine => '$gregorianLabel · $hijriLabel';

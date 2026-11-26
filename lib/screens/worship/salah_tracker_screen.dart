@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
-import '../../data/app_state.dart';
 import '../../data/noor_store.dart';
 import '../../data/user_data_service.dart';
 import '../../theme/noor_theme.dart';
 import '../../widgets/noor_components.dart';
 import '../../data/noor_controller.dart';
 import '../../data/prayer_service.dart';
+import '../../data/location_service.dart';
 import '../home/my_journey_screen.dart';
 import 'qibla_finder_screen.dart';
 import 'reminder_center_screen.dart';
+import 'prayer_settings_screen.dart';
+import '../../widgets/signature_arch.dart';
+import 'salah_guide_screen.dart';
 
 /// Page 06 — Salah Tracker. Emerald header with the real mosque
 /// skyline crop, Today's Prayers (5 columns, Asr highlighted with
@@ -23,7 +26,13 @@ class SalahTrackerScreen extends StatefulWidget {
 }
 
 class _SalahTrackerScreenState extends State<SalahTrackerScreen> {
-  final List<bool> _done = [true, true, false, false, false];
+  final List<bool> _done = [false, false, false, false, false];
+  Set<String> _completedDates = {};
+  int _streak = 0;
+  int _completedMonth = 0;
+  double _completion = 0;
+  Future<void> _saveQueue = Future.value();
+  int _edits = 0;
   static const _prayerIcons = [
     Icons.wb_twilight,
     Icons.wb_sunny_outlined,
@@ -36,15 +45,15 @@ class _SalahTrackerScreenState extends State<SalahTrackerScreen> {
   void initState() {
     super.initState();
     _loadPrayers();
+    _loadStats();
   }
 
-  String get _today =>
-      DateTime.now().toIso8601String().split('T').first;
+  String get _today => DateTime.now().toIso8601String().split('T').first;
 
   Future<void> _loadPrayers() async {
     // 1. Instant offline load from local NoorStore
     final local = await NoorStore.getPrayersList(_today);
-    if (mounted && local.any((element) => element)) {
+    if (mounted) {
       setState(() {
         for (var i = 0; i < 5 && i < local.length; i++) {
           _done[i] = local[i];
@@ -54,8 +63,10 @@ class _SalahTrackerScreenState extends State<SalahTrackerScreen> {
 
     // 2. In background, sync with cloud UserDataService if authenticated
     try {
+      final edits = _edits;
+      if ((await NoorStore.getSalahLog()).containsKey(_today)) return;
       final saved = await UserDataService.instance.loadPrayers(_today);
-      if (saved != null && mounted) {
+      if (saved != null && mounted && edits == _edits) {
         setState(() {
           for (var i = 0; i < 5 && i < saved.length; i++) {
             _done[i] = saved[i];
@@ -66,504 +77,306 @@ class _SalahTrackerScreenState extends State<SalahTrackerScreen> {
     } catch (_) {}
   }
 
-  void _togglePrayer(int i) {
-    setState(() => _done[i] = !_done[i]);
-    // Save locally first to guarantee zero data loss
-    NoorStore.setPrayersList(_today, _done);
-    // Push to cloud if logged in
-    UserDataService.instance.savePrayers(_today, _done);
+  Future<void> _loadStats() async {
+    final completed = await NoorStore.completedSalahDates();
+    final log = await NoorStore.getSalahLog();
+    final n = DateTime.now();
+    int prayers = 0;
+    for (final entry in log.entries) {
+      final day = DateTime.tryParse(entry.key);
+      if (day == null ||
+          day.year != n.year ||
+          day.month != n.month ||
+          day.day > n.day) {
+        continue;
+      }
+      prayers += ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha']
+          .where((name) =>
+              entry.value[name] == true ||
+              entry.value['${name[0].toUpperCase()}${name.substring(1)}'] ==
+                  true)
+          .length;
+    }
+    if (!mounted) return;
+    setState(() {
+      _completedDates = completed;
+      _streak = NoorStore.streakForDates(completed);
+      _completedMonth = completed
+          .where((date) => date
+              .startsWith('${n.year}-${n.month.toString().padLeft(2, '0')}'))
+          .length;
+      _completion = prayers / (n.day * 5);
+    });
   }
 
-  void _openLearn(BuildContext context) => showModalBottomSheet<void>(
-        context: context,
-        builder: (_) => const Padding(
-          padding: EdgeInsets.fromLTRB(24, 20, 24, 32),
-          child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Learn Salah — first steps',
-                    style:
-                        NoorType.cardTitle),
-                SizedBox(height: 10),
-                Text(
-                    '1. Make wudu calmly.\n2. Face the Qibla and set your intention.\n3. Begin with Takbir, hands raised.\n\nFull guided lessons open here as they are added.',
-                    style: TextStyle(height: 1.5)),
-              ]),
-        ),
-      );
+  void _togglePrayer(int i) {
+    _edits++;
+    setState(() => _done[i] = !_done[i]);
+    final snapshot = List<bool>.from(_done);
+    _saveQueue = _saveQueue.then((_) async {
+      await NoorStore.setPrayersList(_today, snapshot);
+      await _loadStats();
+      UserDataService.instance.savePrayers(_today, snapshot);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
+    final controller = NoorScope.of(context);
+    final day = controller?.activeDay ??
+        PrayerService.calculateOffline(
+            location: LocationModel.defaultLocation,
+            date: PrayerService.nowInLocation(LocationModel.defaultLocation));
+    final next = controller?.nextPrayer ?? day.nextPrayer();
+    final accent = Theme.of(context).colorScheme.primary;
+    final completed = _done.where((value) => value).length;
+    const names = ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'];
+    void open(Widget page) =>
+        Navigator.of(context).push(MaterialPageRoute(builder: (_) => page));
     return Scaffold(
-      backgroundColor: NoorColors.cream,
-      body: SafeArea(
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            // Header with real skyline art (Page 06 crop).
-            NoorDarkHeader(
-              title: 'Salah Tracker',
-              padding: const EdgeInsets.fromLTRB(6, 10, 6, 0),
-              actions: [
-                IconButton(
-                    tooltip: 'About the salah log',
-                    icon: const Icon(Icons.calendar_month_outlined,
-                        color: Colors.white),
-                    // Phase 16 audit: honest — the log is kept for
-                    // today only; the sheet links prayer reminders.
-                    onPressed: () => showNoorOverflowSheet(context,
-                        title: 'Salah log',
-                        info: const [
-                          'Your log is kept for today in this version — past days are not stored yet.',
-                        ],
-                        actions: [
-                          (
-                            Icons.alarm_outlined,
-                            'Prayer reminders',
-                            () => Navigator.of(context).push(
-                                MaterialPageRoute(
-                                    builder: (_) =>
-                                        const ReminderCenterScreen()))
-                          ),
-                        ])),
-                IconButton(
-                    tooltip: "Today's log options",
-                    icon: const Icon(Icons.more_vert, color: Colors.white),
-                    // Phase 16 audit: real bulk actions on the log.
-                    onPressed: () => showNoorOverflowSheet(context,
-                        title: "Today's prayers",
-                        actions: [
-                          (
-                            Icons.done_all_outlined,
-                            'Mark all as prayed',
-                            () => setState(() {
-                              for (var i = 0; i < _done.length; i++) {
-                                _done[i] = true;
-                              }
-                            })
-                          ),
-                          (
-                            Icons.restart_alt_outlined,
-                            "Clear today's log",
-                            () => setState(() {
-                              for (var i = 0; i < _done.length; i++) {
-                                _done[i] = false;
-                              }
-                            })
-                          ),
-                        ])),
-              ],
-              child: ClipRRect(
-                borderRadius:
-                    const BorderRadius.vertical(bottom: Radius.circular(28)),
-                child: Image.asset(NoorAssets.salahHeaderMosque,
-                    cacheWidth: 1170,
-                    // 98 ≈ the skyline strip's aspect at full
-                    // width (Phase 11b); at 84 the side domes
-                    // were cropped off.
-                    height: 98,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Padding(
-                          padding: const EdgeInsets.only(bottom: 16),
-                          child: Column(children: [
-                            const Text(NoorAppState.hijriLabel,
-                                style: TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w700)),
-                            Text(NoorAppState.gregorianLabel,
-                                style: const TextStyle(color: Colors.white70)),
-                          ]),
-                        )),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
-              child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(NoorAppState.dateLine, style: NoorType.meta),
-                    const SizedBox(height: 12),
-                    // Today's Prayers
-                    NoorCard(
-                      child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text("Today's Prayers",
-                                style: NoorType.cardTitle),
-                            const SizedBox(height: 14),
-                            Builder(builder: (context) {
-                              final controller = NoorScope.of(context);
-                              final nextPrayer = controller?.nextPrayer;
-                              final prayerDay = controller?.prayerDay;
-
-                              int nextIndex = 1; // default to Dhuhr/Zuhr if not known
-                              if (nextPrayer != null) {
-                                final nameLower = nextPrayer.name.toLowerCase();
-                                if (nameLower.contains('fajr')) {
-                                  nextIndex = 0;
-                                } else if (nameLower.contains('dhuhr') || nameLower.contains('zuhr')) {
-                                  nextIndex = 1;
-                                } else if (nameLower.contains('asr')) {
-                                  nextIndex = 2;
-                                } else if (nameLower.contains('maghrib')) {
-                                  nextIndex = 3;
-                                } else if (nameLower.contains('isha')) {
-                                  nextIndex = 4;
-                                }
-                              }
-
-                              final prayerNames = ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'];
-                              final fallbackTimes = ['5:32 AM', '12:45 PM', '3:58 PM', '5:56 PM', '7:23 PM'];
-                              final prayerDisplayTimes = List.generate(5, (i) {
-                                final name = prayerNames[i];
-                                if (prayerDay?.timings[name] != null) {
-                                  return PrayerService.formatTime(prayerDay!.timings[name]!);
-                                }
-                                return fallbackTimes[i];
-                              });
-
-                              final countdownText = nextPrayer != null
-                                  ? '${nextPrayer.remainingLabel.replaceAll(" remaining", "")}\nremaining'
-                                  : '${NoorAppState.nextPrayerCountdown}\nremaining';
-
-                              return Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: List.generate(5, (i) {
-                                  final next = i == nextIndex;
-                                  return Expanded(
-                                    child: InkWell(
-                                      onTap: () => _togglePrayer(i),
-                                      borderRadius: BorderRadius.circular(14),
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(
-                                            vertical: 8),
-                                        decoration: next
-                                            ? BoxDecoration(
-                                                color: NoorColors.emeraldSoft,
-                                                borderRadius:
-                                                    BorderRadius.circular(14))
-                                            : null,
-                                        child: Column(children: [
-                                          // Solid mosque glyphs as drawn
-                                          // (Phase 11 fix; was outline).
-                                          Icon(_prayerIcons[i],
-                                              size: 24,
-                                              color: _done[i] || next
-                                                  ? NoorColors.emeraldDark
-                                                  : NoorColors.greyDisabled),
-                                          const SizedBox(height: 6),
-                                          Padding(
-                                            padding: const EdgeInsets.symmetric(horizontal: 2),
-                                            child: FittedBox(
-                                              fit: BoxFit.scaleDown,
-                                              child: Text(prayerNames[i],
-                                                  textAlign: TextAlign.center,
-                                                  maxLines: 1,
-                                                  style: NoorType.meta),
-                                            ),
-                                          ),
-                                          const SizedBox(height: 6),
-                                          Semantics(
-                                            button: true,
-                                            checked: _done[i],
-                                            label:
-                                                '${prayerNames[i]} prayer, ${_done[i] ? "prayed" : "not prayed"}. Tap to toggle.',
-                                            child: SizedBox(
-                                              width: 48,
-                                              height: 48,
-                                              child: Center(
-                                                child: Icon(
-                                                  _done[i]
-                                                      ? Icons.check_circle
-                                                      : Icons
-                                                          .radio_button_unchecked,
-                                                  color: _done[i]
-                                                      ? NoorColors.emerald
-                                                      : NoorColors.greyDisabled,
-                                                  size: 24,
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                          const SizedBox(height: 6),
-                                          Padding(
-                                            padding: const EdgeInsets.symmetric(horizontal: 2),
-                                            child: FittedBox(
-                                              fit: BoxFit.scaleDown,
-                                              child: Text(prayerDisplayTimes[i],
-                                                  textAlign: TextAlign.center,
-                                                  maxLines: 1,
-                                                  style: NoorType.meta.copyWith(color: NoorColors.mutedDark)),
-                                            ),
-                                          ),
-                                          const SizedBox(height: 6),
-                                          SizedBox(
-                                            height: 32,
-                                            child: next
-                                                ? Padding(
-                                                    padding: const EdgeInsets.symmetric(horizontal: 2),
-                                                    child: FittedBox(
-                                                      fit: BoxFit.scaleDown,
-                                                      child: Text(
-                                                          countdownText,
-                                                          textAlign: TextAlign.center,
-                                                          style: NoorType.meta),
-                                                    ),
-                                                  )
-                                                : null,
-                                          ),
-                                        ]),
-                                      ),
-                                    ),
-                                  );
-                                }),
-                              );
-                            }),
-                            // The design card ends at the prayer
-                            // times; the tappable checks themselves
-                            // show today's progress (Phase 11 fix).
-                          ]),
-                    ),
-                    const SizedBox(height: 16),
-                    // Salah Streak (dark)
-                    Container(
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(colors: [
-                          NoorColors.emeraldDark,
-                          NoorColors.emeraldMid
-                        ]),
-                        borderRadius:
-                            BorderRadius.circular(NoorRadius.heroCard),
-                      ),
-                      padding: const EdgeInsets.all(18),
-                      child: Column(children: [
-                        Row(children: [
-                          const Icon(Icons.local_fire_department,
-                              color: NoorColors.amber, size: 38),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text('Salah Streak',
-                                      style: NoorType.meta.copyWith(color: Colors.white)),
-                                  Text('12 Days',
-                                      style: NoorType.screenTitle.copyWith(color: NoorColors.gold)),
-                                  Text('Keep it up, ${NoorAppState.userName}!',
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: NoorType.meta.copyWith(color: Colors.white70)),
-                                ]),
-                          ),
-                        ]),
-                        const SizedBox(height: 14),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                          children: ['M', 'T', 'W', 'T', 'F', 'S', 'S']
-                              .asMap()
-                              .entries
-                              .map((e) => Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text(e.value,
-                                        textAlign: TextAlign.center,
-                                        style: NoorType.meta.copyWith(
-                                            color: Colors.white70,
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.w600)),
-                                    const SizedBox(height: 6),
-                                    Icon(
-                                        e.key < 6
-                                            ? Icons.check_circle
-                                            : Icons.radio_button_unchecked,
-                                        size: 20,
-                                        color: e.key < 6
-                                            ? NoorColors.success
-                                            : Colors.white38),
-                                  ]))
-                              .toList(),
-                        ),
+        appBar: AppBar(title: const Text('Salah Tracker'), actions: [
+          IconButton(
+              tooltip: 'Prayer settings',
+              onPressed: () => open(const PrayerSettingsScreen()),
+              icon: const Icon(Icons.tune_outlined)),
+        ]),
+        body: SafeArea(
+            child: ListView(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
+                children: [
+              Text(day.hijriDisplay.replaceAll(' (calculated)', ''),
+                  style: NoorType.meta),
+              const SizedBox(height: 5),
+              Text(
+                  controller?.locationLabel ??
+                      LocationModel.defaultLocation.label,
+                  style: NoorType.secondary),
+              const SizedBox(height: 18),
+              Container(
+                  clipBehavior: Clip.antiAlias,
+                  decoration: BoxDecoration(
+                      gradient: const LinearGradient(colors: [
+                        NoorColors.emeraldDark,
+                        NoorColors.emeraldMid
                       ]),
-                    ),
-                    const SizedBox(height: 16),
-                    // Monthly Overview
-                    NoorCard(
-                      child: Column(children: [
-                        Row(children: [
-                          const Expanded(
-                              child: Text('Monthly Overview',
-                                  style: NoorType.cardTitle)),
-                          Text('View Calendar',
-                              style: NoorType.meta.copyWith(color: NoorColors.emerald)),
-                        ]),
-                        const SizedBox(height: 16),
-                        const Row(children: [
+                      borderRadius: BorderRadius.circular(22)),
+                  child: Stack(children: [
+                    const Positioned.fill(
+                        child: CustomPaint(painter: SignatureArchPainter())),
+                    Padding(
+                        padding: const EdgeInsets.all(18),
+                        child: Row(children: [
                           Expanded(
-                              child:
-                                  _Stat('91%', 'Completion Rate\nThis Month')),
-                          Expanded(child: _Stat('28', 'Days Completed')),
-                          Expanded(child: _Stat('3', 'Missed Days')),
-                        ]),
-                        const SizedBox(height: 14),
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(4),
-                          child: const LinearProgressIndicator(
-                              value: 0.91,
-                              minHeight: 6,
-                              color: NoorColors.emerald,
-                              backgroundColor: NoorColors.sand),
-                        ),
-                      ]),
-                    ),
-                    const SizedBox(height: 16),
-                    // Insights with lantern crop
-                    NoorCard(
-                      child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
                               child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const Text('Insights',
-                                        style: NoorType.cardTitle),
-                                    const SizedBox(height: 10),
-                                    Text(
-                                      'You are most consistent with Fajr. '
-                                      'Try setting a reminder for Isha to '
-                                      'improve your night prayer.',
-                                      style: NoorType.secondary.copyWith(height: 1.55),
-                                    ),
-                                  ]),
-                            ),
-                            const SizedBox(width: 10),
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(14),
-                              child: Image.asset(NoorAssets.salahLantern,
-                                  width: 92,
-                                  cacheWidth: 276,
-                                  height: 76,
-                                  // Whole lantern visible as drawn
-                                  // (Phase 11 fix; cover cropped it).
-                                  fit: BoxFit.contain,
-                                  errorBuilder: (_, __, ___) => Container(
-                                      width: 92,
-                                      height: 76,
-                                      color: NoorColors.emeraldSoft)),
-                            ),
-                          ]),
-                    ),
-                    const SizedBox(height: 20),
-                    const NoorSectionLabel('Quick Actions'),
-                    const SizedBox(height: 12),
-                    Row(children: [
-                      _quick(
-                          context,
-                          Icons.notifications_none,
-                          'Prayer\nReminders',
-                          () => Navigator.of(context).push(MaterialPageRoute(
-                              builder: (_) => const ReminderCenterScreen()))),
-                      _quick(
-                          context,
-                          Icons.explore_outlined,
-                          'Qibla\nFinder',
-                          () => Navigator.of(context).push(MaterialPageRoute(
-                              builder: (_) => const QiblaFinderScreen()))),
-                      _quick(context, Icons.menu_book_outlined, 'Learn\nSalah',
-                          () => _openLearn(context)),
-                      _quick(
-                          context,
-                          Icons.bar_chart,
-                          'My\nStats',
-                          () => Navigator.of(context).push(MaterialPageRoute(
-                              builder: (_) => const MyJourneyScreen()))),
-                    ]),
-                    const SizedBox(height: 16),
-                    // Learn Salah
-                    Container(
-                      decoration: BoxDecoration(
-                          color: NoorColors.emeraldSoft,
-                          borderRadius:
-                              BorderRadius.circular(NoorRadius.heroCard)),
-                      padding: const EdgeInsets.all(18),
-                      child: Row(children: [
-                        Expanded(
-                          child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text('Learn Salah Step by Step',
-                                    style: NoorType.cardTitle),
-                                const SizedBox(height: 6),
+                                Text('TODAY’S PRAYERS',
+                                    style: NoorType.eyebrow.copyWith(
+                                        color: NoorColors.onEmeraldMuted)),
+                                const SizedBox(height: 8),
+                                Text('$completed of 5 completed',
+                                    style: NoorType.screenTitle
+                                        .copyWith(color: Colors.white)),
+                                const SizedBox(height: 7),
                                 Text(
-                                    'Interactive lessons with audio and illustrations.',
-                                    style: NoorType.meta.copyWith(color: NoorColors.muted,
-                                        height: 1.45)),
-                                const SizedBox(height: 14),
-                                FilledButton(
-                                  onPressed: () => _openLearn(context),
-                                  style: FilledButton.styleFrom(
-                                      backgroundColor: NoorColors.emeraldDark),
-                                  child: const Text('Start Learning'),
-                                ),
-                              ]),
-                        ),
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(14),
-                          child: Image.asset(NoorAssets.salahProstration,
-                              width: 108,
-                              cacheWidth: 324,
-                              height: 84,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Container(
-                                  width: 108, height: 84, color: Colors.white)),
-                        ),
-                      ]),
-                    ),
-                  ]),
-            ),
-          ],
-        ),
-      ),
-    );
+                                    completed == 5
+                                        ? 'May Allah accept your prayers.'
+                                        : 'One prayer at a time.',
+                                    style: NoorType.secondary.copyWith(
+                                        color: NoorColors.onEmeraldMuted)),
+                              ])),
+                          const SizedBox(width: 14),
+                          SizedBox(
+                              width: 58,
+                              height: 58,
+                              child:
+                                  Stack(alignment: Alignment.center, children: [
+                                SizedBox.expand(
+                                    child: CircularProgressIndicator(
+                                        value: completed / 5,
+                                        strokeWidth: 4,
+                                        color: NoorColors.gold,
+                                        backgroundColor: Colors.white24
+                                            .withValues(alpha: .14))),
+                                Text('$completed/5',
+                                    style: NoorType.body.copyWith(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w700)),
+                              ]))
+                        ])),
+                  ])),
+              const SizedBox(height: 18),
+              NoorCard(
+                  padding: EdgeInsets.zero,
+                  radius: 20,
+                  child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Padding(
+                            padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+                            child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text('Today’s timetable',
+                                      style: NoorType.cardTitle),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                      '${next.isTomorrow ? 'Tomorrow' : 'Next'}: ${next.displayName} · ${next.timeLabel} · ${next.remainingLabel}',
+                                      style: NoorType.meta),
+                                ])),
+                        for (int i = 0; i < names.length; i++) ...[
+                          if (i > 0) const Divider(height: 1),
+                          Semantics(
+                              button: true,
+                              checked: _done[i],
+                              label:
+                                  '${names[i]} prayer, ${_done[i] ? "prayed" : "not prayed"}. Tap to toggle.',
+                              child: InkWell(
+                                  key: ValueKey('salah-${names[i]}'),
+                                  onTap: () => _togglePrayer(i),
+                                  child: Ink(
+                                      color: !next.isTomorrow &&
+                                              next.name == names[i]
+                                          ? (Theme.of(context).brightness ==
+                                                  Brightness.dark
+                                              ? NoorColors.darkSurface
+                                              : NoorColors.emeraldSoft
+                                                  .withValues(alpha: .55))
+                                          : Colors.transparent,
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 16, vertical: 13),
+                                      child: Row(children: [
+                                        Icon(_prayerIcons[i],
+                                            size: 21, color: accent),
+                                        const SizedBox(width: 12),
+                                        Expanded(
+                                            child: Text(
+                                                names[i] == 'Dhuhr'
+                                                    ? 'Dhuhr / Zuhr'
+                                                    : names[i],
+                                                style: NoorType.body)),
+                                        const SizedBox(width: 8),
+                                        Expanded(
+                                            child: Text(
+                                                day.timings[names[i]] == null
+                                                    ? 'Unavailable'
+                                                    : PrayerService.formatTime(
+                                                        day.timings[names[i]]!),
+                                                textAlign: TextAlign.end,
+                                                style: NoorType.tabular(
+                                                    NoorType.secondary.copyWith(
+                                                        color: NoorTheme
+                                                            .foreground(
+                                                                context),
+                                                        fontWeight:
+                                                            FontWeight.w700)))),
+                                        const SizedBox(width: 15),
+                                        Icon(
+                                            _done[i]
+                                                ? Icons.check_circle_rounded
+                                                : Icons
+                                                    .radio_button_unchecked_rounded,
+                                            size: 25,
+                                            color: _done[i]
+                                                ? accent
+                                                : Theme.of(context)
+                                                    .colorScheme
+                                                    .outline),
+                                      ])))),
+                        ],
+                      ])),
+              const SizedBox(height: 20),
+              Row(children: [
+                Expanded(child: _stat('$_streak', 'Day streak')),
+                const SizedBox(width: 10),
+                Expanded(
+                    child:
+                        _stat('${(_completion * 100).round()}%', 'This month')),
+                const SizedBox(width: 10),
+                Expanded(child: _stat('$_completedMonth', 'Complete days'))
+              ]),
+              const SizedBox(height: 20),
+              NoorCard(
+                  onTap: () => open(const MyJourneyScreen()),
+                  child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const Text('Your consistency',
+                            style: NoorType.cardTitle),
+                        const SizedBox(height: 4),
+                        const Text('Completed prayer days · last 7 days',
+                            style: NoorType.meta),
+                        const SizedBox(height: 16),
+                        Row(children: [
+                          for (int i = 6; i >= 0; i--)
+                            Expanded(child: Builder(builder: (_) {
+                              final now = DateTime.now();
+                              final date =
+                                  DateTime(now.year, now.month, now.day - i);
+                              final checked = _completedDates.contains(
+                                  date.toIso8601String().split('T').first);
+                              return Column(children: [
+                                Text(
+                                    [
+                                      'M',
+                                      'T',
+                                      'W',
+                                      'T',
+                                      'F',
+                                      'S',
+                                      'S'
+                                    ][date.weekday - 1],
+                                    style: NoorType.meta),
+                                const SizedBox(height: 8),
+                                Icon(
+                                    checked
+                                        ? Icons.check_circle
+                                        : Icons.circle_outlined,
+                                    size: 21,
+                                    color: checked
+                                        ? accent
+                                        : Theme.of(context).colorScheme.outline)
+                              ]);
+                            }))
+                        ]),
+                        const SizedBox(height: 14),
+                        const Text('View journey →',
+                            textAlign: TextAlign.right, style: NoorType.meta),
+                      ])),
+              const SizedBox(height: 14),
+              Wrap(spacing: 10, runSpacing: 8, children: [
+                OutlinedButton.icon(
+                    onPressed: () => open(const SalahGuideScreen()),
+                    icon: const Icon(Icons.menu_book_outlined, size: 18),
+                    label: const Text('Salah & Wudu Guide')),
+                OutlinedButton.icon(
+                    onPressed: () =>
+                        open(const SalahGuideScreen(initialTab: 3)),
+                    icon: const Icon(Icons.history_toggle_off, size: 18),
+                    label: const Text('Qada & Tahajjud')),
+                OutlinedButton.icon(
+                    onPressed: () => open(const QiblaFinderScreen()),
+                    icon: const Icon(Icons.explore_outlined, size: 18),
+                    label: const Text('Qibla')),
+                OutlinedButton.icon(
+                    onPressed: () => open(const ReminderCenterScreen()),
+                    icon:
+                        const Icon(Icons.notifications_none_outlined, size: 18),
+                    label: const Text('Reminders')),
+              ]),
+            ])));
   }
 
-  Widget _quick(BuildContext context, IconData icon, String label,
-          VoidCallback onTap) =>
-      Expanded(
-        child: Semantics(button: true, child: GestureDetector(
-          onTap: onTap,
-          child: Container(
-            margin: const EdgeInsets.symmetric(horizontal: 4),
-            padding: const EdgeInsets.symmetric(vertical: 14),
-            decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: NoorColors.hairlineSoft)),
-            child: Column(children: [
-              Icon(icon, color: NoorColors.emeraldDark, size: 23),
-              const SizedBox(height: 8),
-              Text(label,
-                  textAlign: TextAlign.center,
-                  style: NoorType.meta.copyWith(height: 1.25)),
-            ]),
-          ),
-        )),
-      );
-}
-
-class _Stat extends StatelessWidget {
-  const _Stat(this.value, this.label);
-  final String value;
-  final String label;
-  @override
-  Widget build(BuildContext context) => Column(children: [
+  Widget _stat(String value, String label) => NoorCard(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 13),
+      radius: 16,
+      child: Column(children: [
         Text(value,
-            style: NoorType.screenTitle),
-        const SizedBox(height: 4),
+            style: NoorType.cardTitle
+                .copyWith(color: Theme.of(context).colorScheme.primary)),
+        const SizedBox(height: 5),
         Text(label,
             textAlign: TextAlign.center,
-            style: NoorType.meta.copyWith(color: NoorColors.mutedDark)),
-      ]);
+            style: NoorType.eyebrow.copyWith(letterSpacing: 0))
+      ]));
 }

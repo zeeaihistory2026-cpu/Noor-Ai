@@ -1,4 +1,5 @@
 import 'app_state.dart';
+import 'daily_content_service.dart';
 import 'noor_controller.dart';
 
 /// Phase 14 — curated Share Studio content library.
@@ -17,6 +18,17 @@ import 'noor_controller.dart';
 enum ShareContentType { ayah, hadith, dua, streak }
 
 class ShareContentItem {
+  factory ShareContentItem.fromDaily(
+          DailyContentItem item, ShareContentType type) =>
+      ShareContentItem(
+        id: item.id,
+        type: type,
+        title: item.title,
+        text: item.translation,
+        arabicText: item.arabic,
+        reference: item.reference,
+        tags: [item.category],
+      );
   const ShareContentItem({
     required this.id,
     required this.type,

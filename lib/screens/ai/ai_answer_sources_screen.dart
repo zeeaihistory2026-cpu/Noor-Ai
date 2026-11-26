@@ -15,6 +15,7 @@ class AiAnswerSourcesScreen extends StatefulWidget {
     this.question,
     this.results,
     this.summary,
+    this.sourceRefs,
     this.isLive = false,
   });
 
@@ -23,6 +24,7 @@ class AiAnswerSourcesScreen extends StatefulWidget {
   final String? question;
   final List<KnowledgeResult>? results;
   final String? summary;
+  final List<String>? sourceRefs;
   final bool isLive;
   @override
   State<AiAnswerSourcesScreen> createState() => _AiAnswerSourcesScreenState();
@@ -33,7 +35,7 @@ class _AiAnswerSourcesScreenState extends State<AiAnswerSourcesScreen> {
   bool _related = false;
   @override
   Widget build(BuildContext context) => Scaffold(
-        backgroundColor: NoorColors.cream,
+        backgroundColor: NoorTheme.background(context, light: NoorColors.cream),
         body: SafeArea(
             child: Column(children: [
           Container(
@@ -58,29 +60,32 @@ class _AiAnswerSourcesScreenState extends State<AiAnswerSourcesScreen> {
                   // Phase 16 audit: copies the reference list — the
                   // same refs shown on screen, never invented.
                   onPressed: () => showNoorOverflowSheet(context,
-                      title: 'Answer sources',
-                      actions: [
-                        (
-                          Icons.copy_outlined,
-                          'Copy references',
-                          () async {
-                            final refs = widget.results == null
-                                ? SampleData.sourcesRefs
-                                : widget.results!
-                                    .map((r) =>
-                                        '${r.reference} (${r.sourceLabel})')
-                                    .join('\n');
-                            await Clipboard.setData(
-                                ClipboardData(text: refs));
-                            if (context.mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                      content:
-                                          Text('References copied')));
-                            }
-                          }
-                        ),
-                      ])),
+                          title: 'Answer sources',
+                          actions: [
+                            (
+                              Icons.copy_outlined,
+                              'Copy references',
+                              () async {
+                                final refs = widget.results == null
+                                    ? (widget.sourceRefs == null
+                                        ? SampleData.sourcesRefs
+                                        : (widget.sourceRefs!.isEmpty
+                                            ? 'General offline demo response — no indexed scripture citation matched.'
+                                            : widget.sourceRefs!.join(' • ')))
+                                    : widget.results!
+                                        .map((r) =>
+                                            '${r.reference} (${r.sourceLabel})')
+                                        .join('\n');
+                                await Clipboard.setData(
+                                    ClipboardData(text: refs));
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                          content: Text('References copied')));
+                                }
+                              }
+                            ),
+                          ])),
             ]),
           ),
           Expanded(
@@ -108,15 +113,15 @@ class _AiAnswerSourcesScreenState extends State<AiAnswerSourcesScreen> {
                 Container(
                   padding: const EdgeInsets.all(18),
                   decoration: BoxDecoration(
-                      color: NoorColors.surfaceWarm,
+                      color: NoorTheme.surface(context, light: NoorColors.surfaceWarm),
                       borderRadius: BorderRadius.circular(NoorRadius.card),
-                      border: Border.all(color: NoorColors.hairlineSoft)),
+                      border: Border.all(color: NoorTheme.border(context))),
                   child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text('AI Explanation',
                             style: NoorType.cardTitle
-                                .copyWith(color: NoorColors.emeraldDark)),
+                                .copyWith(color: null)),
                         const SizedBox(height: 10),
                         Text(widget.summary ?? SampleData.sourcesSummary,
                             style: NoorType.secondary.copyWith(height: 1.55)),
@@ -129,11 +134,15 @@ class _AiAnswerSourcesScreenState extends State<AiAnswerSourcesScreen> {
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 14, vertical: 12),
                               decoration: BoxDecoration(
-                                  color: NoorColors.emeraldSoft,
+                                  color: NoorTheme.softSurface(context),
                                   borderRadius: BorderRadius.circular(12)),
-                              child: Text(SampleData.sourcesRefs,
+                              child: Text(widget.sourceRefs == null
+                                      ? SampleData.sourcesRefs
+                                      : (widget.sourceRefs!.isEmpty
+                                          ? 'No indexed scripture citation matched this prompt. Try searching a specific topic or verse reference.'
+                                          : widget.sourceRefs!.join(' • ')),
                                   style: NoorType.secondary
-                                      .copyWith(color: NoorColors.emeraldDark)))
+                                      .copyWith(color: null)))
                         else
                           for (final r in widget.results!) ...[
                             Container(
@@ -141,7 +150,7 @@ class _AiAnswerSourcesScreenState extends State<AiAnswerSourcesScreen> {
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 14, vertical: 12),
                                 decoration: BoxDecoration(
-                                    color: NoorColors.emeraldSoft,
+                                    color: NoorTheme.softSurface(context),
                                     borderRadius: BorderRadius.circular(12)),
                                 child: Column(
                                     crossAxisAlignment:
@@ -163,12 +172,12 @@ class _AiAnswerSourcesScreenState extends State<AiAnswerSourcesScreen> {
                                             child: Text(r.sourceLabel,
                                                 style: NoorType.meta.copyWith(
                                                     color:
-                                                        NoorColors.mutedDark))),
+                                                        null))),
                                       ]),
                                       const SizedBox(height: 8),
                                       Text(r.briefExcerpt,
                                           style: NoorType.secondary.copyWith(
-                                              color: NoorColors.ink,
+                                              color: null,
                                               height: 1.5)),
                                       const SizedBox(height: 6),
                                       Text(r.teaching,
@@ -179,16 +188,16 @@ class _AiAnswerSourcesScreenState extends State<AiAnswerSourcesScreen> {
                           ],
                         const SizedBox(height: 10),
                         Row(children: [
-                          const Icon(Icons.verified_outlined,
-                              size: 16, color: NoorColors.emerald),
+                          Icon(Icons.verified_outlined,
+                              size: 16, color: NoorTheme.foreground(context, light: NoorColors.emerald)),
                           const SizedBox(width: 6),
                           Expanded(
                               child: Text(
-                                  widget.results == null
+                                  (widget.results == null && widget.sourceRefs == null)
                                       ? SampleData.sourcesConfidence
                                       : KnowledgeSearchService.scholarNote,
                                   style: NoorType.meta.copyWith(
-                                      color: NoorColors.emerald, height: 1.4)))
+                                      color: NoorTheme.foreground(context, light: NoorColors.emerald), height: 1.4)))
                         ]),
                       ]),
                 ),
@@ -214,7 +223,11 @@ class _AiAnswerSourcesScreenState extends State<AiAnswerSourcesScreen> {
                     padding: const EdgeInsets.only(bottom: 10),
                     child: Text(
                         widget.results == null
-                            ? SampleData.sourcesRefs
+                            ? (widget.sourceRefs == null
+                                ? SampleData.sourcesRefs
+                                : (widget.sourceRefs!.isEmpty
+                                    ? 'Offline assistant summary'
+                                    : widget.sourceRefs!.join(' • ')))
                             : widget.results!
                                 .map((r) => r.reference)
                                 .join('  •  '),
@@ -228,7 +241,7 @@ class _AiAnswerSourcesScreenState extends State<AiAnswerSourcesScreen> {
   Widget _row(BuildContext c, String t, VoidCallback f) => Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Material(
-          color: Colors.white,
+          color: NoorTheme.surface(context, light: Colors.white),
           borderRadius: BorderRadius.circular(16),
           child: InkWell(
               onTap: f,
@@ -238,10 +251,10 @@ class _AiAnswerSourcesScreenState extends State<AiAnswerSourcesScreen> {
                       const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
                   decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: NoorColors.hairline)),
+                      border: Border.all(color: NoorTheme.border(context))),
                   child: Row(children: [
                     Expanded(child: Text(t, style: NoorType.body)),
                     const Icon(Icons.chevron_right,
-                        color: NoorColors.muted, size: 20)
+                        color: null, size: 20)
                   ])))));
 }

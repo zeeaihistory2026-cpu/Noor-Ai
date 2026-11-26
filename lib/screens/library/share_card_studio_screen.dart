@@ -15,7 +15,8 @@ import 'share_export_screen.dart';
 /// state-filled streak cards — and the preview re-frames to the
 /// chosen platform canvas before export.
 class ShareCardStudioScreen extends StatefulWidget {
-  const ShareCardStudioScreen({super.key});
+  const ShareCardStudioScreen({super.key, this.initialItem});
+  final ShareContentItem? initialItem;
   @override
   State<ShareCardStudioScreen> createState() => _ShareCardStudioScreenState();
 }
@@ -26,6 +27,16 @@ class _ShareCardStudioScreenState extends State<ShareCardStudioScreen> {
   int _section = 0; // 0 Ayah, 1 Hadith, 2 Dua, 3 Streaks
   ShareContentItem _item = ShareContent.ayahCards.first;
   ShareStreakCard? _streak;
+
+  @override
+  void initState() {
+    super.initState();
+    final selected = widget.initialItem;
+    if (selected != null) {
+      _item = selected;
+      _section = selected.type.index.clamp(0, 2);
+    }
+  }
 
   static const _sections = ['Ayah', 'Hadith', 'Dua', 'Streaks'];
 
@@ -54,7 +65,7 @@ class _ShareCardStudioScreenState extends State<ShareCardStudioScreen> {
     final streaks = ShareContent.streakCards(controller);
     final format = ShareFormats.all[_format];
     return Scaffold(
-      backgroundColor: NoorColors.cream,
+      backgroundColor: NoorTheme.background(context, light: NoorColors.cream),
       body: SafeArea(
           child: Column(children: [
         NoorPlainHeader(title: 'Share Card Studio', moreActions: [
@@ -103,7 +114,7 @@ class _ShareCardStudioScreenState extends State<ShareCardStudioScreen> {
                           child: Material(
                               color: i == _section
                                   ? NoorColors.emeraldDark
-                                  : Colors.white,
+                                  : NoorTheme.surface(context),
                               borderRadius: BorderRadius.circular(999),
                               child: InkWell(
                                   onTap: () => _pickSection(i),
@@ -117,22 +128,23 @@ class _ShareCardStudioScreenState extends State<ShareCardStudioScreen> {
                                           border: i == _section
                                               ? null
                                               : Border.all(
-                                                  color: NoorColors.hairline)),
+                                                  color: NoorTheme.border(context))),
                                       child: Text(_sections[i],
                                           textAlign: TextAlign.center,
                                           style: NoorType.meta.copyWith(
-                                              color: i == _section
+                                              color: NoorTheme.foreground(context, light: i == _section
                                                   ? Colors.white
-                                                  : NoorColors.ink))))))),
+                                                  : NoorColors.ink)))))))),
                   if (i < _sections.length - 1) const SizedBox(width: 8),
                 ],
               ]),
               const SizedBox(height: 12),
               SizedBox(
-                height: 142,
+                height: 142 * MediaQuery.textScalerOf(context).scale(1).clamp(1.0, 1.45),
                 child: ListView.separated(
                   scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 2, vertical: 4),
                   itemCount:
                       _section == 3 ? streaks.length : _sectionItems.length,
                   separatorBuilder: (_, __) => const SizedBox(width: 12),
@@ -178,7 +190,7 @@ class _ShareCardStudioScreenState extends State<ShareCardStudioScreen> {
               const SizedBox(height: 6),
               Text(
                   'Preview re-frames to the platform canvas; export renders ${format.sizeLabel}.',
-                  style: NoorType.meta.copyWith(color: NoorColors.muted)),
+                  style: NoorType.meta.copyWith(color: NoorTheme.muted(context))),
               const SizedBox(height: 12),
               Wrap(spacing: 8, runSpacing: 8, children: [
                 for (var i = 0; i < ShareFormats.all.length; i++)
@@ -190,7 +202,7 @@ class _ShareCardStudioScreenState extends State<ShareCardStudioScreen> {
                       child: Material(
                           color: i == _format
                               ? NoorColors.emeraldDark
-                              : Colors.white,
+                              : NoorTheme.surface(context),
                           borderRadius: BorderRadius.circular(14),
                           child: InkWell(
                               onTap: () => setState(() => _format = i),
@@ -203,20 +215,20 @@ class _ShareCardStudioScreenState extends State<ShareCardStudioScreen> {
                                       border: i == _format
                                           ? null
                                           : Border.all(
-                                              color: NoorColors.hairline)),
+                                              color: NoorTheme.border(context))),
                                   child: Text(
                                       '${ShareFormats.all[i].label} · ${ShareFormats.all[i].detail}',
                                       style: NoorType.meta.copyWith(
-                                          color: i == _format
+                                          color: NoorTheme.foreground(context, light: i == _format
                                               ? Colors.white
-                                              : NoorColors.ink)))))),
+                                              : NoorColors.ink))))))),
               ]),
               const SizedBox(height: 22),
               Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                 const Text('Templates', style: NoorType.cardTitle),
                 Text('View all',
                     style:
-                        NoorType.secondary.copyWith(color: NoorColors.emerald)),
+                        NoorType.secondary.copyWith(color: NoorTheme.foreground(context, light: NoorColors.emerald))),
               ]),
               const SizedBox(height: 12),
               Row(children: [
@@ -252,9 +264,7 @@ class _ShareCardStudioScreenState extends State<ShareCardStudioScreen> {
                                       child: NoorShareCard(
                                           style: i,
                                           height: 96,
-                                          item: _streak == null
-                                              ? _item
-                                              : null,
+                                          item: _streak == null ? _item : null,
                                           streak: _streak,
                                           mini: true,
                                           borderRadius: BorderRadius.zero,
@@ -265,12 +275,12 @@ class _ShareCardStudioScreenState extends State<ShareCardStudioScreen> {
               const SizedBox(height: 14),
               Row(children: [
                 const Icon(Icons.lock_outline,
-                    size: 15, color: NoorColors.muted),
+                    size: 15, color: null),
                 const SizedBox(width: 6),
                 Expanded(
                     child: Text(
                         'Verified content lock: source text and reference cannot be edited.',
-                        style: NoorType.meta.copyWith(color: NoorColors.muted)))
+                        style: NoorType.meta.copyWith(color: null)))
               ]),
               const SizedBox(height: 20),
               Row(children: [
@@ -340,7 +350,7 @@ class _ShareCardStudioScreenState extends State<ShareCardStudioScreen> {
                       duration: const Duration(milliseconds: 200),
                       width: 120,
                       decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: NoorTheme.surface(context),
                           borderRadius: BorderRadius.circular(16),
                           border: Border.all(
                               color: selected
@@ -364,7 +374,7 @@ class _ShareCardStudioScreenState extends State<ShareCardStudioScreen> {
                             Expanded(child: child),
                             Container(
                               width: double.infinity,
-                              color: Colors.white,
+                              color: NoorTheme.surface(context),
                               padding: const EdgeInsets.symmetric(
                                   horizontal: 10, vertical: 7),
                               child: Column(
@@ -376,14 +386,13 @@ class _ShareCardStudioScreenState extends State<ShareCardStudioScreen> {
                                         overflow: TextOverflow.ellipsis,
                                         style: NoorType.meta.copyWith(
                                             fontWeight: FontWeight.w700,
-                                            fontSize: 12)),
+                                            )),
                                     const SizedBox(height: 2),
                                     Text(ref,
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                         style: NoorType.meta.copyWith(
-                                            color: NoorColors.muted,
-                                            fontSize: 11)),
+                                            color: NoorTheme.muted(context))),
                                   ]),
                             ),
                           ],
@@ -392,43 +401,41 @@ class _ShareCardStudioScreenState extends State<ShareCardStudioScreen> {
 
   Widget _btn(BuildContext c, String l, IconData i, VoidCallback f,
           {bool primary = false}) =>
-      SizedBox(
-          height: 48,
+      ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 48),
           child: primary
               ? FilledButton.icon(
                   icon: Icon(i, size: 16, color: Colors.white),
-                  label: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Text(l,
-                          maxLines: 1,
-                          softWrap: false,
-                          style: NoorType.meta.copyWith(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w700))),
+                  label: Text(l,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: NoorType.meta.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700)),
                   onPressed: f,
                   style: FilledButton.styleFrom(
                       backgroundColor: NoorColors.emeraldDark,
                       foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 10),
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(14))),
                 )
               : OutlinedButton.icon(
-                  icon: Icon(i, size: 16, color: NoorColors.emeraldDark),
-                  label: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Text(l,
-                          maxLines: 1,
-                          softWrap: false,
-                          style: NoorType.meta.copyWith(
-                              color: NoorColors.emeraldDark,
-                              fontWeight: FontWeight.w700))),
+                  icon: Icon(i, size: 16, color: NoorTheme.accent(c)),
+                  label: Text(l,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: NoorType.meta.copyWith(
+                          color: NoorTheme.accent(c),
+                          fontWeight: FontWeight.w700)),
                   onPressed: f,
                   style: OutlinedButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      foregroundColor: NoorColors.emeraldDark,
-                      side: const BorderSide(color: NoorColors.hairline),
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      backgroundColor: NoorTheme.surface(c),
+                      foregroundColor: NoorTheme.accent(c),
+                      side: BorderSide(color: NoorTheme.border(c)),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 10),
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(14))),
                 ));

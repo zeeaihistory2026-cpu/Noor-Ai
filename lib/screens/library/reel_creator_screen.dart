@@ -48,7 +48,7 @@ class _ReelCreatorScreenState extends State<ReelCreatorScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        backgroundColor: NoorColors.cream,
+        backgroundColor: NoorTheme.background(context, light: NoorColors.cream),
         body: SafeArea(
             child: Column(children: [
           NoorPlainHeader(title: 'Animate Card', moreActions: [
@@ -72,13 +72,13 @@ class _ReelCreatorScreenState extends State<ReelCreatorScreen> {
                     offset: _style == 1 && _previewing
                         ? const Offset(0, -0.03)
                         : Offset.zero,
-                    duration: const Duration(milliseconds: 700),
+                    duration: MediaQuery.disableAnimationsOf(context) ? Duration.zero : const Duration(milliseconds: 700),
                     child: AnimatedScale(
                         scale: _style == 2 && _previewing ? 1.03 : 1,
-                        duration: const Duration(milliseconds: 700),
+                        duration: MediaQuery.disableAnimationsOf(context) ? Duration.zero : const Duration(milliseconds: 700),
                         child: AnimatedOpacity(
                             opacity: _style == 0 && _previewing ? 0.55 : 1,
-                            duration: const Duration(milliseconds: 700),
+                            duration: MediaQuery.disableAnimationsOf(context) ? Duration.zero : const Duration(milliseconds: 700),
                             child: Container(
                                 decoration: BoxDecoration(
                                     borderRadius: BorderRadius.circular(
@@ -103,26 +103,33 @@ class _ReelCreatorScreenState extends State<ReelCreatorScreen> {
                 const Text('Animation style', style: NoorType.cardTitle),
                 const SizedBox(height: 12),
                 for (var i = 0; i < SampleData.reelStyles.length; i++) ...[
-                  Material(
-                      color:
-                          i == _style ? NoorColors.emeraldDark : Colors.white,
-                      borderRadius: BorderRadius.circular(14),
-                      child: InkWell(
-                          onTap: () => setState(() => _style = i),
+                  Semantics(
+                      button: true,
+                      selected: i == _style,
+                      child: Material(
+                          color: i == _style
+                              ? NoorColors.emeraldDark
+                              : NoorTheme.surface(context),
                           borderRadius: BorderRadius.circular(14),
-                          child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 18, vertical: 17),
-                              decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(14),
-                                  border: i == _style
-                                      ? null
-                                      : Border.all(color: NoorColors.hairline)),
-                              child: Text(SampleData.reelStyles[i],
-                                  style: NoorType.body.copyWith(
-                                      color: i == _style
-                                          ? Colors.white
-                                          : NoorColors.ink))))),
+                          child: InkWell(
+                              onTap: () => setState(() => _style = i),
+                              borderRadius: BorderRadius.circular(14),
+                              child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 18, vertical: 17),
+                                  decoration: BoxDecoration(
+                                      borderRadius: BorderRadius.circular(14),
+                                      border: i == _style
+                                          ? null
+                                          : Border.all(
+                                              color:
+                                                  NoorTheme.border(context))),
+                                  child: Text(SampleData.reelStyles[i],
+                                      style: NoorType.body.copyWith(
+                                          color: i == _style
+                                              ? Colors.white
+                                              : NoorTheme.foreground(
+                                                  context))))))),
                   const SizedBox(height: 10),
                 ],
                 const SizedBox(height: 8),

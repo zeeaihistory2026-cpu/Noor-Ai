@@ -9,6 +9,8 @@ plugins {
 
 val keystoreProperties = Properties()
 val keystorePropertiesFile = rootProject.file("key.properties")
+// Allows device QA beside an existing app signed with the owner's private key.
+val auditInstall = providers.environmentVariable("NOOR_AUDIT_INSTALL").orNull == "1"
 if (keystorePropertiesFile.exists()) {
     keystoreProperties.load(FileInputStream(keystorePropertiesFile))
 }
@@ -28,7 +30,13 @@ android {
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.noorai.com"
+        applicationId = if (auditInstall) "com.noorai.com.audit" else "com.noorai.com"
+        manifestPlaceholders["appLabel"] = if (auditInstall) "MuslimGo Test" else "MuslimGo"
+        if (auditInstall) {
+            // Keep plugin JNI libraries aligned with this handset's Flutter ABI.
+            ndk.abiFilters.clear()
+            ndk.abiFilters.add("arm64-v8a")
+        }
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
@@ -62,6 +70,11 @@ android {
 
     buildTypes {
         release {
+            // Keep handset QA packaging light; Flutter code remains release AOT.
+            if (auditInstall) {
+                isMinifyEnabled = false
+                isShrinkResources = false
+            }
             signingConfig = if (keystorePropertiesFile.exists()) {
                 signingConfigs.getByName("release")
             } else {

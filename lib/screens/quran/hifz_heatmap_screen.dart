@@ -3,6 +3,7 @@ import '../../data/sample_data.dart';
 import '../../theme/noor_theme.dart';
 import '../../widgets/noor_components.dart';
 import 'hifz_revision_planner_screen.dart';
+import 'hifz_mushaf_screen.dart';
 
 /// Page 30 — Hifz Progress / Weak-Page Heatmap. Juz 1 page
 /// strength grid (30 pages): deep emerald = strong, sage = medium,
@@ -61,7 +62,7 @@ class _HifzHeatmapScreenState extends State<HifzHeatmapScreen> {
   ];
   @override
   Widget build(BuildContext context) => Scaffold(
-        backgroundColor: NoorColors.cream,
+        backgroundColor: NoorTheme.background(context, light: NoorColors.cream),
         body: SafeArea(
             child: Column(children: [
           _noorHeader(context),
@@ -69,9 +70,7 @@ class _HifzHeatmapScreenState extends State<HifzHeatmapScreen> {
               child: ListView(
                   padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
                   children: [
-                const Text('Juz 1 • Page Strength',
-                    style:
-                        NoorType.section),
+                const Text('Juz 1 • Page Strength', style: NoorType.section),
                 const SizedBox(height: 10),
                 // Legend (Phase 12): strength was colour-only with no key.
                 Wrap(spacing: 12, runSpacing: 6, children: [
@@ -92,7 +91,8 @@ class _HifzHeatmapScreenState extends State<HifzHeatmapScreen> {
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 6,
+                      crossAxisCount: 5,
+                      childAspectRatio: 0.92,
                       mainAxisSpacing: 10,
                       crossAxisSpacing: 10),
                   itemCount: 30,
@@ -112,12 +112,24 @@ class _HifzHeatmapScreenState extends State<HifzHeatmapScreen> {
                                 borderRadius: BorderRadius.circular(12),
                                 border: _selected > 0 && _selected == i + 1
                                     ? Border.all(
-                                        color: NoorColors.ink, width: 2)
+                                        color: NoorTheme.foreground(context),
+                                        width: 2)
                                     : null),
-                            child: Text('${i + 1}',
-                                style: NoorType.secondary.copyWith(color: _pattern[i] == 0
-                                        ? Colors.white
-                                        : NoorColors.ink))),
+                            child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text('${i + 1}',
+                                      style: NoorType.meta.copyWith(
+                                          fontWeight: FontWeight.w700,
+                                          color: _pattern[i] == 0
+                                              ? Colors.white
+                                              : NoorColors.ink)),
+                                  Text(const ['S', 'M', 'R', 'W'][_pattern[i]],
+                                      style: NoorType.compactMeta.copyWith(
+                                          color: _pattern[i] == 0
+                                              ? Colors.white70
+                                              : NoorColors.ink)),
+                                ])),
                       ),
                     ),
                   ),
@@ -126,24 +138,34 @@ class _HifzHeatmapScreenState extends State<HifzHeatmapScreen> {
                 Container(
                     padding: const EdgeInsets.all(18),
                     decoration: BoxDecoration(
-                        color: NoorColors.surfaceWarm,
+                        color: NoorTheme.surface(context, light: NoorColors.surfaceWarm),
                         borderRadius: BorderRadius.circular(NoorRadius.card)),
                     child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text('Weak-page insight',
-                              style: NoorType.secondary.copyWith(color: NoorColors.goldDeep)),
+                              style: NoorType.secondary
+                                  .copyWith(color: NoorTheme.accent(context))),
                           const SizedBox(height: 8),
                           Text(
                               _selected == 0 || _selected == 5
                                   ? SampleData.heatmapInsight
                                   : 'Page $_selected is in your revision queue.',
-                              style:
-                                  NoorType.secondary.copyWith(height: 1.45)),
+                              style: NoorType.secondary.copyWith(height: 1.45)),
                           const SizedBox(height: 8),
-                          Text(
-                              'Review Page ${_selected == 0 ? 5 : _selected} ›',
-                              style: NoorType.secondary.copyWith(color: NoorColors.emeraldDark)),
+                          TextButton.icon(
+                              onPressed: () => Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                      builder: (_) => HifzMushafScreen(
+                                          initialPage:
+                                              _selected == 0 ? 5 : _selected))),
+                              style: TextButton.styleFrom(
+                                  minimumSize: const Size(48, 48),
+                                  padding: EdgeInsets.zero,
+                                  foregroundColor: NoorTheme.accent(context)),
+                              icon: const Icon(Icons.menu_book_outlined, size: 18),
+                              label: Text(
+                                  'Review Page ${_selected == 0 ? 5 : _selected} ›')),
                         ])),
               ])),
         ])),
@@ -159,6 +181,7 @@ Widget _noorHeader(BuildContext context) => Container(
       padding: const EdgeInsets.fromLTRB(6, 10, 6, 22),
       child: Row(children: [
         IconButton(
+            tooltip: 'Back',
             icon: const Icon(Icons.arrow_back_ios_new,
                 color: Colors.white, size: 19),
             onPressed: () => Navigator.of(context).maybePop()),
@@ -175,19 +198,18 @@ Widget _noorHeader(BuildContext context) => Container(
             tooltip: 'Heatmap options',
             icon: const Icon(Icons.more_vert, color: Colors.white),
             onPressed: () => showNoorOverflowSheet(context,
-                title: 'Page strength',
-                info: const [
-                  'Deep emerald = strong, sage = medium, amber = needs review, rust = weak.',
-                  'Tap any page to see its insight. Strengths update as you log revision.',
-                ],
-                actions: [
-                  (
-                    Icons.calendar_month_outlined,
-                    'Open revision planner',
-                    () => Navigator.of(context).push(MaterialPageRoute(
-                        builder: (_) =>
-                            const HifzRevisionPlannerScreen()))
-                  ),
-                ])),
+                    title: 'Page strength',
+                    info: const [
+                      'Deep emerald = strong, sage = medium, amber = needs review, rust = weak.',
+                      'Tap any page to see its insight. Strengths update as you log revision.',
+                    ],
+                    actions: [
+                      (
+                        Icons.calendar_month_outlined,
+                        'Open revision planner',
+                        () => Navigator.of(context).push(MaterialPageRoute(
+                            builder: (_) => const HifzRevisionPlannerScreen()))
+                      ),
+                    ])),
       ]),
     );

@@ -48,31 +48,43 @@ class _ShareExportScreenState extends State<ShareExportScreen> {
   }
 
   Future<void> _share() async {
+    if (_busy) return;
     setState(() => _busy = true);
-    final ok = await ShareExportService.shareCard(
-      _cardKey,
-      format: _format,
-      text: _shareText,
-    );
-    if (!mounted) return;
-    setState(() {
-      _busy = false;
-      _note = ok
-          ? 'Share sheet opened — pick Instagram, TikTok, Facebook or any app. The source reference stays on the card.'
-          : 'Sharing is not available on this device right now.';
-    });
+    try {
+      final ok = await ShareExportService.shareCard(_cardKey,
+          format: _format, text: _shareText);
+      if (mounted) {
+        setState(() => _note = ok
+            ? 'Share sheet opened. Choose an app to share your card.'
+            : 'Sharing is unavailable right now. Please try again.');
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _note = 'Couldn’t share this card. Please try again.');
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
   Future<void> _save() async {
+    if (_busy) return;
     setState(() => _busy = true);
-    final path = await ShareExportService.saveCard(_cardKey, format: _format);
-    if (!mounted) return;
-    setState(() {
-      _busy = false;
-      _note = path != null
-          ? 'Saved as a ${_format.sizeLabel} on this device.'
-          : 'Saving to this device is not available here — use Share instead.';
-    });
+    try {
+      final path = await ShareExportService.saveCard(_cardKey, format: _format);
+      if (mounted) {
+        setState(() => _note = path != null
+            ? 'Card saved. On Android 10 or newer, find it in Pictures → MuslimGo.'
+            : 'No image saved. You can also use Share to send or save your card.');
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() => _note =
+            'Couldn’t save this card. Check device storage and try again.');
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
   Future<void> _copy() async {
@@ -95,7 +107,7 @@ class _ShareExportScreenState extends State<ShareExportScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        backgroundColor: NoorColors.cream,
+        backgroundColor: NoorTheme.background(context, light: NoorColors.cream),
         body: SafeArea(
             child: Column(children: [
           NoorPlainHeader(title: 'Share & Export', moreActions: [
@@ -119,16 +131,16 @@ class _ShareExportScreenState extends State<ShareExportScreen> {
                 Text(
                     '${_format.label} · ${_format.detail} · ${_format.sizeLabel}',
                     textAlign: TextAlign.center,
-                    style: NoorType.meta.copyWith(color: NoorColors.muted)),
+                    style: NoorType.meta.copyWith(color: null)),
                 const SizedBox(height: 22),
                 const Text('Ready to share', style: NoorType.cardTitle),
                 const SizedBox(height: 12),
                 GridView.builder(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                       crossAxisCount: 2,
-                      mainAxisExtent: 62,
+                      mainAxisExtent: 64 * MediaQuery.textScalerOf(context).scale(1).clamp(1.0, 1.5),
                       crossAxisSpacing: 10,
                       mainAxisSpacing: 10),
                   itemCount: SampleData.shareTargets.length,
@@ -139,8 +151,8 @@ class _ShareExportScreenState extends State<ShareExportScreen> {
                           '${SampleData.shareTargets[i].$2}${i < 4 ? ', opens share sheet' : ''}',
                       child: Material(
                           color: _picked == i
-                              ? NoorColors.emeraldSoft
-                              : Colors.white,
+                              ? NoorTheme.softSurface(context)
+                              : NoorTheme.surface(context, light: Colors.white),
                           borderRadius: BorderRadius.circular(14),
                           child: InkWell(
                               onTap: _busy ? null : () => _target(i),
@@ -151,16 +163,16 @@ class _ShareExportScreenState extends State<ShareExportScreen> {
                                   decoration: BoxDecoration(
                                       borderRadius: BorderRadius.circular(14),
                                       border: Border.all(
-                                          color: NoorColors.hairline)),
+                                          color: NoorTheme.border(context))),
                                   child: Row(children: [
                                     CircleAvatar(
                                         radius: 17,
-                                        backgroundColor: NoorColors.emeraldSoft,
+                                        backgroundColor: NoorTheme.softSurface(context),
                                         child: Text(
                                             SampleData.shareTargets[i].$1,
                                             style: NoorType.meta.copyWith(
                                                 color:
-                                                    NoorColors.emeraldDark))),
+                                                    null))),
                                     const SizedBox(width: 10),
                                     Expanded(
                                         child: Text(

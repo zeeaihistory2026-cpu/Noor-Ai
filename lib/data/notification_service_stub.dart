@@ -5,6 +5,8 @@ import 'notification_plan.dart';
 /// claimed to be scheduled here.
 class NoorNotifications {
   NoorNotifications._();
+  static void Function(String?)? onNotificationTap;
+  static String? pendingPayload;
 
   static bool get isSupported => false;
 
@@ -12,10 +14,13 @@ class NoorNotifications {
   static bool get permissionDenied => false;
 
   /// Always false on web: permission/scheduling unsupported here.
-  static Future<bool> ensureReady() async => false;
+  static Future<bool> ensureReady({bool requestPermission = true}) async =>
+      false;
 
   /// Returns 0 (nothing scheduled) on web.
-  static Future<int> schedulePlan(List<PlannedNotification> plan) async => 0;
+  static Future<int> schedulePlan(List<PlannedNotification> plan,
+          {bool requestPermission = true}) async =>
+      0;
 
   static Future<bool> scheduleNextPrayerReminder(dynamic next) async => false;
 
@@ -26,7 +31,9 @@ class NoorNotifications {
     required String body,
     String? payload,
     bool isSalah = false,
-  }) async => false;
+    bool playAzan = false,
+  }) async =>
+      false;
 
   static Future<void> cancelAll() async {}
 }

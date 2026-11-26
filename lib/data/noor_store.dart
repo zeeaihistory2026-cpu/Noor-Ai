@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -13,26 +14,92 @@ import 'sample_data.dart';
 /// crash because storage is missing — they just get defaults
 /// (which mirror [SampleData], keeping the UI identical offline).
 class NoorStore {
+  static Future<List<String>?> getGoals() async {
+    final raw = await _readString('settings.goals');
+    if (raw == null) return null;
+    try {
+      return (jsonDecode(raw) as List).cast<String>();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static Future<void> setGoals(List<String> goals) =>
+      _writeString('settings.goals', jsonEncode(goals));
+  static Future<Map<String, String>?> getMaleNarrator(String language) async {
+    final raw =
+        await _readString('speech.maleVoice.${language.split('-').first}');
+    if (raw == null) return null;
+    try {
+      return Map<String, String>.from(jsonDecode(raw) as Map);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static Future<void> setMaleNarrator(
+          String language, Map<String, String> voice) =>
+      _writeString(
+          'speech.maleVoice.${language.split('-').first}', jsonEncode(voice));
+  static final progressRevision = ValueNotifier<int>(0);
+  static Future<(int, int)?> getReadingPosition() async {
+    final raw = await _readString('quran.readingPosition');
+    final parts = raw?.split(':');
+    if (parts == null || parts.length != 2) return null;
+    final surah = int.tryParse(parts[0]);
+    final ayah = int.tryParse(parts[1]);
+    if (surah == null ||
+        surah < 1 ||
+        surah > 114 ||
+        ayah == null ||
+        ayah < 1 ||
+        ayah > 286) {
+      return null;
+    }
+    return (surah, ayah);
+  }
+
+  static Future<void> setReadingPosition(int surah, int ayah) async {
+    await _writeString('quran.readingPosition', '$surah:$ayah');
+    progressRevision.value++;
+  }
+
   NoorStore._();
 
   static SharedPreferences? _prefs;
   static bool _initAttempted = false;
+  static Future<void>? _initFuture;
   static final Map<String, Object> _memory = <String, Object>{};
 
   /// Call once from main() if convenient. Safe to skip: every
   /// accessor lazily attempts init and falls back to memory.
-  static Future<void> init() async {
-    if (_initAttempted) return;
-    _initAttempted = true;
-    try {
-      _prefs = await SharedPreferences.getInstance();
-    } catch (_) {
-      _prefs = null; // In-memory fallback for this session.
+  static Future<void> init() {
+    if (_initAttempted) {
+      return _initFuture ?? Future<void>.value();
     }
+    _initAttempted = true;
+    late final Future<void> future;
+    future = () async {
+      try {
+        _prefs = await SharedPreferences.getInstance();
+      } catch (_) {
+        _prefs = null; // In-memory fallback for this session.
+      } finally {
+        if (identical(_initFuture, future)) {
+          _initFuture = null;
+        }
+      }
+    }();
+    _initFuture = future;
+    return future;
   }
 
   static Future<SharedPreferences?> _getPrefs() async {
-    if (_prefs == null && !_initAttempted) await init();
+    if (_prefs == null && !_initAttempted) {
+      await init();
+    } else if (_initFuture != null) {
+      await _initFuture;
+    }
     return _prefs;
   }
 
@@ -83,10 +150,10 @@ class NoorStore {
 
   // ---- Settings (Pages 13/31/39/40) ----------------------------------
 
-  /// AlAdhan calculation method. 5 = University of Islamic Sciences,
+  /// AlAdhan calculation method. 1 = University of Islamic Sciences,
   /// Karachi — default for the Asia/Karachi user.
   static const keyCalculationMethod = 'settings.calculationMethod';
-  static const defaultCalculationMethod = 5;
+  static const defaultCalculationMethod = 1;
 
   static Future<int> getCalculationMethod() async =>
       await _readInt(keyCalculationMethod) ?? defaultCalculationMethod;
@@ -119,8 +186,7 @@ class NoorStore {
       _writeString('settings.country', country);
 
   // ---- User Identity --------------------------------------------------
-  static Future<String?> getUserName() async =>
-      await _readString('user.name');
+  static Future<String?> getUserName() async => await _readString('user.name');
 
   static Future<void> setUserName(String name) =>
       _writeString('user.name', name);
@@ -134,6 +200,17 @@ class NoorStore {
   static Future<bool> getIsGuest() async =>
       await _readBool('user.isGuest') ?? true;
 
+  /// A default UI guest label is not a deliberate guest session.
+  static Future<bool> hasGuestSession() async =>
+      await _readBool('user.isGuest') == true && await getUserName() == 'Guest';
+
+  static void resetForTesting() {
+    _prefs = null;
+    _initAttempted = false;
+    _initFuture = null;
+    _memory.clear();
+  }
+
   static Future<void> setIsGuest(bool isGuest) =>
       _writeBool('user.isGuest', isGuest);
 
@@ -145,8 +222,13 @@ class NoorStore {
 
   // ---- Theme Preference (Phase 4: solar | light | dark | system) ------
 
+  static Future<double> getTextScale() async =>
+      ((await _readInt('settings.textScalePercent')) ?? 100) / 100;
+  static Future<void> setTextScale(double scale) => _writeInt(
+      'settings.textScalePercent', (scale.clamp(.9, 1.3) * 100).round());
+
   static const keyThemePreference = 'settings.themePreference';
-  static const defaultThemePreference = 'solar';
+  static const defaultThemePreference = 'light';
 
   static Future<String> getThemePreference() async =>
       await _readString(keyThemePreference) ?? defaultThemePreference;
@@ -185,10 +267,6 @@ class NoorStore {
   static Future<int> getStreak(String kind) async {
     final v = await _readInt('streaks.$kind');
     if (v != null) return v;
-    // Offline default mirrors the design's sample streaks.
-    for (final s in SampleData.streaks) {
-      if (s.$1 == kind) return s.$2;
-    }
     return 0;
   }
 
@@ -250,6 +328,7 @@ class NoorStore {
       day[_prayerNames[i]] = done[i];
     }
     await _writeString(_salahLogKey, jsonEncode(log));
+    progressRevision.value++;
   }
 
   // ---- Tasbih Counts & Today's Total ----------------------------------
@@ -281,8 +360,67 @@ class NoorStore {
     return v ?? 0;
   }
 
-  static Future<void> setTasbihTotalToday(String dateKey, int total) =>
-      _writeInt('tasbih.total.$dateKey', total);
+  static Future<void> setTasbihTotalToday(String dateKey, int total) async {
+    await _writeInt('tasbih.total.$dateKey', total);
+    await recordActivity('Dhikr',
+        date: DateTime.parse(dateKey), active: total > 0);
+  }
+
+  static Future<int> getTasbihSessions(String date) async =>
+      await _readInt('tasbih.sessions.$date') ?? 0;
+  static Future<void> setTasbihSessions(String date, int count) =>
+      _writeInt('tasbih.sessions.$date', count);
+
+  static Future<void> recordActivity(String kind,
+      {DateTime? date, bool active = true}) async {
+    final key = 'activity.$kind';
+    final raw = await _readString(key);
+    final dates = raw == null
+        ? <String>{}
+        : (jsonDecode(raw) as List).cast<String>().toSet();
+    final day = date ?? DateTime.now();
+    final label =
+        '${day.year}-${day.month.toString().padLeft(2, '0')}-${day.day.toString().padLeft(2, '0')}';
+    if (active) {
+      dates.add(label);
+    } else {
+      dates.remove(label);
+    }
+    await _writeString(key, jsonEncode(dates.toList()..sort()));
+    progressRevision.value++;
+  }
+
+  static int streakForDates(Set<String> dates, {DateTime? now}) {
+    final n = now ?? DateTime.now();
+    var date = DateTime.utc(n.year, n.month, n.day);
+    String label() => date.toIso8601String().split('T').first;
+    if (!dates.contains(label())) date = date.subtract(const Duration(days: 1));
+    int streak = 0;
+    while (dates.contains(label())) {
+      streak++;
+      date = date.subtract(const Duration(days: 1));
+    }
+    return streak;
+  }
+
+  static Future<Set<String>> completedSalahDates() async {
+    final log = await getSalahLog();
+    return {
+      for (final entry in log.entries)
+        if (_prayerNames.every((name) =>
+            entry.value[name] == true ||
+            entry.value['${name[0].toUpperCase()}${name.substring(1)}'] ==
+                true))
+          entry.key
+    };
+  }
+
+  static Future<int> activityStreak(String kind) async {
+    if (kind == 'Salah') return streakForDates(await completedSalahDates());
+    final raw = await _readString('activity.$kind');
+    return streakForDates(
+        raw == null ? {} : (jsonDecode(raw) as List).cast<String>().toSet());
+  }
 
   // ---- Custom Dhikrs --------------------------------------------------
   static const _customDhikrsKey = 'tasbih.customDhikrs';
@@ -361,6 +499,7 @@ class NoorStore {
 
   static Future<void> setLastMushafPage(int page) async {
     await _writeString(_lastMushafPageKey, '$page');
+    await recordActivity('Quran');
   }
 
   // ---- Rich Saved Items (Bookmarks & Notes) ----------------------------
@@ -521,4 +660,149 @@ class NoorStore {
   static Future<void> clearSyncOutbox() async {
     await _writeString(_kSyncOutbox, jsonEncode([]));
   }
+
+  // ---- Daily Adhkar completions ----------------------------------------
+  static Future<Set<String>> getAdhkarDoneIds(String dateKey) async {
+    final raw = await _readString('adhkar.done.');
+    if (raw == null || raw.isEmpty) return <String>{};
+    try {
+      return (jsonDecode(raw) as List).map((e) => e.toString()).toSet();
+    } catch (_) {
+      return <String>{};
+    }
+  }
+
+  static Future<bool> toggleAdhkarDone(String dateKey, String id) async {
+    final set = await getAdhkarDoneIds(dateKey);
+    final added = set.add(id);
+    if (!added) set.remove(id);
+    await _writeString('adhkar.done.', jsonEncode(set.toList()));
+    progressRevision.value++;
+    return added;
+  }
+
+  // ---- Islamic Calendar moon-sighting offset (-2..+2 days) -------------
+  static Future<int> getHijriOffsetDays() async =>
+      ((await _readInt('calendar.hijriOffsetDays')) ?? 0).clamp(-2, 2);
+
+  static Future<void> setHijriOffsetDays(int days) async {
+    await _writeInt('calendar.hijriOffsetDays', days.clamp(-2, 2));
+    progressRevision.value++;
+  }
+
+  // ---- Fasting tracker & Qada counters ---------------------------------
+  static Future<Set<String>> getFastingDates() async {
+    final raw = await _readString('fasting.dates');
+    if (raw == null || raw.isEmpty) return <String>{};
+    try {
+      return (jsonDecode(raw) as List).map((e) => e.toString()).toSet();
+    } catch (_) {
+      return <String>{};
+    }
+  }
+
+  static Future<bool> toggleFastingDate(String dateKey) async {
+    final set = await getFastingDates();
+    final added = set.add(dateKey);
+    if (!added) set.remove(dateKey);
+    await _writeString('fasting.dates', jsonEncode(set.toList()..sort()));
+    progressRevision.value++;
+    return added;
+  }
+
+  static Future<int> getQadaFasts() async =>
+      (await _readInt('fasting.qadaCount')) ?? 0;
+
+  static Future<void> setQadaFasts(int count) async {
+    await _writeInt('fasting.qadaCount', count < 0 ? 0 : count);
+    progressRevision.value++;
+  }
+
+  static Future<Map<String, int>> getQadaPrayers() async {
+    final raw = await _readString('salah.qadaCounts');
+    final defaults = {
+      for (final p in const ['Fajr', 'Dhuhr', 'Asr', 'Maghrib', 'Isha', 'Witr'])
+        p: 0,
+    };
+    if (raw == null || raw.isEmpty) return defaults;
+    try {
+      final decoded = jsonDecode(raw) as Map<String, dynamic>;
+      for (final entry in decoded.entries) {
+        if (defaults.containsKey(entry.key)) {
+          defaults[entry.key] = ((entry.value as num?)?.toInt() ?? 0).clamp(0, 99999);
+        }
+      }
+      return defaults;
+    } catch (_) {
+      return defaults;
+    }
+  }
+
+  static Future<void> setQadaPrayerCount(String prayer, int count) async {
+    final map = await getQadaPrayers();
+    map[prayer] = count < 0 ? 0 : count;
+    await _writeString('salah.qadaCounts', jsonEncode(map));
+    progressRevision.value++;
+  }
+
+  // ---- Zakat & Sadaqah history -----------------------------------------
+  static Future<List<Map<String, dynamic>>> getZakatHistory() async =>
+      _readMapList('finance.zakatHistory');
+
+  static Future<void> addZakatRecord(Map<String, dynamic> record) async {
+    final list = await getZakatHistory();
+    list.insert(0, record);
+    await _writeString(
+        'finance.zakatHistory', jsonEncode(list.take(30).toList()));
+    progressRevision.value++;
+  }
+
+  static Future<List<Map<String, dynamic>>> getSadaqahHistory() async =>
+      _readMapList('finance.sadaqahHistory');
+
+  static Future<void> addSadaqahRecord(Map<String, dynamic> record) async {
+    final list = await getSadaqahHistory();
+    list.insert(0, record);
+    await _writeString(
+        'finance.sadaqahHistory', jsonEncode(list.take(50).toList()));
+    progressRevision.value++;
+  }
+
+  static Future<List<Map<String, dynamic>>> _readMapList(String key) async {
+    final raw = await _readString(key);
+    if (raw == null || raw.isEmpty) return <Map<String, dynamic>>[];
+    try {
+      final decoded = jsonDecode(raw) as List<dynamic>;
+      return decoded
+          .whereType<Map>()
+          .map((e) => Map<String, dynamic>.from(e))
+          .toList();
+    } catch (_) {
+      return <Map<String, dynamic>>[];
+    }
+  }
+
+  // ---- AI Conversations history ----------------------------------------
+  static Future<List<Map<String, dynamic>>> getAiConversations() async =>
+      _readMapList('ai.conversations');
+
+  static Future<void> saveAiConversation({
+    required String question,
+    required String answer,
+    List<String> sourceRefs = const [],
+  }) async {
+    final list = await getAiConversations();
+    list.removeWhere((e) => e['question'] == question);
+    list.insert(0, {
+      'question': question,
+      'answer': answer,
+      'refs': sourceRefs,
+      'timestamp': DateTime.now().toIso8601String(),
+    });
+    await _writeString(
+        'ai.conversations', jsonEncode(list.take(25).toList()));
+  }
+
+  static Future<void> clearAiConversations() =>
+      _writeString('ai.conversations', jsonEncode(const []));
 }
