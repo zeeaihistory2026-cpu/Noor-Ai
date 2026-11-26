@@ -317,6 +317,26 @@ void main() {
         }
       });
 
+      testWidgets('HalalScannerScreen Barcode tab meets a11y guidelines ($mode)',
+          (tester) async {
+        final handle = tester.ensureSemantics();
+        try {
+          await tester.pumpWidget(MaterialApp(
+            theme: NoorTheme.light(),
+            darkTheme: NoorTheme.dark(),
+            themeMode: mode,
+            home: const HalalScannerScreen(initialTab: 1),
+          ));
+          await tester.pumpAndSettle();
+
+          await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
+          await expectLater(tester, meetsGuideline(labeledTapTargetGuideline));
+          await expectLater(tester, meetsGuideline(textContrastGuideline));
+        } finally {
+          handle.dispose();
+        }
+      });
+
       testWidgets('TravelWorshipScreen meets a11y guidelines ($mode)',
           (tester) async {
         final handle = tester.ensureSemantics();
@@ -470,6 +490,40 @@ void main() {
       await tester.tap(find.text('Haram / Avoid'));
       await tester.pumpAndSettle();
       expect(find.text('E120'), findsOneWidget);
+    });
+
+    testWidgets(
+        'HalalScannerScreen camera barcode flow triggers lookup and persists history',
+        (tester) async {
+      await tester.pumpWidget(MaterialApp(
+        theme: NoorTheme.light(),
+        home: HalalScannerScreen(
+          initialTab: 1,
+          onScanWithCamera: (_) async => '8901058851229',
+          httpClient: MockClient((_) async => http.Response('{"status":0}', 404)),
+        ),
+      ));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Scan Barcode with Camera'));
+      await tester.pumpAndSettle();
+
+      await tester.dragUntilVisible(
+        find.text('Roasted Corn Chips (Sample)'),
+        find.byType(ListView).first,
+        const Offset(0, -180),
+      );
+      expect(find.text('Roasted Corn Chips (Sample)'), findsOneWidget);
+      await tester.dragUntilVisible(
+        find.text('HALAL SCREEN PASSED'),
+        find.byType(ListView).first,
+        const Offset(0, -180),
+      );
+      expect(find.text('HALAL SCREEN PASSED'), findsOneWidget);
+
+      final history = await NoorStore.getHalalScanHistory();
+      expect(history, isNotEmpty);
+      expect(history.first['title'], 'Roasted Corn Chips (Sample)');
     });
 
     testWidgets('TravelWorshipScreen calculates Qasr threshold by Madhhab',

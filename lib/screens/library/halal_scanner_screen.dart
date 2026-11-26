@@ -1,17 +1,32 @@
+import 'package:app_settings/app_settings.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http;
+import 'package:mobile_scanner/mobile_scanner.dart';
 import '../../data/halal_database.dart';
 import '../../data/noor_store.dart';
 import '../../theme/noor_theme.dart';
 import '../../widgets/noor_components.dart';
 
 /// Module 14 P2/P3 — Halal Food Checker & Scanner:
-/// Instant offline ingredient & E-number analysis, EAN/UPC barcode lookup via
-/// OpenFoodFacts (with offline samples), and a searchable E-number reference.
+/// Live camera EAN/UPC barcode scanning (OpenFoodFacts + offline fallback),
+/// instant offline ingredient & E-number analysis, and searchable E-codes.
 class HalalScannerScreen extends StatefulWidget {
-  const HalalScannerScreen({super.key, this.initialTab = 0});
+  const HalalScannerScreen({
+    super.key,
+    this.initialTab = 0,
+    this.onScanWithCamera,
+    this.httpClient,
+  });
 
   final int initialTab;
+
+  /// Optional override for camera scanning (used in headless tests; defaults to
+  /// launching the live [MobileScanner] camera viewfinder).
+  final Future<String?> Function(BuildContext context)? onScanWithCamera;
+
+  /// Optional HTTP client override for OpenFoodFacts barcode lookup tests.
+  final http.Client? httpClient;
 
   @override
   State<HalalScannerScreen> createState() => _HalalScannerScreenState();
@@ -72,7 +87,10 @@ class _HalalScannerScreenState extends State<HalalScannerScreen> {
     final code = _barcodeCtrl.text.trim();
     if (code.isEmpty || _lookingUpBarcode) return;
     setState(() => _lookingUpBarcode = true);
-    final res = await HalalDatabase.lookupBarcode(code);
+    final res = await HalalDatabase.lookupBarcode(
+      code,
+      client: widget.httpClient,
+    );
     if (!mounted) return;
     setState(() {
       _lookingUpBarcode = false;
@@ -87,6 +105,23 @@ class _HalalScannerScreenState extends State<HalalScannerScreen> {
       });
       await _loadHistory();
     }
+  }
+
+  Future<void> _scanBarcodeWithCamera() async {
+    if (_lookingUpBarcode) return;
+    HapticFeedback.selectionClick();
+    final scanner = widget.onScanWithCamera;
+    final String? scanned = scanner != null
+        ? await scanner(context)
+        : await Navigator.of(context).push<String>(
+            MaterialPageRoute(
+              builder: (_) => const _HalalBarcodeCameraPage(),
+            ),
+          );
+    if (!mounted || scanned == null) return;
+    final digits = scanned.replaceAll(RegExp(r'[^0-9]'), '');
+    if (digits.isEmpty) return;
+    await _lookupBarcode(digits);
   }
 
   Color _verdictColor(BuildContext context, HalalVerdict v) {
@@ -135,7 +170,7 @@ class _HalalScannerScreenState extends State<HalalScannerScreen> {
           children: [
             NoorDarkHeader(
               title: 'Halal Food Checker',
-              subtitle: 'Ingredients, barcode & E-number verification',
+              subtitle: 'Camera scan, ingredients & E-number verification',
               child: NoorPillTabs(
                 tabs: const ['Ingredients', 'Barcode', 'E-Numbers'],
                 selected: _tab,
@@ -325,11 +360,36 @@ class _HalalScannerScreenState extends State<HalalScannerScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const NoorSectionLabel('Product Barcode Lookup (EAN / UPC)'),
+              const NoorSectionLabel('Live Camera & Barcode Lookup'),
               const SizedBox(height: 8),
               Text(
-                'Enter the printed product digits to fetch product ingredients from OpenFoodFacts (online) or test offline sample barcodes.',
+                'Scan a product barcode with your camera or enter EAN/UPC digits to check ingredients via OpenFoodFacts and offline screening rules.',
                 style: NoorType.meta.copyWith(color: NoorTheme.muted(context)),
+              ),
+              const SizedBox(height: 14),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  style: FilledButton.styleFrom(minimumSize: const Size(48, 48)),
+                  onPressed: _lookingUpBarcode ? null : _scanBarcodeWithCamera,
+                  icon: const Icon(Icons.qr_code_scanner_rounded),
+                  label: const Text('Scan Barcode with Camera'),
+                ),
+              ),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  Expanded(child: Divider(color: NoorTheme.border(context))),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    child: Text(
+                      'OR ENTER DIGITS',
+                      style: NoorType.eyebrow
+                          .copyWith(color: NoorTheme.muted(context)),
+                    ),
+                  ),
+                  Expanded(child: Divider(color: NoorTheme.border(context))),
+                ],
               ),
               const SizedBox(height: 12),
               TextField(
@@ -350,8 +410,9 @@ class _HalalScannerScreenState extends State<HalalScannerScreen> {
               const SizedBox(height: 12),
               SizedBox(
                 width: double.infinity,
-                child: FilledButton.icon(
-                  style: FilledButton.styleFrom(minimumSize: const Size(48, 48)),
+                child: OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                      minimumSize: const Size(48, 48)),
                   onPressed: _lookingUpBarcode ? null : () => _lookupBarcode(),
                   icon: _lookingUpBarcode
                       ? const SizedBox(
@@ -556,4 +617,292 @@ class _HalalScannerScreenState extends State<HalalScannerScreen> {
     );
   }
 }
+
+class _HalalBarcodeCameraPage extends StatefulWidget {
+  const _HalalBarcodeCameraPage();
+
+  @override
+  State<_HalalBarcodeCameraPage> createState() =>
+      _HalalBarcodeCameraPageState();
+}
+
+class _HalalBarcodeCameraPageState extends State<_HalalBarcodeCameraPage> {
+  late final MobileScannerController _controller = MobileScannerController(
+    detectionSpeed: DetectionSpeed.noDuplicates,
+    formats: const [
+      BarcodeFormat.ean13,
+      BarcodeFormat.ean8,
+      BarcodeFormat.upcA,
+      BarcodeFormat.upcE,
+      BarcodeFormat.code128,
+    ],
+  );
+  bool _handled = false;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _onDetect(BarcodeCapture capture) {
+    if (_handled) return;
+    for (final code in capture.barcodes) {
+      final raw = (code.rawValue ?? '').trim();
+      final digits = raw.replaceAll(RegExp(r'[^0-9]'), '');
+      if (digits.length >= 8) {
+        _handled = true;
+        HapticFeedback.mediumImpact();
+        if (mounted) Navigator.of(context).pop(digits);
+        return;
+      }
+    }
+  }
+
+  Future<void> _toggleTorch() async {
+    if (!_controller.value.isRunning) return;
+    try {
+      await _controller.toggleTorch();
+    } catch (_) {
+      // Ignore hardware torch errors cleanly.
+    }
+  }
+
+  Future<void> _switchCamera() async {
+    if (!_controller.value.isRunning) return;
+    try {
+      await _controller.switchCamera();
+    } catch (_) {
+      // Ignore single-camera errors cleanly.
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          MobileScanner(
+            controller: _controller,
+            onDetect: _onDetect,
+            placeholderBuilder: (_) => const ColoredBox(
+              color: NoorColors.darkBg,
+              child: Center(
+                child: CircularProgressIndicator(color: NoorColors.darkGold),
+              ),
+            ),
+            errorBuilder: (context, error) {
+              final denied =
+                  error.errorCode == MobileScannerErrorCode.permissionDenied;
+              return ColoredBox(
+                color: NoorColors.darkBg,
+                child: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Container(
+                      padding: const EdgeInsets.all(22),
+                      decoration: BoxDecoration(
+                        color: NoorColors.darkSurface,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: NoorColors.darkBorder),
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.no_photography_outlined,
+                              color: NoorColors.darkGold, size: 40),
+                          const SizedBox(height: 12),
+                          Text(
+                            denied
+                                ? 'Camera Permission Required'
+                                : 'Camera Preview Unavailable',
+                            style: NoorType.cardTitle
+                                .copyWith(color: NoorColors.darkTextPrimary),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            denied
+                                ? 'Enable Camera access in Settings to scan food barcodes directly, or enter the digits manually.'
+                                : 'Camera scanning is not available here (${error.errorCode.name}). Enter printed EAN/UPC digits manually instead.',
+                            style: NoorType.meta
+                                .copyWith(color: NoorColors.onEmeraldMuted),
+                            textAlign: TextAlign.center,
+                          ),
+                          const SizedBox(height: 16),
+                          if (denied) ...[
+                            SizedBox(
+                              width: double.infinity,
+                              child: FilledButton.icon(
+                                style: FilledButton.styleFrom(
+                                  minimumSize: const Size(48, 48),
+                                ),
+                                onPressed: () => AppSettings.openAppSettings(),
+                                icon: const Icon(Icons.settings_outlined),
+                                label: const Text('Open App Settings'),
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                          ],
+                          SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton.icon(
+                              style: OutlinedButton.styleFrom(
+                                minimumSize: const Size(48, 48),
+                                foregroundColor: NoorColors.darkTextPrimary,
+                                side: const BorderSide(
+                                    color: NoorColors.darkGold),
+                              ),
+                              onPressed: () => Navigator.of(context).pop(),
+                              icon: const Icon(Icons.keyboard_outlined),
+                              label: const Text('Enter Barcode Manually'),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+          IgnorePointer(
+            child: Center(
+              child: Container(
+                width: 268,
+                height: 164,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: NoorColors.darkGold, width: 2.5),
+                ),
+              ),
+            ),
+          ),
+          SafeArea(
+            child: Column(
+              children: [
+                Container(
+                  margin: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.65),
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  child: Row(
+                    children: [
+                      IconButton(
+                        tooltip: 'Close scanner',
+                        constraints: const BoxConstraints(
+                            minWidth: 48, minHeight: 48),
+                        onPressed: () => Navigator.of(context).pop(),
+                        icon: const Icon(Icons.arrow_back_ios_new,
+                            color: Colors.white),
+                      ),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              'Scan Food Barcode',
+                              style: NoorType.cardTitle
+                                  .copyWith(color: Colors.white),
+                            ),
+                            Text(
+                              'Point camera at EAN/UPC label',
+                              style: NoorType.meta
+                                  .copyWith(color: NoorColors.onEmeraldMuted),
+                            ),
+                          ],
+                        ),
+                      ),
+                      ValueListenableBuilder<MobileScannerState>(
+                        valueListenable: _controller,
+                        builder: (context, state, _) {
+                          final torchOn = state.torchState == TorchState.on;
+                          return Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (state.torchState != TorchState.unavailable)
+                                IconButton(
+                                  tooltip: torchOn
+                                      ? 'Turn off flashlight'
+                                      : 'Turn on flashlight',
+                                  constraints: const BoxConstraints(
+                                      minWidth: 48, minHeight: 48),
+                                  onPressed: _toggleTorch,
+                                  icon: Icon(
+                                    torchOn
+                                        ? Icons.flash_on_rounded
+                                        : Icons.flash_off_rounded,
+                                    color: torchOn
+                                        ? NoorColors.darkGold
+                                        : Colors.white,
+                                  ),
+                                ),
+                              if ((state.availableCameras ?? 0) >= 2)
+                                IconButton(
+                                  tooltip: 'Switch camera',
+                                  constraints: const BoxConstraints(
+                                      minWidth: 48, minHeight: 48),
+                                  onPressed: _switchCamera,
+                                  icon: const Icon(Icons.cameraswitch_outlined,
+                                      color: Colors.white),
+                                ),
+                            ],
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+                const Spacer(),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 22),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.72),
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'Detects EAN-13, EAN-8, UPC-A, UPC-E & Code 128 barcodes automatically.',
+                          style: NoorType.meta
+                              .copyWith(color: NoorColors.onEmeraldMuted),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 6),
+                        TextButton.icon(
+                          style: TextButton.styleFrom(
+                            minimumSize: const Size(48, 48),
+                            foregroundColor: NoorColors.darkGold,
+                          ),
+                          onPressed: () => Navigator.of(context).pop(),
+                          icon: const Icon(Icons.keyboard_outlined, size: 18),
+                          label: Text(
+                            'Enter Digits Manually',
+                            style: NoorType.secondary
+                                .copyWith(color: NoorColors.darkGold),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 

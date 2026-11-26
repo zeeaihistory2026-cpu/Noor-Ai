@@ -30,6 +30,7 @@ dependencies:
   flutter_secure_storage: ^11.2.0
   hijri: ^3.0.1
   workmanager: ^0.10.10
+  mobile_scanner: ^7.5.0
   # Phase 8: real local notifications wired in
   # lib/data/notification_service*.dart (see SCAFFOLD_STATUS Phase 8).
 

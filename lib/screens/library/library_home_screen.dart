@@ -93,7 +93,7 @@ class LibraryHomeScreen extends StatelessWidget {
                 context,
                 Icons.qr_code_scanner_outlined,
                 'Halal Food & E-Number Checker',
-                'Ingredient analysis, barcode lookup & E-codes',
+                'Camera barcode scan, ingredient & E-code check',
                 () => push(const HalalScannerScreen())),
             const SizedBox(height: 12),
             _row(
