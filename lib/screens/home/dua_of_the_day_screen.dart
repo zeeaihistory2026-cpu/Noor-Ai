@@ -231,10 +231,10 @@ class _DuaOfTheDayScreenState extends State<DuaOfTheDayScreen> {
                       style: TextButton.styleFrom(
                         minimumSize: const Size(48, 48),
                         foregroundColor: NoorTheme.accent(context),
-                        textStyle: NoorType.secondary
-                            .copyWith(fontWeight: FontWeight.w700),
                       ),
-                      child: const Text('View All'),
+                      child: Text('View All',
+                          style: NoorType.secondary
+                              .copyWith(fontWeight: FontWeight.w700)),
                     ),
                   ]),
               const SizedBox(height: 12),

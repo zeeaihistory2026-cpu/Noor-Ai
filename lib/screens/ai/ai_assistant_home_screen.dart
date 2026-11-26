@@ -575,9 +575,8 @@ return Material(
             style: TextButton.styleFrom(
               minimumSize: const Size(48, 48),
               foregroundColor: NoorTheme.accent(context),
-              textStyle: NoorType.secondary,
             ),
-            child: const Text('View All'),
+            child: const Text('View All', style: NoorType.secondary),
           ),
       ]);
 
