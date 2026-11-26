@@ -805,4 +805,100 @@ class NoorStore {
 
   static Future<void> clearAiConversations() =>
       _writeString('ai.conversations', jsonEncode(const []));
+
+  // ---- Hajj & Umrah counters + packing checklist -----------------------
+  static Future<int> getHajjTawafCount() async =>
+      (await _readInt('hajj.tawafCount') ?? 0).clamp(0, 7);
+
+  static Future<void> setHajjTawafCount(int count) =>
+      _writeInt('hajj.tawafCount', count.clamp(0, 7));
+
+  static Future<int> getHajjSaiCount() async =>
+      (await _readInt('hajj.saiCount') ?? 0).clamp(0, 7);
+
+  static Future<void> setHajjSaiCount(int count) =>
+      _writeInt('hajj.saiCount', count.clamp(0, 7));
+
+  static Future<List<String>> getHajjChecklistDone() =>
+      _readStringList('hajj.checklistDone');
+
+  static Future<void> setHajjChecklistDone(List<String> ids) =>
+      _writeString('hajj.checklistDone', jsonEncode(ids));
+
+  // ---- Halal scan history ----------------------------------------------
+  static Future<List<Map<String, dynamic>>> getHalalScanHistory() =>
+      _readMapList('halal.scanHistory');
+
+  static Future<void> addHalalScanRecord(Map<String, dynamic> record) async {
+    final list = await getHalalScanHistory();
+    list.insert(0, record);
+    await _writeString('halal.scanHistory', jsonEncode(list.take(25).toList()));
+  }
+
+  // ---- Women's Corner private exempt pause mode ------------------------
+  static Future<bool> getCycleExemptMode() async =>
+      await _readBool('worship.cycleExemptMode') ?? false;
+
+  static Future<void> setCycleExemptMode(bool value) =>
+      _writeBool('worship.cycleExemptMode', value);
+
+  // ---- Beginner 30-day roadmap milestones ------------------------------
+  static Future<List<int>> getBeginnerRoadmapDone() async {
+    final raw = await _readString('learn.beginnerRoadmap');
+    if (raw == null || raw.isEmpty) return <int>[];
+    try {
+      return (jsonDecode(raw) as List).map((e) => (e as num).toInt()).toList();
+    } catch (_) {
+      return <int>[];
+    }
+  }
+
+  static Future<void> setBeginnerRoadmapDone(List<int> ids) =>
+      _writeString('learn.beginnerRoadmap', jsonEncode(ids));
+
+  // ---- Kids Surahs & quiz milestones -----------------------------------
+  static Future<List<String>> getKidsCompletedSurahs() =>
+      _readStringList('kids.completedSurahs');
+
+  static Future<void> setKidsCompletedSurahs(List<String> ids) =>
+      _writeString('kids.completedSurahs', jsonEncode(ids));
+
+  static Future<int> getKidsQuizBest() async =>
+      await _readInt('kids.quizBest') ?? 0;
+
+  static Future<void> setKidsQuizBest(int score) async {
+    final prev = await getKidsQuizBest();
+    if (score > prev) await _writeInt('kids.quizBest', score);
+  }
+
+  // ---- My Deen Sunnah checklist & Gratitude journal --------------------
+  static Future<List<String>> getSunnahDoneIds(String dateKey) =>
+      _readStringList('deen.sunnah.$dateKey');
+
+  static Future<void> setSunnahDoneIds(String dateKey, List<String> ids) =>
+      _writeString('deen.sunnah.$dateKey', jsonEncode(ids));
+
+  static Future<List<Map<String, dynamic>>> getGratitudeJournal() =>
+      _readMapList('deen.gratitudeJournal');
+
+  static Future<void> addGratitudeEntry(String text) async {
+    final clean = text.trim();
+    if (clean.isEmpty) return;
+    final list = await getGratitudeJournal();
+    list.insert(0, {
+      'text': clean,
+      'date': DateTime.now().toIso8601String().split('T').first,
+    });
+    await _writeString('deen.gratitudeJournal', jsonEncode(list.take(40).toList()));
+  }
+
+  static Future<List<String>> _readStringList(String key) async {
+    final raw = await _readString(key);
+    if (raw == null || raw.isEmpty) return <String>[];
+    try {
+      return (jsonDecode(raw) as List).cast<String>();
+    } catch (_) {
+      return <String>[];
+    }
+  }
 }

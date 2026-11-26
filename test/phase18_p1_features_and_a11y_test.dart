@@ -1,15 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
+import 'package:noor_ai_companion/data/halal_database.dart';
 import 'package:noor_ai_companion/data/noor_store.dart';
 import 'package:noor_ai_companion/data/offline_quran.dart';
+import 'package:noor_ai_companion/screens/library/beginner_guide_screen.dart';
 import 'package:noor_ai_companion/screens/library/dua_library_screen.dart';
 import 'package:noor_ai_companion/screens/library/hajj_umrah_screen.dart';
+import 'package:noor_ai_companion/screens/library/halal_scanner_screen.dart';
 import 'package:noor_ai_companion/screens/library/islamic_academy_screen.dart';
+import 'package:noor_ai_companion/screens/library/kids_corner_screen.dart';
 import 'package:noor_ai_companion/screens/library/library_home_screen.dart';
 import 'package:noor_ai_companion/screens/quran/surah_list_screen.dart';
+import 'package:noor_ai_companion/screens/worship/deen_journal_screen.dart';
 import 'package:noor_ai_companion/screens/worship/fasting_ramadan_screen.dart';
 import 'package:noor_ai_companion/screens/worship/islamic_calendar_screen.dart';
 import 'package:noor_ai_companion/screens/worship/salah_guide_screen.dart';
+import 'package:noor_ai_companion/screens/worship/travel_worship_screen.dart';
+import 'package:noor_ai_companion/screens/worship/womens_corner_screen.dart';
 import 'package:noor_ai_companion/screens/worship/zakat_calculator_screen.dart';
 import 'package:noor_ai_companion/theme/noor_theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -165,7 +174,7 @@ void main() {
       ));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Counters & Ihram'));
+      await tester.tap(find.text('Tawaf & Ihram'));
       await tester.pumpAndSettle();
       expect(find.text('Tawaf Counter'), findsOneWidget);
       await tester.tap(find.byIcon(Icons.add).first);
@@ -175,6 +184,7 @@ void main() {
         find.bySemanticsLabel(RegExp(r'Tawaf Counter: 1 of 7 Circuit completed')),
         findsOneWidget,
       );
+      expect(await NoorStore.getHajjTawafCount(), 1);
     });
 
     testWidgets(
@@ -266,6 +276,228 @@ void main() {
           handle.dispose();
         }
       });
+
+      testWidgets('HajjUmrahScreen (Tawaf & Ihram) meets a11y guidelines ($mode)',
+          (tester) async {
+        final handle = tester.ensureSemantics();
+        try {
+          await tester.pumpWidget(MaterialApp(
+            theme: NoorTheme.light(),
+            darkTheme: NoorTheme.dark(),
+            themeMode: mode,
+            home: const HajjUmrahScreen(initialTab: 2),
+          ));
+          await tester.pumpAndSettle();
+
+          await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
+          await expectLater(tester, meetsGuideline(labeledTapTargetGuideline));
+          await expectLater(tester, meetsGuideline(textContrastGuideline));
+        } finally {
+          handle.dispose();
+        }
+      });
+
+      testWidgets('HalalScannerScreen meets a11y guidelines ($mode)',
+          (tester) async {
+        final handle = tester.ensureSemantics();
+        try {
+          await tester.pumpWidget(MaterialApp(
+            theme: NoorTheme.light(),
+            darkTheme: NoorTheme.dark(),
+            themeMode: mode,
+            home: const HalalScannerScreen(),
+          ));
+          await tester.pumpAndSettle();
+
+          await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
+          await expectLater(tester, meetsGuideline(labeledTapTargetGuideline));
+          await expectLater(tester, meetsGuideline(textContrastGuideline));
+        } finally {
+          handle.dispose();
+        }
+      });
+
+      testWidgets('TravelWorshipScreen meets a11y guidelines ($mode)',
+          (tester) async {
+        final handle = tester.ensureSemantics();
+        try {
+          await tester.pumpWidget(MaterialApp(
+            theme: NoorTheme.light(),
+            darkTheme: NoorTheme.dark(),
+            themeMode: mode,
+            home: const TravelWorshipScreen(),
+          ));
+          await tester.pumpAndSettle();
+
+          await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
+          await expectLater(tester, meetsGuideline(labeledTapTargetGuideline));
+          await expectLater(tester, meetsGuideline(textContrastGuideline));
+        } finally {
+          handle.dispose();
+        }
+      });
+
+      testWidgets('BeginnerGuideScreen meets a11y guidelines ($mode)',
+          (tester) async {
+        final handle = tester.ensureSemantics();
+        try {
+          await tester.pumpWidget(MaterialApp(
+            theme: NoorTheme.light(),
+            darkTheme: NoorTheme.dark(),
+            themeMode: mode,
+            home: const BeginnerGuideScreen(),
+          ));
+          await tester.pumpAndSettle();
+
+          await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
+          await expectLater(tester, meetsGuideline(labeledTapTargetGuideline));
+          await expectLater(tester, meetsGuideline(textContrastGuideline));
+        } finally {
+          handle.dispose();
+        }
+      });
+
+      testWidgets('WomensCornerScreen meets a11y guidelines ($mode)',
+          (tester) async {
+        final handle = tester.ensureSemantics();
+        try {
+          await tester.pumpWidget(MaterialApp(
+            theme: NoorTheme.light(),
+            darkTheme: NoorTheme.dark(),
+            themeMode: mode,
+            home: const WomensCornerScreen(),
+          ));
+          await tester.pumpAndSettle();
+
+          await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
+          await expectLater(tester, meetsGuideline(labeledTapTargetGuideline));
+          await expectLater(tester, meetsGuideline(textContrastGuideline));
+        } finally {
+          handle.dispose();
+        }
+      });
+
+      testWidgets('KidsCornerScreen meets a11y guidelines ($mode)',
+          (tester) async {
+        final handle = tester.ensureSemantics();
+        try {
+          await tester.pumpWidget(MaterialApp(
+            theme: NoorTheme.light(),
+            darkTheme: NoorTheme.dark(),
+            themeMode: mode,
+            home: const KidsCornerScreen(),
+          ));
+          await tester.pumpAndSettle();
+
+          await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
+          await expectLater(tester, meetsGuideline(labeledTapTargetGuideline));
+          await expectLater(tester, meetsGuideline(textContrastGuideline));
+        } finally {
+          handle.dispose();
+        }
+      });
+
+      testWidgets('DeenJournalScreen meets a11y guidelines ($mode)',
+          (tester) async {
+        final handle = tester.ensureSemantics();
+        try {
+          await tester.pumpWidget(MaterialApp(
+            theme: NoorTheme.light(),
+            darkTheme: NoorTheme.dark(),
+            themeMode: mode,
+            home: const DeenJournalScreen(),
+          ));
+          await tester.pumpAndSettle();
+
+          await expectLater(tester, meetsGuideline(androidTapTargetGuideline));
+          await expectLater(tester, meetsGuideline(labeledTapTargetGuideline));
+          await expectLater(tester, meetsGuideline(textContrastGuideline));
+        } finally {
+          handle.dispose();
+        }
+      });
     }
+  });
+
+  group('Catalog Modules 14–18 & Deen Journal Behavior', () {
+    test('HalalDatabase classifies Halal, Doubtful, and Haram ingredients & OpenFoodFacts',
+        () async {
+      final haramRes = HalalDatabase.analyzeIngredients(
+          'Sugar, Gelatin, Carmine (E120), Citric acid (E330)');
+      expect(haramRes.overallVerdict, HalalVerdict.haram);
+
+      final doubtfulRes = HalalDatabase.analyzeIngredients(
+          'Wheat flour, Mono- and diglycerides (E471), Whey powder');
+      expect(doubtfulRes.overallVerdict, HalalVerdict.doubtful);
+
+      final halalRes = HalalDatabase.analyzeIngredients(
+          'Water, Curcumin (E100), Soy lecithin, Gum arabic (E414)');
+      expect(halalRes.overallVerdict, HalalVerdict.halal);
+
+      final mockClient = MockClient((_) async => http.Response(
+            '{"status":1,"product":{"product_name":"Test Drink","brands":"NoorFoods","ingredients_text":"Water, Sugar, Citric acid (E330)","additives_tags":["en:e330"],"labels_tags":["en:halal"]}}',
+            200,
+          ));
+      final barcodeRes =
+          await HalalDatabase.lookupBarcode('8901234567890', client: mockClient);
+      expect(barcodeRes.found, isTrue);
+      expect(barcodeRes.isLive, isTrue);
+      expect(barcodeRes.productName, 'Test Drink');
+      expect(barcodeRes.analysis.overallVerdict, HalalVerdict.halal);
+    });
+
+    testWidgets('HalalScannerScreen analyzes ingredients & filters E-Numbers',
+        (tester) async {
+      await tester.pumpWidget(MaterialApp(
+        theme: NoorTheme.light(),
+        home: const HalalScannerScreen(),
+      ));
+      await tester.pumpAndSettle();
+
+      await tester.ensureVisible(find.text('Gummy Candy Label'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Gummy Candy Label'));
+      await tester.pumpAndSettle();
+      await tester.dragUntilVisible(
+        find.text('HARAM / FLAGGED INGREDIENT'),
+        find.byType(ListView).first,
+        const Offset(0, -180),
+      );
+      expect(find.text('HARAM / FLAGGED INGREDIENT'), findsOneWidget);
+
+      await tester.tap(find.text('E-Numbers'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Haram / Avoid'));
+      await tester.pumpAndSettle();
+      expect(find.text('E120'), findsOneWidget);
+    });
+
+    testWidgets('TravelWorshipScreen calculates Qasr threshold by Madhhab',
+        (tester) async {
+      await tester.pumpWidget(MaterialApp(
+        theme: NoorTheme.light(),
+        home: const TravelWorshipScreen(),
+      ));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Shorten 4-Rak'), findsOneWidget);
+
+      await tester.enterText(
+          find.widgetWithText(TextField, 'One-way km'), '30');
+      await tester.pumpAndSettle();
+      expect(find.textContaining('Pray Full Prayers'), findsOneWidget);
+    });
+
+    testWidgets('WomensCornerScreen persists Private Exempt-Days toggle',
+        (tester) async {
+      await tester.pumpWidget(MaterialApp(
+        theme: NoorTheme.light(),
+        home: const WomensCornerScreen(),
+      ));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byType(Switch));
+      await tester.pumpAndSettle();
+      expect(await NoorStore.getCycleExemptMode(), isTrue);
+    });
   });
 }

@@ -603,6 +603,22 @@ abstract final class IslamicAcademyData {
     ),
   ];
 
+  static const List<String> ihramAllowed = [
+    'Wearing an Ihram belt/pouch, wristwatch, eyeglasses, or supportive strap.',
+    'Washing body or hair gently with unscented soap without pulling hairs.',
+    'Carrying an umbrella for shade or resting under tents and shaded walkways.',
+    'Trimming clothing adjustments cleanly BEFORE intending Ihram at the Miqat.',
+  ];
+
+  static const List<({String id, String title, String note})> pilgrimageChecklist = [
+    (id: 'sheets', title: '2 Unstitched White Ihram Sheets & Belt', note: 'Plus spare safety clips or waist pouch'),
+    (id: 'sandals', title: 'Comfortable Open Sandals', note: 'Expose ankles & upper foot bone cleanly for men'),
+    (id: 'toiletries', title: 'Unscented Soap, Lip Balm & Tissue', note: 'Avoid perfumed soaps and wipes during Ihram'),
+    (id: 'bag', title: 'Compact Shoe Drawstring Bag & Prayer Mat', note: 'Carry shoes comfortably inside Masjid al-Haram'),
+    (id: 'health', title: 'Prescription Medicines & Hydration Bottle', note: 'Electrolytes & unscented anti-chafing balm'),
+    (id: 'docs', title: 'Nusuk Permit, Passport Copy & Dua Pocket Guide', note: 'Offline backup stored locally'),
+  ];
+
   static const List<String> ihramProhibitions = [
     'Cutting or removing hair or trimming nails while in Ihram.',
     'Applying perfume or scented products on body or Ihram garments.',

@@ -553,9 +553,12 @@ class NoorPillTabs extends StatelessWidget {
                     borderRadius: BorderRadius.circular(NoorRadius.chip),
                     child: Container(
                       constraints: const BoxConstraints(minHeight: 48),
+                      padding: const EdgeInsets.symmetric(horizontal: 6),
                       alignment: Alignment.center,
                       child: ExcludeSemantics(
                         child: Text(tabs[i],
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                             textAlign: TextAlign.center,
                             style: NoorType.secondary.copyWith(
                                 color: NoorTheme.foreground(context,
