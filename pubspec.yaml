@@ -1,7 +1,7 @@
 name: noor_ai_companion
 description: MuslimGo — Faith • Guidance • Growth. Flutter app.
 publish_to: 'none'
-version: 1.0.4+19
+version: 1.0.5+20
 
 environment:
   sdk: ^3.5.0
